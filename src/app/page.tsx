@@ -24,42 +24,42 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  const handleAnalyze = async () => {
-    if (!input.trim()) return;
-    setLoading(true);
-    setResult(null);
+    const handleAnalyze = async () => {
+      if (!input.trim()) return;
+      setLoading(true);
+      setResult(null);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // Timeout 15 detik
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // Timeout 15 detik
 
-    try {
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userInput: input }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-      const data = await res.json();
-      setResult(data);
-    } catch (err: any) {
-      if (err.name === "AbortError") {
-        setResult({ error: "Koneksi timeout (lebih dari 15 detik). Cek terminal atau jaringan." });
-      } else {
-        setResult({ error: "Terjadi kesalahan koneksi ke server." });
+      try {
+        const res = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userInput: input }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        const data = await res.json();
+        setResult(data);
+      } catch (err: any) {
+        if (err.name === "AbortError") {
+          setResult({ error: "Koneksi timeout (lebih dari 15 detik). Cek terminal atau jaringan." });
+        } else {
+          setResult({ error: "Terjadi kesalahan koneksi ke server." });
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  };
-  
+    };
+
   };
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 p-8 flex flex-col items-center">
       <div className="max-w-2xl w-full space-y-6">
         <h1 className="text-3xl font-bold tracking-tight text-emerald-400">
-          Explor[AI]tion — AI Starter Test
+          Explor[AI]tion — AI Starter Beta Test
         </h1>
 
         <textarea
@@ -107,10 +107,10 @@ export default function Home() {
             Error: {result.error}
           </div>
         )}
-        
+
       </div>
     </main>
-    
+
   );
 
 }
