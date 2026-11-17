@@ -18,7 +18,7 @@ We are a 3-person team working concurrently in the same repository using separat
 
 1. **Strict Directory Ownership:**
    - **Raffa (Hacker - AI & Backend):** Exclusively owns `src/app/api/**`, `src/lib/**`, and `src/types/**`.
-   - **Iqbal (Hipster - UI/UX & Frontend):** Exclusively owns `src/components/**`, `src/app/page.tsx`, `src/app/layout.tsx`, and `src/app/globals.css`.
+   - **Iqbal (Hipster - UI/UX & Frontend):** Exclusively owns `src/components/**`, `src/app/page.tsx`, `src/app/layout.tsx`, `src/app/globals.css` and `README.md`.
    - **Revaldo (Hustler - Docs & Pitch):** Exclusively owns `docs/**` and `README.md`.
 
 2. **Cross-Boundary Rule for AI Agents:**
