@@ -59,7 +59,7 @@ export default function Home() {
     <main className="min-h-screen bg-slate-950 text-slate-100 p-8 flex flex-col items-center">
       <div className="max-w-2xl w-full space-y-6">
         <h1 className="text-3xl font-bold tracking-tight text-emerald-400">
-          Explor[AI]tion — AI Starter Beta Test
+          Explor[AI]tion — AI Starter Beta Testing
         </h1>
 
         <textarea
