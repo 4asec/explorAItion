@@ -16,7 +16,6 @@ import {
 } from "@/lib/apiClient";
 import CuratorPanel from "@/components/CuratorPanel";
 import {
-  LogOut,
   ShieldCheck,
   Search,
   RefreshCw,
@@ -211,8 +210,8 @@ export default function FeedDashboard({
             </div>
           </button>
 
-          {/* Bagian Navbar Sisi Kanan: Ikon Notifikasi Postingan Terbaru yang Relevan + Keluar */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          {/* Bagian Navbar Sisi Kanan: Ikon Notifikasi Postingan Terbaru yang Relevan */}
+          <div className="flex items-center">
             {/* Tombol Ikon Notifikasi Postingan Terbaru yang Relevan */}
             <button
               type="button"
@@ -227,17 +226,6 @@ export default function FeedDashboard({
                   {relevantNotifications.length}
                 </span>
               )}
-            </button>
-
-            {/* Quick Logout Button */}
-            <button
-              type="button"
-              onClick={onLogout}
-              className="p-2.5 rounded-xl bg-white/10 hover:bg-rose-500/20 border border-white/20 hover:border-rose-400/40 text-white/80 hover:text-rose-200 transition active:scale-[0.96] flex items-center gap-1.5 cursor-pointer backdrop-blur-md"
-              title="Keluar dari Akun"
-              aria-label="Keluar"
-            >
-              <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>

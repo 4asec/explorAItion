@@ -9,6 +9,7 @@ import {
   TeamRequest,
   CreateTeamPayload,
   OpportunityVerificationResult,
+  ProfileInsightResult,
 } from "@/types/schema";
 
 /**
@@ -356,6 +357,40 @@ export async function updateUserProfile(
     return { data: updatedMock, error: null };
   } catch (err) {
     return { data: null, error: "Terjadi kegagalan saat menyimpan data profil." };
+  }
+}
+
+/**
+ * Mengirim narasi cerita diri untuk dianalisis oleh AI Career & Skill Advisor (P2)
+ */
+export async function fetchProfileInsight(
+  story: string
+): Promise<ApiResponse<ProfileInsightResult>> {
+  try {
+    const res = await fetch("/api/profile-insight", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ story }),
+    });
+
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      return {
+        data: null,
+        error: json.error || "Gagal mendapatkan insight profil dari AI.",
+      };
+    }
+
+    return {
+      data: json as ProfileInsightResult,
+      error: null,
+    };
+  } catch (err: any) {
+    return {
+      data: null,
+      error: "Terjadi gangguan koneksi saat menghubungi AI Career Advisor.",
+    };
   }
 }
 
