@@ -302,17 +302,18 @@ export default function OpportunityDetail({
     <div className="min-h-screen bg-gradient-to-b from-[#004aad] via-[#003d91] to-[#002b66] text-white flex flex-col font-sans selection:bg-amber-400/30 selection:text-amber-200">
       {/* Top Header Navigation */}
       <header className="sticky top-0 z-30 bg-[#004aad]/80 backdrop-blur-md border-b border-white/20">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-2.5">
           <button
             type="button"
             onClick={onBack}
             className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition active:scale-[0.98] cursor-pointer shadow-sm backdrop-blur-md"
           >
             <ArrowLeft className="w-3.5 h-3.5 text-white/80" />
-            <span>Kembali ke Feed</span>
+            <span className="hidden xs:inline sm:inline">Kembali ke Feed</span>
+            <span className="inline xs:hidden">Feed</span>
           </button>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 sm:gap-2.5">
             {/* Tombol Bookmark P7 */}
             <button
               type="button"
@@ -327,9 +328,9 @@ export default function OpportunityDetail({
               <span>{isBookmarked ? "Tersimpan" : "Simpan"}</span>
             </button>
 
-            <div className="flex items-center gap-2 font-mono text-xs">
+            <div className="flex items-center gap-1.5 sm:gap-2 font-mono text-xs">
               <span className="text-white/70 hidden sm:inline">Kesesuaian:</span>
-              <span className="px-2 py-0.5 rounded-md bg-amber-400/20 border border-amber-300/30 text-amber-300 font-semibold tabular-nums">
+              <span className="px-2 py-0.5 rounded-md bg-amber-400/20 border border-amber-300/30 text-amber-300 font-semibold tabular-nums text-[11px] sm:text-xs">
                 {opportunity.matchPercentage}% Relevan
               </span>
             </div>
@@ -995,7 +996,7 @@ export default function OpportunityDetail({
       {/* ========================================================= */}
       {showTeamActionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
-          <div className="relative w-full max-w-md p-6 rounded-2xl bg-[#003175]/95 border border-white/25 shadow-2xl space-y-5 animate-scale-up text-white backdrop-blur-xl">
+          <div className="relative w-[92vw] max-w-md p-5 sm:p-6 rounded-2xl bg-[#003175]/95 border border-white/25 shadow-2xl space-y-5 animate-scale-up text-white backdrop-blur-xl">
             {/* Header Modal & Tombol Close */}
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">

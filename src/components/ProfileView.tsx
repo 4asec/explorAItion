@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { UserProfile, Opportunity, ProfileInsightResult } from "@/types/schema";
 import { updateUserProfile, fetchProfileInsight } from "@/lib/apiClient";
-import CuratorPanel from "@/components/CuratorPanel";
 import {
   ArrowLeft,
   User,
@@ -18,11 +17,11 @@ import {
   AlertCircle,
   Loader2,
   LogOut,
-  SlidersHorizontal,
   Bookmark,
   ShieldCheck,
   Compass,
   Tag,
+  RotateCcw,
 } from "lucide-react";
 
 export interface ProfileViewProps {
@@ -68,35 +67,16 @@ export default function ProfileView({
     null
   );
 
-  // State Akses Panel Kurator dari Halaman Profil
-  const [isCuratorOpen, setIsCuratorOpen] = useState<boolean>(false);
-
   // State Modal Konfirmasi 2 Langkah Keluar / Logout
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState<boolean>(false);
 
-  // State Fitur AI Career & Skill Insight
+  // State Fitur AI Career & Skill Insight (Dimulai null pada sesi baru, hanya muncul setelah user menganalisis)
   const [userStory, setUserStory] = useState<string>("");
   const [isAnalyzingStory, setIsAnalyzingStory] = useState<boolean>(false);
   const [storyInsightResult, setStoryInsightResult] = useState<ProfileInsightResult | null>(null);
   const [storyError, setStoryError] = useState<string | null>(null);
 
   const INSIGHT_STORAGE_KEY = `angkasa_ai_insight_${userProfile.id}`;
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem(INSIGHT_STORAGE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (parsed?.recommendedRole && parsed?.careerInsight) {
-            setStoryInsightResult(parsed);
-          }
-        }
-      } catch (e) {
-        console.warn("[Insight Cache Read Warning]", e);
-      }
-    }
-  }, [userProfile.id, INSIGHT_STORAGE_KEY]);
 
   const handleAnalyzeStory = async () => {
     if (!userStory.trim()) {
@@ -137,6 +117,19 @@ export default function ProfileView({
       setStoryError("Terjadi gangguan koneksi saat menganalisis narasi profil.");
     } finally {
       setIsAnalyzingStory(false);
+    }
+  };
+
+  const handleResetStory = () => {
+    setStoryInsightResult(null);
+    setUserStory("");
+    setStoryError(null);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem(INSIGHT_STORAGE_KEY);
+      } catch (e) {
+        console.warn("[Insight Cache Remove Warning]", e);
+      }
     }
   };
 
@@ -203,19 +196,20 @@ export default function ProfileView({
     <div className="min-h-screen bg-gradient-to-b from-[#004aad] via-[#003d91] to-[#002b66] text-white flex flex-col font-sans selection:bg-amber-400/30 selection:text-amber-200">
       {/* Top Sticky Header */}
       <header className="sticky top-0 z-30 bg-[#004aad]/80 backdrop-blur-md border-b border-white/20">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-2.5">
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition active:scale-[0.98] cursor-pointer shadow-sm backdrop-blur-md"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition active:scale-[0.98] cursor-pointer shadow-sm backdrop-blur-md"
           >
             <ArrowLeft className="w-3.5 h-3.5 text-white/80" />
-            <span>Kembali ke Feed</span>
+            <span className="hidden xs:inline sm:inline">Kembali</span>
+            <span className="inline xs:hidden">Feed</span>
           </button>
 
           <div className="flex items-center gap-2 text-xs font-mono text-white/80">
             <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            <span>PROFIL PENGGUNA</span>
+            <span className="text-[11px] sm:text-xs tracking-wider">PROFIL PENGGUNA</span>
           </div>
 
           <button
@@ -225,7 +219,7 @@ export default function ProfileView({
             title="Keluar dari Akun"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Keluar</span>
+            <span>Keluar</span>
           </button>
         </div>
       </header>
@@ -352,7 +346,7 @@ export default function ProfileView({
 
           {/* Kartu Highlight Hasil Analisis AI */}
           {storyInsightResult && (
-            <div className="p-5 sm:p-6 rounded-2xl bg-white/[0.08] border border-amber-300/35 backdrop-blur-md space-y-4 animate-fade-slide-up">
+            <div className="p-5 sm:p-6 rounded-2xl bg-white/[0.08] border border-amber-300/35 backdrop-blur-md space-y-4 animate-[fadeSlideUp_380ms_cubic-bezier(0.16,1,0.3,1)]">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
                 <div className="flex items-center gap-2">
                   <Compass className="w-4 h-4 text-amber-300" />
@@ -360,11 +354,22 @@ export default function ProfileView({
                     Hasil Pemetaan AI Angkasa
                   </span>
                 </div>
-                {storyInsightResult._modelUsed && (
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-white/70">
-                    Model: {storyInsightResult._modelUsed}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {storyInsightResult._modelUsed && (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-white/70">
+                      Model: {storyInsightResult._modelUsed}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleResetStory}
+                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-[11px] font-mono text-white/80 hover:text-white transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+                    title="Hapus hasil dan ulang cerita"
+                  >
+                    <RotateCcw className="w-3 h-3 text-amber-300" />
+                    <span>Reset Analisis</span>
+                  </button>
+                </div>
               </div>
 
               {/* 1. Rekomendasi Role Utama */}
@@ -573,33 +578,12 @@ export default function ProfileView({
             </button>
           </div>
         </section>
-
-        {/* Akses Fitur Manajemen Tambahan (Panel Kurator) */}
-        <section className="surface-panel p-6 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="space-y-1 text-center sm:text-left">
-            <h3 className="text-sm font-semibold text-white flex items-center justify-center sm:justify-start gap-2">
-              <SlidersHorizontal className="w-4 h-4 text-amber-300" />
-              <span>Panel Tata Kelola Kurator &amp; Verifikator</span>
-            </h3>
-            <p className="text-xs text-white/80">
-              Akses mode manajemen untuk mendaftarkan peluang baru manual atau memverifikasi antrean.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsCuratorOpen(true)}
-            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/25 text-xs font-semibold text-white transition active:scale-[0.98] cursor-pointer backdrop-blur-md shadow-sm shrink-0"
-          >
-            Buka Panel Kurator
-          </button>
-        </section>
       </main>
 
       {/* Modal Dialog Konfirmasi 2 Langkah Logout */}
       {isLogoutModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md bg-[#002b66]/90 border border-white/20 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md space-y-5 animate-fade-slide-up">
+          <div className="relative w-[92vw] max-w-md bg-[#002b66]/95 border border-white/20 rounded-2xl p-5 sm:p-7 shadow-2xl backdrop-blur-md space-y-5 animate-fade-slide-up">
             {/* Header Modal */}
             <div className="flex items-start gap-4">
               <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-400/30 text-rose-300 shrink-0">
@@ -639,14 +623,6 @@ export default function ProfileView({
           </div>
         </div>
       )}
-
-      {/* Modal Kurator */}
-      <CuratorPanel
-        isOpen={isCuratorOpen}
-        onClose={() => setIsCuratorOpen(false)}
-        onOpportunityVerified={onOpportunityVerified}
-        onOpportunityAdded={onOpportunityAdded}
-      />
 
       {/* Footer */}
       <footer className="text-center py-6 text-[11px] text-white/60 font-mono border-t border-white/20 mt-10">

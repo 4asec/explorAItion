@@ -26,6 +26,11 @@ import {
   X,
   Sparkles,
   ChevronRight,
+  ListTodo,
+  CheckSquare,
+  Square,
+  CheckCircle2,
+  Compass,
 } from "lucide-react";
 
 export interface FeedDashboardProps {
@@ -37,6 +42,14 @@ export interface FeedDashboardProps {
 }
 
 type CategoryFilter = "Semua" | "Lomba" | "Beasiswa" | "Seminar";
+
+const DEFAULT_CHECKLIST_ITEMS = [
+  { id: "ktm", label: "KTM / Kartu Pelajar Aktif & Scan KTP" },
+  { id: "cv", label: "Curriculum Vitae (CV) & Portofolio ATS Terupdate" },
+  { id: "proposal", label: "Proposal / Abstrak Gagasan Inovasi KTI" },
+  { id: "pitchdeck", label: "Pitch Deck & Slide Presentasi Final" },
+  { id: "team", label: "Pembagian Tugas & Kesepakatan Tim Kompetisi" },
+];
 
 export default function FeedDashboard({
   userProfile,
@@ -55,6 +68,43 @@ export default function FeedDashboard({
 
   // State Sidebar Notifikasi Peluang Relevan
   const [isNotificationOpen, setIsNotificationOpen] = useState<boolean>(false);
+
+  // State Menu Checklist Persiapan & Navigasi Cepat
+  const [isChecklistOpen, setIsChecklistOpen] = useState<boolean>(false);
+  const [completedChecklist, setCompletedChecklist] = useState<Record<string, boolean>>({});
+
+  const CHECKLIST_STORAGE_KEY = `angkasa_prep_checklist_${userProfile.id}`;
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem(CHECKLIST_STORAGE_KEY);
+        if (stored) {
+          setCompletedChecklist(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.warn("[Checklist Cache Read Warning]", e);
+      }
+    }
+  }, [CHECKLIST_STORAGE_KEY]);
+
+  const toggleChecklistItem = (id: string) => {
+    setCompletedChecklist((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(next));
+        } catch (e) {
+          console.warn("[Checklist Cache Save Warning]", e);
+        }
+      }
+      return next;
+    });
+  };
+
+  const completedChecklistCount = useMemo(() => {
+    return DEFAULT_CHECKLIST_ITEMS.filter((item) => completedChecklist[item.id]).length;
+  }, [completedChecklist]);
 
   // State Panel Kurator (Admin Input Manual & Verifikator)
   const [isCuratorOpen, setIsCuratorOpen] = useState<boolean>(false);
@@ -210,8 +260,24 @@ export default function FeedDashboard({
             </div>
           </button>
 
-          {/* Bagian Navbar Sisi Kanan: Ikon Notifikasi Postingan Terbaru yang Relevan */}
-          <div className="flex items-center">
+          {/* Bagian Navbar Sisi Kanan: Menu Checklist Persiapan & Ikon Notifikasi */}
+          <div className="flex items-center gap-2">
+            {/* Tombol Checklist & Navigasi Cepat */}
+            <button
+              type="button"
+              onClick={() => setIsChecklistOpen(true)}
+              className="relative p-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/40 text-white transition active:scale-[0.96] cursor-pointer backdrop-blur-md shadow-sm group"
+              title="Checklist Persiapan & Navigasi Cepat"
+              aria-label="Buka Menu Checklist & Navigasi Cepat"
+            >
+              <ListTodo className="w-4 h-4 text-white group-hover:text-amber-300 transition" />
+              {completedChecklistCount > 0 && (
+                <span className="absolute -top-1 -right-1 px-1.5 py-0.2 min-w-[18px] text-center rounded-full bg-emerald-400 text-[#002b66] font-mono text-[10px] font-bold tabular-nums shadow-md">
+                  {completedChecklistCount}/{DEFAULT_CHECKLIST_ITEMS.length}
+                </span>
+              )}
+            </button>
+
             {/* Tombol Ikon Notifikasi Postingan Terbaru yang Relevan */}
             <button
               type="button"
@@ -255,13 +321,13 @@ export default function FeedDashboard({
         {/* Controls: Segmented Filter (Kiri) & Tombol Tersimpan + Search Box (Kanan) */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           {/* Segmented Tab Filter Utama */}
-          <div className="inline-flex p-1 bg-white/10 border border-white/20 rounded-xl self-start flex-wrap gap-0.5 backdrop-blur-md shadow-sm">
+          <div className="inline-flex p-1 bg-white/10 border border-white/20 rounded-xl self-start flex-wrap gap-0.5 backdrop-blur-md shadow-sm max-w-full overflow-x-auto no-scrollbar">
             {(["Semua", "Lomba", "Beasiswa", "Seminar"] as CategoryFilter[]).map((cat) => (
               <button
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer active:scale-[0.98] ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer active:scale-[0.98] whitespace-nowrap ${
                   selectedCategory === cat
                     ? "bg-white text-[#004aad] font-bold shadow-md"
                     : "text-white/80 hover:text-white"
@@ -273,12 +339,12 @@ export default function FeedDashboard({
           </div>
 
           {/* Sisi Kanan: Tombol Toggle Mandiri Tersimpan (P7) + Search Box */}
-          <div className="flex items-center gap-2.5 w-full md:w-auto">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto">
             {/* Tombol Toggle Mandiri Tersimpan */}
             <button
               type="button"
               onClick={() => setIsBookmarkedOnly((prev) => !prev)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all duration-150 cursor-pointer active:scale-[0.98] flex items-center gap-2 shrink-0 backdrop-blur-md shadow-sm ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all duration-150 cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2 shrink-0 backdrop-blur-md shadow-sm ${
                 isBookmarkedOnly
                   ? "bg-amber-400/25 border-amber-300/40 text-amber-300 shadow-sm font-semibold"
                   : "bg-white/10 border-white/20 text-white/80 hover:text-white hover:border-white/40"
@@ -305,7 +371,7 @@ export default function FeedDashboard({
             </button>
 
             {/* Search Box */}
-            <div className="relative w-full md:w-64">
+            <div className="relative w-full sm:w-64">
               <Search className="w-3.5 h-3.5 text-white/60 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
@@ -500,8 +566,8 @@ export default function FeedDashboard({
             onClick={() => setIsNotificationOpen(false)}
           />
 
-          <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-            <div className="w-screen max-w-md bg-[#002b66]/95 border-l border-white/20 backdrop-blur-2xl shadow-2xl flex flex-col justify-between animate-fade-slide-up">
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-4 sm:pl-10">
+            <div className="w-screen max-w-md sm:w-96 bg-[#002b66]/95 border-l border-white/20 backdrop-blur-2xl shadow-2xl flex flex-col justify-between animate-fade-slide-up">
               {/* Header Sidebar */}
               <div className="p-5 border-b border-white/15 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
@@ -597,6 +663,172 @@ export default function FeedDashboard({
                   <span>Sesuaikan Topik Minat di Profil</span>
                   <ChevronRight className="w-3.5 h-3.5 ml-auto text-white/60" />
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* SIDEBAR DRAWER: CHECKLIST PERSIAPAN & NAVIGASI CEPAT */}
+      {/* ========================================================= */}
+      {isChecklistOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsChecklistOpen(false)}
+          />
+
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-4 sm:pl-10">
+            <div className="w-screen max-w-md sm:w-96 bg-[#002b66]/98 border-l border-white/20 backdrop-blur-2xl shadow-2xl flex flex-col justify-between animate-fade-slide-up">
+              {/* Header Drawer */}
+              <div className="p-5 border-b border-white/15 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-emerald-400/20 border border-emerald-300/30 text-emerald-300">
+                    <ListTodo className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-semibold text-white tracking-tight">
+                      Checklist &amp; Navigasi Cepat
+                    </h2>
+                    <p className="text-[11px] text-white/70">
+                      Pantau berkas kompetisi &amp; akses menu utama
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsChecklistOpen(false)}
+                  className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white transition active:scale-95 cursor-pointer"
+                  aria-label="Tutup Checklist"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body: Checklist Items & Shortcuts */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-6">
+                {/* Progres Checklist Persiapan */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="text-white/80 uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
+                      <span>Checklist Persiapan</span>
+                    </span>
+                    <span className="text-emerald-300 font-bold tabular-nums">
+                      {completedChecklistCount} dari {DEFAULT_CHECKLIST_ITEMS.length} Selesai
+                    </span>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-emerald-400 to-amber-300 rounded-full transition-all duration-300"
+                      style={{
+                        width: `${(completedChecklistCount / DEFAULT_CHECKLIST_ITEMS.length) * 100}%`,
+                      }}
+                    />
+                  </div>
+
+                  <div className="space-y-2 pt-1">
+                    {DEFAULT_CHECKLIST_ITEMS.map((item) => {
+                      const isChecked = Boolean(completedChecklist[item.id]);
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => toggleChecklistItem(item.id)}
+                          className={`w-full p-3 rounded-xl border text-left text-xs transition active:scale-[0.99] cursor-pointer flex items-start gap-2.5 ${
+                            isChecked
+                              ? "bg-emerald-500/15 border-emerald-400/30 text-white shadow-sm"
+                              : "bg-white/[0.06] border-white/15 text-white/80 hover:bg-white/10 hover:text-white"
+                          }`}
+                        >
+                          <div className="pt-0.5 shrink-0">
+                            {isChecked ? (
+                              <CheckSquare className="w-4 h-4 text-emerald-400" />
+                            ) : (
+                              <Square className="w-4 h-4 text-white/40" />
+                            )}
+                          </div>
+                          <span
+                            className={`leading-relaxed ${
+                              isChecked ? "line-through text-white/70" : ""
+                            }`}
+                          >
+                            {item.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Pintasan Navigasi Cepat */}
+                <div className="space-y-2.5 pt-2 border-t border-white/15">
+                  <span className="text-[11px] font-mono text-white/70 uppercase tracking-wider block font-semibold">
+                    Pintasan Navigasi:
+                  </span>
+
+                  {/* Pintasan 1: Profil & Analisis AI */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsChecklistOpen(false);
+                      onOpenProfile();
+                    }}
+                    className="w-full p-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition flex items-center justify-between cursor-pointer active:scale-[0.98]"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Sparkles className="w-4 h-4 text-amber-300" />
+                      <span>Profil &amp; Analisis Karir AI</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-white/60" />
+                  </button>
+
+                  {/* Pintasan 2: Daftar Peluang Tersimpan */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsBookmarkedOnly(true);
+                      setIsChecklistOpen(false);
+                    }}
+                    className="w-full p-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition flex items-center justify-between cursor-pointer active:scale-[0.98]"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Bookmark className="w-4 h-4 text-amber-300" />
+                      <span>Daftar Peluang Tersimpan ({bookmarkedIds.size})</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-white/60" />
+                  </button>
+
+                  {/* Pintasan 3: Katalog Utama */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsBookmarkedOnly(false);
+                      setSelectedCategory("Semua");
+                      setSearchQuery("");
+                      setIsChecklistOpen(false);
+                    }}
+                    className="w-full p-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition flex items-center justify-between cursor-pointer active:scale-[0.98]"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Compass className="w-4 h-4 text-sky-300" />
+                      <span>Katalog Peluang Terverifikasi</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-white/60" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Footer Drawer */}
+              <div className="p-4 border-t border-white/15 bg-white/[0.04] text-center">
+                <span className="text-[11px] font-mono text-white/60">
+                  Data checklist tersimpan otomatis secara lokal
+                </span>
               </div>
             </div>
           </div>
