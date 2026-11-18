@@ -20,6 +20,18 @@ export interface UserProfile {
   talents: string;
 }
 
+export interface RegisterPayload {
+  full_name: string;
+  email: string;
+  password?: string;
+  username: string;
+  institution: string;
+  birth_date: string;
+  education_level: string;
+  province: string;
+  city: string;
+}
+
 export interface Opportunity {
   id: string;
   title: string;
@@ -63,6 +75,14 @@ export interface TeamRequest {
   role_needed: string;
   hasRequested?: boolean;
   created_at?: string;
+}
+
+export interface CreateTeamPayload {
+  opportunity_id: string;
+  creator_id: string;
+  creator_name: string;
+  team_name: string;
+  role_needed: string;
 }
 
 export interface TeamInvite {
