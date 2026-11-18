@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { AuthPage } from "@/page";
+import React, { useState, useEffect } from "react";
+import AuthView from "@/components/AuthView";
 import { UserProfile, PersonalizedOpportunity, RoadmapResponse } from "@/types/schema";
 import {
   logoutUser,
@@ -12,7 +12,6 @@ import {
 import {
   Sparkles,
   LogOut,
-  User,
   ShieldCheck,
   CheckCircle2,
   Calendar,
@@ -31,7 +30,7 @@ import {
 
 type ActiveView = "auth" | "profiling" | "feed";
 
-const POPULAR_PROFILING_TAGS = [
+const POPULAR_PROFILING_TAGS: string[] = [
   "Next.js",
   "React",
   "TypeScript",
@@ -51,7 +50,7 @@ const POPULAR_PROFILING_TAGS = [
 ];
 
 export default function Home() {
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [, setCurrentUser] = useState<any>(null);
   const [currentProfile, setCurrentProfile] = useState<UserProfile | null>(null);
   const [currentView, setCurrentView] = useState<ActiveView>("auth");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -73,12 +72,12 @@ export default function Home() {
   const [roadmapData, setRoadmapData] = useState<RoadmapResponse | null>(null);
   const [isRoadmapLoading, setIsRoadmapLoading] = useState(false);
 
-  // Handler Sukses Login / Register
+  // Handler Sukses Login / Register (P1)
   const handleAuthSuccess = (user: any, profile: UserProfile) => {
     setCurrentUser(user);
     setCurrentProfile(profile);
 
-    // Persyaratan P2 vs P3: Periksa apakah array profiling kosong
+    // Persyaratan P2 vs P3: Periksa apakah array profiling kosong (length === 0)
     const hasProfiling =
       Array.isArray(profile.profiling) && profile.profiling.length > 0;
 
@@ -108,26 +107,26 @@ export default function Home() {
   // Muat AI Personalized Feed saat berpindah ke tampilan feed
   useEffect(() => {
     if (currentView === "feed" && currentProfile) {
-      loadPersonalizedFeed(currentProfile);
+      const loadFeed = async () => {
+        setIsFeedLoading(true);
+        setFeedError(null);
+        try {
+          const res = await fetchPersonalizedFeed(currentProfile);
+          if (res.error || !res.data) {
+            setFeedError(res.error || "Gagal memuat rekomendasi peluang.");
+          } else {
+            setFeedItems(res.data);
+          }
+        } catch {
+          setFeedError("Gangguan jaringan saat memuat feed rekomendasi.");
+        } finally {
+          setIsFeedLoading(false);
+        }
+      };
+
+      loadFeed();
     }
   }, [currentView, currentProfile]);
-
-  const loadPersonalizedFeed = async (profile: UserProfile) => {
-    setIsFeedLoading(true);
-    setFeedError(null);
-    try {
-      const res = await fetchPersonalizedFeed(profile);
-      if (res.error || !res.data) {
-        setFeedError(res.error || "Gagal memuat rekomendasi peluang.");
-      } else {
-        setFeedItems(res.data);
-      }
-    } catch (err) {
-      setFeedError("Gangguan jaringan saat memuat feed rekomendasi.");
-    } finally {
-      setIsFeedLoading(false);
-    }
-  };
 
   // Tag Management untuk Profiling (P2)
   const handleAddTag = (tagToAdd: string) => {
@@ -164,7 +163,7 @@ export default function Home() {
         // Langsung arahkan ke Feed (P3)
         setCurrentView("feed");
       }
-    } catch (err) {
+    } catch {
       setProfilingError("Terjadi gangguan jaringan saat menyimpan profil.");
     } finally {
       setIsSavingProfile(false);
@@ -194,7 +193,7 @@ export default function Home() {
   // VIEW 1: AUTHENTICATION (P1: Login, Register, 1-Click Demo)
   // ==========================================================
   if (!currentProfile || currentView === "auth") {
-    return <AuthPage onSuccess={handleAuthSuccess} />;
+    return <AuthView onSuccess={handleAuthSuccess} />;
   }
 
   // ==========================================================

@@ -620,3 +620,15 @@ export async function sendTeamInvite(
     };
   }
 }
+
+// =================================================================
+// 7. ALIAS KONSISTENSI PENAMAAN FUNGSI
+// =================================================================
+export const loginWithDemo = loginDemoUser;
+export const updateProfile = updateUserProfile;
+export const getPersonalizedFeed = fetchPersonalizedFeed;
+export const getPreparationRoadmap = fetchPreparationRoadmap;
+export const login = loginUser;
+export const register = registerUser;
+export const logout = logoutUser;
+
