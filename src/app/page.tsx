@@ -1,25 +1,149 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AuthView from "@/components/AuthView";
 import ProfilingView from "@/components/ProfilingView";
 import FeedDashboard from "@/components/FeedDashboard";
 import OpportunityDetail from "@/components/OpportunityDetail";
 import { UserProfile, ScoredOpportunity } from "@/types/schema";
 import { logoutUser } from "@/lib/apiClient";
+import { supabaseClient, isSupabaseConfigured } from "@/lib/supabaseClient";
 
 type ActiveView = "auth" | "profiling" | "feed" | "detail";
 
+const ACTIVE_SESSION_STORAGE_KEY = "angkasa_active_session";
+
 export default function Home() {
-  const [, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentProfile, setCurrentProfile] = useState<UserProfile | null>(null);
   const [currentView, setCurrentView] = useState<ActiveView>("auth");
   const [selectedOpportunity, setSelectedOpportunity] = useState<ScoredOpportunity | null>(null);
+  const [isRestoringSession, setIsRestoringSession] = useState<boolean>(true);
+
+  // ==========================================================
+  // SESSION PERSISTENCE: Pulihkan Sesi Login Otomatis saat Refresh
+  // ==========================================================
+  useEffect(() => {
+    let isMounted = true;
+
+    async function restoreSession() {
+      try {
+        // a. Periksa sesi aktif dari Supabase Auth
+        if (isSupabaseConfigured) {
+          const { data: sessionData } = await supabaseClient.auth.getSession();
+          const sessionUser = sessionData?.session?.user;
+
+          if (sessionUser && isMounted) {
+            const { data: profile } = await supabaseClient
+              .from("profiles")
+              .select("*")
+              .eq("id", sessionUser.id)
+              .maybeSingle();
+
+            if (profile && isMounted) {
+              const loadedProfile: UserProfile = {
+                id: profile.id,
+                full_name: profile.full_name || sessionUser.email?.split("@")[0] || "Pengguna",
+                email: profile.email || sessionUser.email || "",
+                username: profile.username || sessionUser.email?.split("@")[0] || "",
+                institution: profile.institution || "Perguruan Tinggi",
+                birth_date: profile.birth_date || "2004-01-01",
+                education_level: profile.education_level || "Mahasiswa",
+                province: profile.province || "Indonesia",
+                city: profile.city || "Indonesia",
+                profiling: Array.isArray(profile.profiling) ? profile.profiling : [],
+              };
+
+              setCurrentUser(sessionUser);
+              setCurrentProfile(loadedProfile);
+
+              // Sinkronkan ke localStorage cadangan
+              localStorage.setItem(
+                ACTIVE_SESSION_STORAGE_KEY,
+                JSON.stringify({ user: sessionUser, profile: loadedProfile })
+              );
+
+              const hasProfiling =
+                Array.isArray(loadedProfile.profiling) && loadedProfile.profiling.length > 0;
+              setCurrentView(hasProfiling ? "feed" : "profiling");
+              setIsRestoringSession(false);
+              return;
+            }
+          }
+        }
+
+        // b. Lapisan Cadangan: Periksa localStorage (angkasa_active_session)
+        // Termasuk untuk mode Demo 1-Klik / offline fallback
+        if (typeof window !== "undefined") {
+          const stored = localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY);
+          if (stored && isMounted) {
+            const parsed = JSON.parse(stored);
+            if (parsed?.profile) {
+              const fallbackUser =
+                parsed.user || { id: parsed.profile.id, email: parsed.profile.email };
+              setCurrentUser(fallbackUser);
+              setCurrentProfile(parsed.profile);
+
+              const hasProfiling =
+                Array.isArray(parsed.profile.profiling) &&
+                parsed.profile.profiling.length > 0;
+              setCurrentView(hasProfiling ? "feed" : "profiling");
+              setIsRestoringSession(false);
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("[Session Restore Warning]", err);
+      } finally {
+        if (isMounted) {
+          setIsRestoringSession(false);
+        }
+      }
+    }
+
+    restoreSession();
+
+    // Dengarkan perubahan status otentikasi Supabase
+    let subscription: any = null;
+    if (isSupabaseConfigured) {
+      const { data: authListener } = supabaseClient.auth.onAuthStateChange(
+        async (event) => {
+          if (event === "SIGNED_OUT") {
+            if (isMounted) {
+              localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
+              setCurrentUser(null);
+              setCurrentProfile(null);
+              setCurrentView("auth");
+            }
+          }
+        }
+      );
+      subscription = authListener?.subscription;
+    }
+
+    return () => {
+      isMounted = false;
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
+  }, []);
 
   // Handler Sukses Login / Register (P1)
   const handleAuthSuccess = (user: any, profile: UserProfile) => {
     setCurrentUser(user);
     setCurrentProfile(profile);
+
+    // Simpan ke localStorage cadangan anti-logout saat refresh
+    try {
+      localStorage.setItem(
+        ACTIVE_SESSION_STORAGE_KEY,
+        JSON.stringify({ user, profile })
+      );
+    } catch (e) {
+      console.warn("[Session Save Error]", e);
+    }
 
     // Aturan Alur P2 vs P3:
     // Jika data profiling kosong, arahkan ke tahap input minat & bakat (P2)
@@ -37,6 +161,21 @@ export default function Home() {
   const handleProfilingComplete = (updatedProfile: UserProfile) => {
     setCurrentProfile(updatedProfile);
     setCurrentView("feed");
+
+    // Perbarui profil pada sesi tersimpan di localStorage
+    try {
+      const stored = localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY);
+      const parsed = stored ? JSON.parse(stored) : {};
+      localStorage.setItem(
+        ACTIVE_SESSION_STORAGE_KEY,
+        JSON.stringify({
+          user: parsed.user || currentUser || { id: updatedProfile.id, email: updatedProfile.email },
+          profile: updatedProfile,
+        })
+      );
+    } catch (e) {
+      console.warn("[Session Update Error]", e);
+    }
   };
 
   // Handler Buka Detail Peluang (P3 -> P4/P5/P6)
@@ -48,6 +187,7 @@ export default function Home() {
   // Handler Logout (P8)
   const handleLogout = async () => {
     try {
+      localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
       await logoutUser();
     } finally {
       setCurrentUser(null);
@@ -56,6 +196,23 @@ export default function Home() {
       setCurrentView("auth");
     }
   };
+
+  // ==========================================================
+  // LOADING SCREEN HALUS SAAT MEMULIHKAN SESI (ANTI-FLICKER)
+  // ==========================================================
+  if (isRestoringSession) {
+    return (
+      <div className="min-h-screen bg-[#050505] text-[#FAFAFA] flex flex-col items-center justify-center p-4 font-sans selection:bg-emerald-500/20 selection:text-emerald-300">
+        <div className="flex flex-col items-center gap-3 animate-fade-slide-up">
+          <div className="w-8 h-8 rounded-full border-2 border-emerald-500/20 border-t-emerald-400 animate-spin" />
+          <div className="flex items-center gap-2 text-xs font-mono text-[#888890] tracking-wider uppercase">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span>Memulihkan Sesi Angkasa...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ==========================================================
   // VIEW 1: AUTHENTICATION (P1: Login, Register, 1-Click Demo)

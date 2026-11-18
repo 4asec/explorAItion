@@ -1,26 +1,27 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Opportunity, OpportunityCategory } from "@/types/schema";
+import { Opportunity, OpportunityCategory, DEFAULT_POSTER_URL } from "@/types/schema";
 import {
   fetchAllOpportunitiesForCurator,
   createManualOpportunity,
   verifyOpportunity,
+  uploadOpportunityPoster,
+  getTotalBookmarksCount,
 } from "@/lib/apiClient";
 import {
   ShieldCheck,
   Clock,
-  Users,
+  Bookmark,
   Plus,
   X,
   CheckCircle2,
   Calendar,
   Building2,
   ExternalLink,
-  Layers,
-  Sparkles,
   AlertCircle,
-  Image as ImageIcon,
+  UploadCloud,
+  ImageIcon,
 } from "lucide-react";
 
 export interface CuratorPanelProps {
@@ -37,6 +38,7 @@ export default function CuratorPanel({
   onOpportunityAdded,
 }: CuratorPanelProps) {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [totalBookmarks, setTotalBookmarks] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
@@ -46,21 +48,27 @@ export default function CuratorPanel({
   } | null>(null);
 
   // Form State
+  const [posterFile, setPosterFile] = useState<File | null>(null);
+  const [posterPreview, setPosterPreview] = useState<string>(DEFAULT_POSTER_URL);
   const [title, setTitle] = useState("");
   const [organizer, setOrganizer] = useState("");
   const [category, setCategory] = useState<OpportunityCategory>("Lomba");
   const [deadline, setDeadline] = useState("");
   const [registrationUrl, setRegistrationUrl] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
   const [description, setDescription] = useState("");
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const res = await fetchAllOpportunitiesForCurator();
-      if (res.data) {
-        setOpportunities(res.data);
+      const [oppRes, bmCount] = await Promise.all([
+        fetchAllOpportunitiesForCurator(),
+        getTotalBookmarksCount(),
+      ]);
+
+      if (oppRes.data) {
+        setOpportunities(oppRes.data);
       }
+      setTotalBookmarks(bmCount);
     } catch (e) {
       console.warn("[CuratorPanel Load Error]", e);
     } finally {
@@ -93,9 +101,22 @@ export default function CuratorPanel({
   const pendingList = opportunities.filter((o) => !o.is_verified);
   const totalVerifiedCount = verifiedList.length;
   const totalPendingCount = pendingList.length;
-  const totalStudentsEstimate = 1248;
 
-  // Handler: Input Peluang Baru (is_verified: false)
+  // Handler: Pemilihan File Gambar Poster
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPosterFile(file);
+      try {
+        const objectUrl = URL.createObjectURL(file);
+        setPosterPreview(objectUrl);
+      } catch {
+        setPosterPreview(DEFAULT_POSTER_URL);
+      }
+    }
+  };
+
+  // Handler: Input Peluang Manual oleh Kurator
   const handleSubmitNewOpportunity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !organizer.trim()) {
@@ -110,6 +131,13 @@ export default function CuratorPanel({
     setNotification(null);
 
     try {
+      // 1. Upload poster ke bucket Supabase Storage 'posters' (atau fallback data URL / DEFAULT_POSTER_URL)
+      let finalPosterUrl = DEFAULT_POSTER_URL;
+      if (posterFile) {
+        finalPosterUrl = await uploadOpportunityPoster(posterFile);
+      }
+
+      // 2. Simpan entri peluang baru dengan is_verified: false
       const payload: Partial<Opportunity> = {
         title: title.trim(),
         organizer: organizer.trim(),
@@ -117,12 +145,14 @@ export default function CuratorPanel({
         caption: deadline.trim() || "Segera",
         deadline: deadline.trim() || "Segera",
         registration_url: registrationUrl.trim() || "https://angkasa.id",
-        image_url: imageUrl.trim() || undefined,
-        description_roadmap: description.trim() || "Peluang terkurasi oleh tim kurator Angkasa.",
-        description: description.trim() || "Peluang terkurasi oleh tim kurator Angkasa.",
+        image_url: finalPosterUrl,
+        description_roadmap:
+          description.trim() || "Peluang terkurasi oleh tim kurator Angkasa.",
+        description:
+          description.trim() || "Peluang terkurasi oleh tim kurator Angkasa.",
         requirements: [
           "Mahasiswa aktif perguruan tinggi (diploma/sarjana)",
-          "Memenuhi kriteria teknis yang disyaratkan panitia",
+          "Memenuhi kriteria teknis yang disyaratkan panitia penyelenggara",
         ],
         required_skills: [category, "Kolaborasi Tim", "Problem Solving"],
       };
@@ -139,19 +169,20 @@ export default function CuratorPanel({
         setOpportunities((prev) => [createdItem, ...prev]);
         setNotification({
           type: "success",
-          message: `Draf "${createdItem.title}" berhasil didaftarkan ke antrean (is_verified: false).`,
+          message: `Draf "${createdItem.title}" berhasil didaftarkan ke antrean verifikasi (is_verified: false).`,
         });
 
-        // Trigger callback
+        // Trigger callback ke parent FeedDashboard
         onOpportunityAdded?.(createdItem);
 
         // Reset form
+        setPosterFile(null);
+        setPosterPreview(DEFAULT_POSTER_URL);
         setTitle("");
         setOrganizer("");
         setCategory("Lomba");
         setDeadline("");
         setRegistrationUrl("");
-        setImageUrl("");
         setDescription("");
       }
     } catch {
@@ -184,23 +215,23 @@ export default function CuratorPanel({
               is_verified: true,
             };
 
-        // Update local state list
+        // Perbarui state lokal di panel
         setOpportunities((prev) =>
           prev.map((o) => (o.id === id ? { ...o, is_verified: true } : o))
         );
 
         setNotification({
           type: "success",
-          message: `Peluang "${verifiedItem.title}" telah diverifikasi dan resmi tayang di Feed publik.`,
+          message: `Peluang "${verifiedItem.title}" telah diverifikasi dan resmi tayang di Feed publik Pelajar.`,
         });
 
-        // Callback ke parent FeedDashboard agar feed ter-refresh
+        // Callback ke parent FeedDashboard agar feed langsung ter-refresh
         onOpportunityVerified?.(verifiedItem);
       }
     } catch {
       setNotification({
         type: "error",
-        message: "Terjadi gangguan saat memverifikasi peluang.",
+        message: "Terjadi gangguan koneksi saat memverifikasi peluang.",
       });
     } finally {
       setVerifyingId(null);
@@ -208,7 +239,7 @@ export default function CuratorPanel({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#050505]/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto font-sans">
+    <div className="fixed inset-0 z-50 bg-[#050505]/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto font-sans selection:bg-emerald-500/20 selection:text-emerald-300">
       <div className="w-full max-w-5xl bg-[#0C0C0E] border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[92vh] animate-fade-slide-up">
         {/* Modal Header */}
         <div className="px-6 py-4 border-b border-white/[0.07] flex items-center justify-between gap-4 bg-[#0C0C0E]/90 backdrop-blur-md sticky top-0 z-20">
@@ -223,7 +254,7 @@ export default function CuratorPanel({
               Pusat Kurasi &amp; Verifikasi Peluang
             </h2>
             <p className="text-xs text-[#888890]">
-              Kelola input peluang manual dan verifikasi keabsahan sebelum resmi ditayangkan ke Feed Pelajar.
+              Kelola input peluang manual, upload poster ke Supabase Storage, dan verifikasi publik.
             </p>
           </div>
 
@@ -268,11 +299,11 @@ export default function CuratorPanel({
 
           {/* 3 Summary Metric Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-            {/* Metric 1: Peluang Tayang */}
+            {/* Metric 1: Total Peluang Tayang */}
             <div className="p-4 rounded-xl bg-[#050505] border border-white/[0.07] flex items-center justify-between gap-3 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]">
               <div className="space-y-0.5">
                 <span className="text-[11px] font-mono uppercase tracking-wider text-[#888890] block">
-                  Peluang Tayang
+                  Total Peluang Tayang
                 </span>
                 <span className="text-2xl font-bold font-mono text-emerald-400 tabular-nums">
                   {totalVerifiedCount}
@@ -286,11 +317,11 @@ export default function CuratorPanel({
               </div>
             </div>
 
-            {/* Metric 2: Menunggu Verifikasi */}
+            {/* Metric 2: Antrean Menunggu Verifikasi */}
             <div className="p-4 rounded-xl bg-[#050505] border border-white/[0.07] flex items-center justify-between gap-3 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]">
               <div className="space-y-0.5">
                 <span className="text-[11px] font-mono uppercase tracking-wider text-[#888890] block">
-                  Menunggu Verifikasi
+                  Antrean Menunggu Verifikasi
                 </span>
                 <span className="text-2xl font-bold font-mono text-amber-400 tabular-nums">
                   {totalPendingCount}
@@ -304,40 +335,86 @@ export default function CuratorPanel({
               </div>
             </div>
 
-            {/* Metric 3: Total Profil Pelajar */}
+            {/* Metric 3: Total Bookmark Tersimpan */}
             <div className="p-4 rounded-xl bg-[#050505] border border-white/[0.07] flex items-center justify-between gap-3 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]">
               <div className="space-y-0.5">
                 <span className="text-[11px] font-mono uppercase tracking-wider text-[#888890] block">
-                  Total Profil Pelajar
+                  Total Bookmark Tersimpan
                 </span>
                 <span className="text-2xl font-bold font-mono text-sky-400 tabular-nums">
-                  {totalStudentsEstimate.toLocaleString("id-ID")}
+                  {totalBookmarks.toLocaleString("id-ID")}
                 </span>
                 <span className="text-[11px] text-[#888890] block">
-                  Pencari peluang aktif
+                  Minat aktif pelajar
                 </span>
               </div>
               <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center shrink-0">
-                <Users className="w-5 h-5 text-sky-400" />
+                <Bookmark className="w-5 h-5 text-sky-400" />
               </div>
             </div>
           </div>
 
-          {/* 2-Column Section: Form Input Manual (Left) & Antrean Verifikator (Right) */}
+          {/* 2-Column Layout: Form Input Manual (Kiri) & Antrean Verifikator (Kanan) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
-            {/* Kolom Kiri: Form Input Lomba / Beasiswa Manual */}
+            {/* Kolom Kiri: Form Input Peluang Manual */}
             <div className="lg:col-span-6 space-y-4">
               <div className="border-b border-white/[0.07] pb-2 flex items-center justify-between">
                 <h3 className="text-xs font-mono uppercase text-[#FAFAFA] tracking-wider flex items-center gap-1.5 font-semibold">
                   <Plus className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Input Lomba / Beasiswa Manual</span>
+                  <span>Input Peluang Manual</span>
                 </h3>
                 <span className="text-[10px] font-mono text-[#888890] uppercase">
-                  Status Awal: Unverified
+                  Status: is_verified: false
                 </span>
               </div>
 
               <form onSubmit={handleSubmitNewOpportunity} className="space-y-3.5 text-xs">
+                {/* Upload File Gambar Poster dengan Live Preview */}
+                <div className="space-y-1.5">
+                  <label className="block text-[#888890] font-mono">
+                    Gambar Poster Peluang (Supabase Storage bucket &apos;posters&apos;)
+                  </label>
+
+                  {/* Area Preview Poster */}
+                  <div className="relative w-full aspect-[16/9] rounded-xl overflow-hidden bg-[#050505] border border-white/[0.08] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] group">
+                    <img
+                      src={posterPreview}
+                      alt="Preview Poster Peluang"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      onError={(e) => {
+                        if (e.currentTarget.src !== DEFAULT_POSTER_URL) {
+                          e.currentTarget.src = DEFAULT_POSTER_URL;
+                        }
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-3 pointer-events-none">
+                      <span className="text-[10px] font-mono text-[#888890] bg-[#0C0C0E]/90 px-2 py-0.5 rounded border border-white/[0.1]">
+                        {posterFile ? `File: ${posterFile.name}` : "Poster Default Aktif"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Input File Button */}
+                  <div className="pt-1">
+                    <label
+                      htmlFor="poster-file-input"
+                      className="w-full py-2 px-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.16] text-[#FAFAFA] transition flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+                    >
+                      <UploadCloud className="w-4 h-4 text-emerald-400" />
+                      <span className="font-medium">
+                        {posterFile ? "Ganti File Poster" : "Pilih File Gambar Poster"}
+                      </span>
+                    </label>
+                    <input
+                      id="poster-file-input"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                  </div>
+                </div>
+
                 {/* Judul & Penyelenggara */}
                 <div className="space-y-1">
                   <label className="block text-[#888890] font-mono">
@@ -345,7 +422,7 @@ export default function CuratorPanel({
                   </label>
                   <input
                     type="text"
-                    placeholder="Contoh: Lomba UI/UX Design Nasional 2026"
+                    placeholder="Contoh: Hackathon Nasional IoT &amp; AI 2026"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     required
@@ -355,11 +432,11 @@ export default function CuratorPanel({
 
                 <div className="space-y-1">
                   <label className="block text-[#888890] font-mono">
-                    Nama Penyelenggara / Instansi <span className="text-emerald-400">*</span>
+                    Nama Penyelenggara <span className="text-emerald-400">*</span>
                   </label>
                   <input
                     type="text"
-                    placeholder="Contoh: Kementerian Kominfo &amp; Telkom Indonesia"
+                    placeholder="Contoh: Politeknik Negeri Malang &amp; Google Cloud"
                     value={organizer}
                     onChange={(e) => setOrganizer(e.target.value)}
                     required
@@ -367,7 +444,7 @@ export default function CuratorPanel({
                   />
                 </div>
 
-                {/* Kategori & Deadline */}
+                {/* Kategori & Tenggat Waktu */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="block text-[#888890] font-mono">Kategori Peluang</label>
@@ -383,10 +460,10 @@ export default function CuratorPanel({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="block text-[#888890] font-mono">Tenggat Waktu / Deadline</label>
+                    <label className="block text-[#888890] font-mono">Tenggat Waktu / Caption</label>
                     <input
                       type="text"
-                      placeholder="Contoh: 15 Januari 2027"
+                      placeholder="Contoh: 28 Februari 2027"
                       value={deadline}
                       onChange={(e) => setDeadline(e.target.value)}
                       className="w-full px-3.5 py-2 rounded-xl bg-[#050505] border border-white/[0.07] focus:border-emerald-500 text-[#FAFAFA] placeholder:text-[#888890]/50 focus:outline-none transition"
@@ -406,66 +483,37 @@ export default function CuratorPanel({
                   />
                 </div>
 
-                {/* URL Gambar Poster (Opsional) */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[#888890] font-mono">URL Poster / Flyer (Opsional)</label>
-                    {imageUrl && (
-                      <span className="text-[10px] text-emerald-400 font-mono">Poster terpasang</span>
-                    )}
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="https://.../poster-lomba.jpg"
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl bg-[#050505] border border-white/[0.07] focus:border-emerald-500 text-[#FAFAFA] placeholder:text-[#888890]/50 focus:outline-none transition"
-                  />
-                  {imageUrl.trim() && (
-                    <div className="mt-2 w-full aspect-[16/9] rounded-xl overflow-hidden border border-white/[0.07] bg-[#050505] relative">
-                      <img
-                        src={imageUrl}
-                        alt="Preview Poster"
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none";
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Deskripsi & Ringkasan */}
+                {/* Deskripsi */}
                 <div className="space-y-1">
                   <label className="block text-[#888890] font-mono">
-                    Deskripsi Singkat &amp; Panduan Syarat
+                    Deskripsi Singkat &amp; Syarat Kualifikasi
                   </label>
                   <textarea
                     rows={3}
-                    placeholder="Tuliskan kriteria peserta, tema perlombaan, dan benefit utama bagi mahasiswa..."
+                    placeholder="Ringkasan kompetisi, kriteria peserta, dan benefit yang didapatkan..."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-xl bg-[#050505] border border-white/[0.07] focus:border-emerald-500 text-[#FAFAFA] placeholder:text-[#888890]/50 focus:outline-none transition resize-none"
                   />
                 </div>
 
-                {/* Submit CTA Button */}
+                {/* Tombol Simpan ke Antrean */}
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-2.5 px-4 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.12] text-[#FAFAFA] font-medium transition cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full py-2.5 px-4 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.12] text-[#FAFAFA] font-medium transition cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
                 >
                   <Plus className="w-3.5 h-3.5 text-emerald-400" />
                   <span>
                     {isSubmitting
-                      ? "Menyimpan ke Antrean..."
+                      ? "Mengunggah Poster &amp; Mendaftarkan..."
                       : "Daftarkan ke Antrean (is_verified: false)"}
                   </span>
                 </button>
               </form>
             </div>
 
-            {/* Kolom Kanan: Antrean Verifikator (is_verified: false) */}
+            {/* Kolom Kanan: Antrean Verifikator Kurator */}
             <div className="lg:col-span-6 space-y-4">
               <div className="border-b border-white/[0.07] pb-2 flex items-center justify-between">
                 <h3 className="text-xs font-mono uppercase text-[#FAFAFA] tracking-wider flex items-center gap-1.5 font-semibold">
@@ -484,21 +532,22 @@ export default function CuratorPanel({
                     Antrean Verifikasi Kosong
                   </p>
                   <p className="text-xs text-[#888890] max-w-sm mx-auto leading-relaxed">
-                    Seluruh peluang yang diajukan telah diverifikasi dan resmi tayang di Feed publik Pelajar. Gunakan formulir di sebelah kiri untuk menambahkan peluang baru.
+                    Seluruh peluang yang didaftarkan telah diverifikasi dan resmi tayang di Feed publik Pelajar.
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+                <div className="space-y-3.5 max-h-[560px] overflow-y-auto pr-1">
                   {pendingList.map((item) => {
                     const isProcessing = verifyingId === item.id;
                     const deadlineText = item.caption || item.deadline || "Segera";
+                    const posterSrc = item.image_url || DEFAULT_POSTER_URL;
 
                     return (
                       <div
                         key={item.id}
                         className="p-4 rounded-xl bg-[#050505] border border-white/[0.07] hover:border-white/[0.14] transition space-y-3 group shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]"
                       >
-                        {/* Header Item: Badges & Category */}
+                        {/* Header Item: Badges & Deadline */}
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-1.5">
                             <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium">
@@ -515,23 +564,40 @@ export default function CuratorPanel({
                           </span>
                         </div>
 
-                        {/* Title & Organizer */}
-                        <div className="space-y-1">
-                          <h4 className="text-sm font-semibold text-[#FAFAFA] tracking-tight group-hover:text-emerald-400 transition-colors">
-                            {item.title}
-                          </h4>
-                          <p className="text-xs font-mono text-[#888890] flex items-center gap-1.5">
-                            <Building2 className="w-3 h-3 text-[#888890]" />
-                            <span className="truncate">{item.organizer}</span>
-                          </p>
+                        {/* Poster Thumbnail + Info */}
+                        <div className="flex gap-3 items-start">
+                          <div className="w-24 aspect-[16/9] rounded-lg overflow-hidden bg-[#0C0C0E] border border-white/[0.08] shrink-0">
+                            <img
+                              src={posterSrc}
+                              alt={item.title}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                if (e.currentTarget.src !== DEFAULT_POSTER_URL) {
+                                  e.currentTarget.src = DEFAULT_POSTER_URL;
+                                }
+                              }}
+                            />
+                          </div>
+
+                          <div className="space-y-1 flex-1 min-w-0">
+                            <h4 className="text-xs sm:text-sm font-semibold text-[#FAFAFA] tracking-tight group-hover:text-emerald-400 transition-colors line-clamp-2">
+                              {item.title}
+                            </h4>
+                            <p className="text-[11px] font-mono text-[#888890] flex items-center gap-1 truncate">
+                              <Building2 className="w-3 h-3 text-[#888890] shrink-0" />
+                              <span className="truncate">{item.organizer}</span>
+                            </p>
+                          </div>
                         </div>
 
-                        {/* Description Preview */}
+                        {/* Deskripsi Singkat */}
                         <p className="text-xs text-[#888890] line-clamp-2 leading-relaxed">
-                          {item.description_roadmap || item.description || "Tidak ada deskripsi rinci."}
+                          {item.description_roadmap ||
+                            item.description ||
+                            "Tidak ada deskripsi rinci."}
                         </p>
 
-                        {/* Actions: Link Resmi & Tombol Verifikasi & Tayangkan */}
+                        {/* Actions: Link Resmi & Tombol Hijau Verifikasi & Tayangkan */}
                         <div className="pt-2 border-t border-white/[0.04] flex items-center justify-between gap-3">
                           {item.registration_url ? (
                             <a
@@ -556,7 +622,7 @@ export default function CuratorPanel({
                           >
                             <ShieldCheck className="w-3.5 h-3.5 text-slate-950" />
                             <span>
-                              {isProcessing ? "Memproses..." : "Setujui & Tayangkan"}
+                              {isProcessing ? "Memproses..." : "Verifikasi & Tayangkan"}
                             </span>
                           </button>
                         </div>
@@ -571,7 +637,7 @@ export default function CuratorPanel({
 
         {/* Modal Footer */}
         <div className="px-6 py-3.5 border-t border-white/[0.07] bg-[#0C0C0E]/90 flex items-center justify-between text-[11px] text-[#888890] font-mono">
-          <span>Sistem Verifikasi Multi-Tahap Terintegrasi</span>
+          <span>Sistem Verifikasi &amp; Kurasi Angkasa</span>
           <button
             type="button"
             onClick={onClose}

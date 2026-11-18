@@ -12,6 +12,7 @@ import {
   getUserBookmarks,
   toggleBookmark,
   fetchAllOpportunitiesForCurator,
+  DEFAULT_POSTER_URL,
 } from "@/lib/apiClient";
 import CuratorPanel from "@/components/CuratorPanel";
 import {
@@ -364,42 +365,22 @@ export default function FeedDashboard({
                   className="surface-panel surface-interactive group rounded-2xl cursor-pointer flex flex-col justify-between overflow-hidden relative animate-fade-slide-up"
                 >
                   {/* Top Area: Poster / Flyer Visual Aspect 16:9 */}
-                  <div className="relative w-full aspect-[16/9] bg-[#0C0C0E] border-b border-white/[0.07] overflow-hidden">
-                    {item.image_url ? (
-                      <img
-                        src={item.image_url}
-                        alt={item.title}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        onError={(e) => {
-                          // Sembunyikan gambar rusak dan tampilkan poster editorial
-                          e.currentTarget.style.display = "none";
-                        }}
-                      />
-                    ) : (
-                      /* Poster Editorial Terkurasi (60-30-10 Aesthetic) */
-                      <div className="w-full h-full p-4 flex flex-col justify-between bg-gradient-to-br from-[#111114] via-[#0C0C0E] to-[#070709] relative">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-mono tracking-wider uppercase text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                            {item.category}
-                          </span>
-                        </div>
-
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-mono uppercase text-[#888890] block truncate">
-                            {item.organizer}
-                          </span>
-                          <h4 className="text-xs sm:text-sm font-semibold text-[#FAFAFA] tracking-tight line-clamp-2 leading-snug">
-                            {item.title}
-                          </h4>
-                        </div>
-
-                        {/* Subtle decorative hairline grid */}
-                        <div className="absolute right-0 bottom-0 w-20 h-20 bg-emerald-500/5 rounded-tl-full pointer-events-none blur-sm" />
-                      </div>
-                    )}
+                  <div className="relative w-full aspect-[16/9] rounded-t-xl overflow-hidden bg-[#0C0C0E] border-b border-white/[0.07]">
+                    <img
+                      src={item.image_url || DEFAULT_POSTER_URL}
+                      alt={item.title}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      onError={(e) => {
+                        // Otomatis mengalihkan ke DEFAULT_POSTER_URL agar tidak pernah terjadi gambar rusak
+                        if (e.currentTarget.src !== DEFAULT_POSTER_URL) {
+                          e.currentTarget.src = DEFAULT_POSTER_URL;
+                        }
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0C0C0E]/90 via-transparent to-black/30 pointer-events-none" />
 
                     {/* Overlaid Badges on Poster */}
-                    <div className="absolute inset-x-3 top-3 flex items-center justify-between gap-2 pointer-events-none">
+                    <div className="absolute inset-x-3 top-3 flex items-center justify-between gap-2 pointer-events-none z-10">
                       {/* Left: Lencana Verified */}
                       {item.is_verified && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-[#050505]/85 backdrop-blur-md border border-emerald-500/30 text-emerald-400 px-2.5 py-0.5 rounded-lg shadow-sm">

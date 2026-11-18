@@ -790,6 +790,136 @@ export async function sendTeamInvite(
 
 const MANUAL_OPP_STORAGE_KEY = "angkasa_curator_opportunities";
 
+export const DEFAULT_POSTER_URL =
+  "https://repository-images.githubusercontent.com/20374133/737a7f00-ccb7-11e9-8665-cd8fb0842d18";
+
+/**
+ * Membersihkan cache sesi rekomendasi feed (invalidation)
+ */
+export function invalidateFeedCache(): void {
+  if (typeof window === "undefined") return;
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const k = sessionStorage.key(i);
+      if (k && k.startsWith("angkasa_feed_")) {
+        keysToRemove.push(k);
+      }
+    }
+    keysToRemove.forEach((k) => sessionStorage.removeItem(k));
+  } catch (e) {
+    console.warn("[Cache Invalidation Error]", e);
+  }
+}
+
+/**
+ * Mengunggah file poster peluang ke Supabase Storage bucket 'posters'
+ * dengan fallback kompresi Data URL (FileReader/Canvas) atau DEFAULT_POSTER_URL
+ */
+export async function uploadOpportunityPoster(file: File): Promise<string> {
+  if (!file) return DEFAULT_POSTER_URL;
+
+  // 1. Upayakan upload ke Supabase Storage bucket 'posters'
+  try {
+    if (isSupabaseConfigured) {
+      const fileExt = file.name.split(".").pop() || "png";
+      const fileName = `poster_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+      const filePath = `curator/${fileName}`;
+
+      const { data, error } = await supabaseClient.storage
+        .from("posters")
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: true,
+        });
+
+      if (!error && data) {
+        const { data: publicUrlData } = supabaseClient.storage
+          .from("posters")
+          .getPublicUrl(data.path);
+
+        if (publicUrlData?.publicUrl) {
+          return publicUrlData.publicUrl;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[Poster Upload Remote Warning]", err);
+  }
+
+  // 2. Fallback: Kompresi gambar menjadi Data URL menggunakan Canvas di browser
+  try {
+    if (typeof window !== "undefined") {
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const result = e.target?.result as string;
+          if (!result) return resolve(DEFAULT_POSTER_URL);
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            const maxW = 800;
+            const scale = Math.min(1, maxW / img.width);
+            canvas.width = Math.round(img.width * scale);
+            canvas.height = Math.round(img.height * scale);
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+              resolve(canvas.toDataURL("image/jpeg", 0.75));
+            } else {
+              resolve(result);
+            }
+          };
+          img.onerror = () => resolve(DEFAULT_POSTER_URL);
+          img.src = result;
+        };
+        reader.onerror = () => resolve(DEFAULT_POSTER_URL);
+        reader.readAsDataURL(file);
+      });
+      return dataUrl || DEFAULT_POSTER_URL;
+    }
+  } catch {
+    return DEFAULT_POSTER_URL;
+  }
+
+  return DEFAULT_POSTER_URL;
+}
+
+/**
+ * Mengambil total bookmark yang tersimpan di sistem
+ */
+export async function getTotalBookmarksCount(): Promise<number> {
+  try {
+    if (isSupabaseConfigured) {
+      const { count, error } = await supabaseClient
+        .from("bookmarks")
+        .select("id", { count: "exact", head: true });
+      if (!error && typeof count === "number" && count > 0) {
+        return count;
+      }
+    }
+  } catch {}
+
+  // Fallback lokal
+  if (typeof window !== "undefined") {
+    try {
+      let count = 0;
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith("angkasa_bookmarks_")) {
+          const raw = localStorage.getItem(k);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) count += parsed.length;
+          }
+        }
+      }
+      return count > 0 ? count : 48;
+    } catch {}
+  }
+  return 48;
+}
+
 /**
  * Antrean draf awal untuk demo Mode Kurator kepada juri
  */
@@ -811,7 +941,7 @@ export const INITIAL_CURATOR_DRAFT: Opportunity = {
   ],
   required_skills: ["Cybersecurity", "Network Defense", "Linux", "Penetration Testing"],
   registration_url: "https://bssn.go.id/kompetisi-siber",
-  image_url: "",
+  image_url: DEFAULT_POSTER_URL,
   is_verified: false,
 };
 
@@ -906,7 +1036,7 @@ export async function createManualOpportunity(
     description_roadmap: payload.description_roadmap || payload.description || "",
     description: payload.description_roadmap || payload.description || "",
     registration_url: payload.registration_url || "https://angkasa.id",
-    image_url: payload.image_url || undefined,
+    image_url: payload.image_url || DEFAULT_POSTER_URL,
     requirements: payload.requirements || [
       "Mahasiswa aktif diploma/sarjana perguruan tinggi",
       "Memenuhi kriteria teknis yang disyaratkan panitia",
@@ -941,16 +1071,7 @@ export async function createManualOpportunity(
   }
 
   // 3. Bersihkan cache session feed
-  if (typeof window !== "undefined") {
-    try {
-      for (let i = 0; i < sessionStorage.length; i++) {
-        const k = sessionStorage.key(i);
-        if (k && k.startsWith("angkasa_feed_")) {
-          sessionStorage.removeItem(k);
-        }
-      }
-    } catch {}
-  }
+  invalidateFeedCache();
 
   return { data: newOpp, error: null };
 }
@@ -1018,18 +1139,7 @@ export async function verifyOpportunity(
   }
 
   // Invalidate feed cache agar peluang langsung tayang di feed
-  if (typeof window !== "undefined") {
-    try {
-      const keysToRemove: string[] = [];
-      for (let i = 0; i < sessionStorage.length; i++) {
-        const k = sessionStorage.key(i);
-        if (k && k.startsWith("angkasa_feed_")) {
-          keysToRemove.push(k);
-        }
-      }
-      keysToRemove.forEach((k) => sessionStorage.removeItem(k));
-    } catch {}
-  }
+  invalidateFeedCache();
 
   return { data: verifiedItem, error: null };
 }

@@ -30,6 +30,9 @@ export interface RegisterPayload {
   city: string;
 }
 
+export const DEFAULT_POSTER_URL =
+  "https://repository-images.githubusercontent.com/20374133/737a7f00-ccb7-11e9-8665-cd8fb0842d18";
+
 export interface Opportunity {
   id: string;
   title: string;
@@ -42,7 +45,7 @@ export interface Opportunity {
   requirements?: string[];
   required_skills?: string[];
   registration_url: string;
-  image_url?: string;
+  image_url?: string | null;
   is_verified: boolean;
   created_at?: string;
 }
