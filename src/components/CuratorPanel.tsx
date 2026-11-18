@@ -27,19 +27,21 @@ import {
 } from "lucide-react";
 
 export interface CuratorPanelProps {
-  isOpen: boolean;
-  onClose: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
   onOpportunityVerified?: (opportunity: Opportunity) => void;
   onOpportunityAdded?: (opportunity: Opportunity) => void;
+  embedded?: boolean;
 }
 
 type CuratorRole = "submitter" | "verifier";
 
 export default function CuratorPanel({
-  isOpen,
-  onClose,
+  isOpen = false,
+  onClose = () => {},
   onOpportunityVerified,
   onOpportunityAdded,
+  embedded = false,
 }: CuratorPanelProps) {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [totalBookmarks, setTotalBookmarks] = useState<number>(0);
@@ -82,14 +84,15 @@ export default function CuratorPanel({
   };
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen || embedded) {
       loadData();
       setNotification(null);
     }
-  }, [isOpen]);
+  }, [isOpen, embedded]);
 
-  // Handle ESC key to close modal
+  // Handle ESC key to close modal (modal mode only)
   useEffect(() => {
+    if (embedded) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) {
         onClose();
@@ -97,9 +100,9 @@ export default function CuratorPanel({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, embedded]);
 
-  if (!isOpen) return null;
+  if (!isOpen && !embedded) return null;
 
   // Metrik Statistik
   const verifiedList = opportunities.filter((o) => o.is_verified);
@@ -243,26 +246,32 @@ export default function CuratorPanel({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto font-sans selection:bg-amber-400/30 selection:text-amber-200">
-      <div className="w-full max-w-5xl bg-[#003175]/95 border border-white/25 rounded-2xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[92vh] animate-fade-slide-up text-white backdrop-blur-xl">
-        {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-white/15 flex items-center justify-between gap-4 bg-[#003175]/90 backdrop-blur-md sticky top-0 z-20">
-          <div className="space-y-0.5">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              <span className="text-[11px] font-mono uppercase tracking-wider text-amber-300 font-semibold">
-                PANEL KURATOR &amp; VERIFIKATOR ANGKASA
-              </span>
-            </div>
-            <h2 className="text-lg sm:text-xl font-semibold tracking-[-0.02em] text-white">
-              Pusat Tata Kelola Peluang
-            </h2>
-            <p className="text-xs text-white/80">
-              Pemisahan peran pengupload informasi dan verifikator sebelum resmi tayang ke Feed Pelajar.
-            </p>
+  const panelContent = (
+    <div
+      className={`w-full ${
+        embedded
+          ? "surface-panel bg-white/[0.10] backdrop-blur-md border border-white/20 rounded-2xl shadow-[0_10px_30px_-10px_rgba(0,15,45,0.45)]"
+          : "max-w-5xl bg-[#003175]/95 border border-white/25 rounded-2xl shadow-2xl my-auto max-h-[92vh]"
+      } overflow-hidden flex flex-col text-white backdrop-blur-xl animate-fade-slide-up`}
+    >
+      {/* Modal Header */}
+      <div className="px-6 py-4 border-b border-white/15 flex items-center justify-between gap-4 bg-[#003175]/90 backdrop-blur-md sticky top-0 z-20">
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <span className="text-[11px] font-mono uppercase tracking-wider text-amber-300 font-semibold">
+              PANEL KURATOR &amp; VERIFIKATOR ANGKASA
+            </span>
           </div>
+          <h2 className="text-lg sm:text-xl font-semibold tracking-[-0.02em] text-white">
+            Pusat Tata Kelola Peluang
+          </h2>
+          <p className="text-xs text-white/80">
+            Pemisahan peran pengupload informasi dan verifikator sebelum resmi tayang ke Feed Pelajar.
+          </p>
+        </div>
 
+        {!embedded && (
           <button
             type="button"
             onClick={onClose}
@@ -271,10 +280,11 @@ export default function CuratorPanel({
           >
             <X className="w-4 h-4" />
           </button>
-        </div>
+        )}
+      </div>
 
-        {/* Scrollable Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1">
+      {/* Scrollable Modal Body */}
+      <div className={`p-6 ${embedded ? '' : 'overflow-y-auto max-h-[calc(92vh-130px)]'} space-y-6 flex-1`}>
           {/* Notification Alert Banner */}
           {notification && (
             <div
@@ -772,18 +782,29 @@ export default function CuratorPanel({
           )}
         </div>
 
-        {/* Modal Footer */}
-        <div className="px-6 py-3.5 border-t border-white/15 bg-[#003175]/90 flex items-center justify-between text-[11px] text-white/70 font-mono">
-          <span>Tata Kelola Informasi Angkasa: Input Terpisah dari Verifikasi</span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
-          >
-            Tutup Panel
-          </button>
-        </div>
+        {/* Modal Footer (only show if not embedded) */}
+        {!embedded && (
+          <div className="px-6 py-3.5 border-t border-white/15 bg-[#003175]/90 flex items-center justify-between text-[11px] text-white/70 font-mono">
+            <span>Tata Kelola Informasi Angkasa: Input Terpisah dari Verifikasi</span>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+            >
+              Tutup Panel
+            </button>
+          </div>
+        )}
       </div>
+  );
+
+  if (embedded) {
+    return panelContent;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto font-sans selection:bg-amber-400/30 selection:text-amber-200">
+      {panelContent}
     </div>
   );
 }
