@@ -157,14 +157,14 @@ export default function ProfilingView({
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-[#FAFAFA] flex flex-col justify-between p-4 sm:p-6 lg:p-12 font-sans selection:bg-emerald-500/20 selection:text-emerald-300">
+    <div className="min-h-screen bg-gradient-to-b from-[#004aad] via-[#003d91] to-[#002b66] text-white flex flex-col justify-between p-4 sm:p-6 lg:p-12 font-sans selection:bg-amber-400/30 selection:text-amber-200">
       <main className="w-full max-w-2xl mx-auto space-y-10 py-6 animate-fade-slide-up">
         {/* Top Minimal Navigation */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span className="text-[11px] font-mono tracking-wider uppercase text-[#888890]">
-              ANGKASA &bull; PROFILING P2
+            <span className="w-2 h-2 rounded-full bg-amber-400" />
+            <span className="text-[11px] font-mono tracking-wider uppercase text-white/80">
+              ANGKASA &bull; PROFILING MINAT &amp; BAKAT
             </span>
           </div>
 
@@ -172,7 +172,7 @@ export default function ProfilingView({
             <button
               type="button"
               onClick={onCancel}
-              className="inline-flex items-center gap-1.5 text-xs text-[#888890] hover:text-[#FAFAFA] transition active:scale-[0.98]"
+              className="inline-flex items-center gap-1.5 text-xs text-white/80 hover:text-white transition active:scale-[0.98] cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Kembali</span>
@@ -182,25 +182,25 @@ export default function ProfilingView({
 
         {/* Heading & Context */}
         <div className="space-y-3">
-          <h1 className="text-3xl sm:text-4xl font-semibold tracking-[-0.03em] text-[#FAFAFA] leading-tight">
+          <h1 className="text-3xl sm:text-4xl font-semibold tracking-[-0.03em] text-white leading-tight">
             Tentukan profil minat &amp; keahlian Anda
           </h1>
-          <p className="text-sm text-[#888890] leading-relaxed max-w-xl">
+          <p className="text-sm text-white/80 leading-relaxed max-w-xl">
             Pilih domain kompetensi teknis, karya ilmiah, atau kepemimpinan Anda. Algoritma cerdas Angkasa memfilter ribuan peluang menjadi rekomendasi presisi tinggi.
           </p>
         </div>
 
         {/* Selected Tags Summary Pillbox */}
-        <section className="p-5 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] space-y-3">
+        <section className="surface-panel p-5 rounded-2xl space-y-3">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-mono text-[#888890] tracking-wider uppercase">
-              Terpilih (<span className="tabular-nums text-[#FAFAFA]">{selectedTags.length}</span>)
+            <span className="font-mono text-white/80 tracking-wider uppercase">
+              Terpilih (<span className="tabular-nums text-white font-semibold">{selectedTags.length}</span>)
             </span>
             {selectedTags.length > 0 && (
               <button
                 type="button"
                 onClick={() => setSelectedTags([])}
-                className="text-[#888890] hover:text-rose-400 transition"
+                className="text-white/70 hover:text-rose-300 transition cursor-pointer"
               >
                 Hapus semua
               </button>
@@ -209,20 +209,20 @@ export default function ProfilingView({
 
           <div className="min-h-[44px] flex flex-wrap gap-2 items-center">
             {selectedTags.length === 0 ? (
-              <p className="text-xs text-[#888890]/60 italic font-mono">
+              <p className="text-xs text-white/60 italic font-mono">
                 Belum ada tag dipilih. Pilih dari opsi di bawah atau tambahkan sendiri.
               </p>
             ) : (
               selectedTags.map((tag) => (
                 <span
                   key={tag}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-medium tracking-tight"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400/20 border border-amber-300/40 text-amber-300 text-xs font-semibold tracking-tight shadow-sm"
                 >
                   {tag}
                   <button
                     type="button"
                     onClick={() => toggleTag(tag)}
-                    className="hover:text-emerald-200 transition"
+                    className="hover:text-amber-100 transition cursor-pointer"
                     aria-label={`Hapus ${tag}`}
                   >
                     <X className="w-3.5 h-3.5" />
@@ -242,24 +242,24 @@ export default function ProfilingView({
               value={customInput}
               onChange={(e) => setCustomInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="w-full pl-4 pr-24 py-3 rounded-xl bg-[#0C0C0E] border border-white/[0.07] focus:border-white/20 text-sm text-[#FAFAFA] placeholder:text-[#888890]/50 focus:outline-none transition shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]"
+              className="w-full pl-4 pr-24 py-3 rounded-xl bg-white/[0.08] border border-white/20 focus:border-white/40 text-sm text-white placeholder:text-white/50 focus:outline-none transition backdrop-blur-sm shadow-sm"
             />
             <button
               type="button"
               onClick={addCustomTag}
               disabled={!customInput.trim()}
-              className="absolute right-2 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-xs font-medium text-[#FAFAFA] transition active:scale-[0.98] disabled:opacity-40"
+              className="absolute right-2 px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-xs font-semibold text-white transition active:scale-[0.98] disabled:opacity-40 cursor-pointer border border-white/20"
             >
               Tambah
             </button>
           </div>
         </div>
 
-        {/* Category Groups (Clean Editorial Stack) */}
+        {/* Category Groups (Clean Glass Editorial Stack) */}
         <div className="space-y-7 pt-2">
           {CATEGORIES.map((cat) => (
             <div key={cat.name} className="space-y-2.5">
-              <h2 className="text-xs font-medium text-[#888890] tracking-wide">
+              <h2 className="text-xs font-medium text-white/80 tracking-wide">
                 {cat.name}
               </h2>
               <div className="flex flex-wrap gap-2">
@@ -274,8 +274,8 @@ export default function ProfilingView({
                       onClick={() => toggleTag(tag)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer active:scale-[0.98] ${
                         isSelected
-                          ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/35 shadow-[0_0_12px_-3px_rgba(16,185,129,0.3)]"
-                          : "bg-[#0C0C0E] text-[#888890] hover:text-[#FAFAFA] border border-white/[0.07] hover:border-white/[0.16]"
+                          ? "bg-white text-[#004aad] font-bold border border-white shadow-md"
+                          : "bg-white/10 text-white/90 hover:text-white hover:bg-white/20 border border-white/20 backdrop-blur-sm"
                       }`}
                     >
                       {tag}
@@ -289,36 +289,36 @@ export default function ProfilingView({
 
         {/* Error Alert */}
         {errorMessage && (
-          <div className="p-4 rounded-xl bg-rose-950/20 border border-rose-900/40 text-rose-300 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+          <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-200 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-300" />
             <span>{errorMessage}</span>
           </div>
         )}
 
-        {/* High-Contrast Monochrome Primary Button */}
+        {/* High-Contrast Solid White Primary Button */}
         <div className="pt-4">
           <button
             type="button"
             onClick={handleSave}
             disabled={isSubmitting || selectedTags.length === 0}
-            className="w-full py-3.5 px-5 rounded-xl bg-[#FAFAFA] hover:bg-[#E5E5E5] text-[#050505] font-semibold text-sm tracking-tight transition-all duration-150 flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer active:scale-[0.98] shadow-sm"
+            className="w-full py-3.5 px-5 rounded-xl bg-white hover:bg-white/90 text-[#004aad] font-bold text-sm tracking-tight transition-all duration-150 flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer active:scale-[0.98] shadow-xl shadow-black/25"
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin text-[#050505]" />
+                <Loader2 className="w-4 h-4 animate-spin text-[#004aad]" />
                 <span>Menghubungkan ke AI Engine...</span>
               </>
             ) : (
               <>
                 <span>Simpan &amp; Tampilkan Rekomendasi Peluang</span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-4 h-4 text-[#004aad]" />
               </>
             )}
           </button>
         </div>
       </main>
 
-      <footer className="text-center py-6 text-[11px] text-[#888890]/60 font-mono border-t border-white/[0.04]">
+      <footer className="text-center py-6 text-[11px] text-white/60 font-mono border-t border-white/20">
         ANGKASA &bull; CAREER &amp; TALENT INTELLIGENCE
       </footer>
     </div>

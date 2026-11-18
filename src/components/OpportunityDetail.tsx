@@ -32,6 +32,11 @@ import {
   Send,
   UserCheck,
   Bookmark,
+  Users,
+  UserPlus,
+  PlusCircle,
+  ArrowRight,
+  X,
 } from "lucide-react";
 
 export interface OpportunityDetailProps {
@@ -41,7 +46,6 @@ export interface OpportunityDetailProps {
 }
 
 type ActiveTab = "roadmap" | "team";
-type TeamRole = "Hacker" | "Hipster" | "Hustler";
 
 export default function OpportunityDetail({
   opportunity,
@@ -64,12 +68,19 @@ export default function OpportunityDetail({
   const [isTeamLoading, setIsTeamLoading] = useState<boolean>(false);
   const [teamError, setTeamError] = useState<string | null>(null);
 
-  // Form State untuk Buat Tim Baru
+  // Pop-up Konfirmasi & Mode Tampilan Tim ("list" | "create")
+  const [showTeamActionModal, setShowTeamActionModal] = useState<boolean>(false);
+  const [teamViewMode, setTeamViewMode] = useState<"list" | "create">("list");
+  const [teamNoticeBanner, setTeamNoticeBanner] = useState<string | null>(null);
+
+  // Form State untuk Inisiasi Tim Baru (Tanpa Role Hacker/Hipster/Hustler)
   const [newTeamName, setNewTeamName] = useState("");
-  const [selectedRole, setSelectedRole] = useState<TeamRole>("Hacker");
-  const [roleDetail, setRoleDetail] = useState("");
+  const [teamDescription, setTeamDescription] = useState("");
+  const [teamContact, setTeamContact] = useState("");
   const [isCreatingTeam, setIsCreatingTeam] = useState(false);
   const [createTeamMessage, setCreateTeamMessage] = useState<string | null>(null);
+
+  const teamNameInputRef = React.useRef<HTMLInputElement | null>(null);
 
   // Invite Status Tracking per TeamRequest ID
   const [inviteStatus, setInviteStatus] = useState<
@@ -160,7 +171,47 @@ export default function OpportunityDetail({
     setCheckedDocs((prev) => ({ ...prev, [index]: !prev[index] }));
   };
 
-  // Submit Buat Tim Baru
+  // Handler Modal: Pilihan 1 - "Buat Tim Baru"
+  const handleSelectCreateTeam = () => {
+    setShowTeamActionModal(false);
+    setTeamNoticeBanner(null);
+    setTeamViewMode("create");
+    setTimeout(() => {
+      teamNameInputRef.current?.focus();
+    }, 150);
+  };
+
+  // Handler Modal: Pilihan 2 - "Join Tim Lain"
+  const handleSelectJoinTeam = async () => {
+    setShowTeamActionModal(false);
+    setIsTeamLoading(true);
+    setTeamError(null);
+
+    try {
+      const res = await getTeamRequests(opportunity.id);
+      const teams = res.data || [];
+      setTeamRequests(teams);
+
+      if (teams.length === 0) {
+        // Jika tidak ada tim: banner info jelas + arahkan ke formulir tim baru
+        setTeamNoticeBanner("Tidak ada tim, silahkan buat tim");
+        setTeamViewMode("create");
+        setTimeout(() => {
+          teamNameInputRef.current?.focus();
+        }, 150);
+      } else {
+        setTeamNoticeBanner(null);
+        setTeamViewMode("list");
+      }
+    } catch {
+      setTeamNoticeBanner("Tidak ada tim, silahkan buat tim");
+      setTeamViewMode("create");
+    } finally {
+      setIsTeamLoading(false);
+    }
+  };
+
+  // Submit Buat Tim Baru (Tanpa Pilihan Role Hacker/Hipster/Hustler)
   const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTeamName.trim()) {
@@ -171,9 +222,13 @@ export default function OpportunityDetail({
     setIsCreatingTeam(true);
     setCreateTeamMessage(null);
 
-    const fullRoleNeeded = roleDetail.trim()
-      ? `${selectedRole} (${roleDetail.trim()})`
-      : selectedRole;
+    // Kebutuhan kolaborasi & kontak diformat bersih
+    const needsSummary = [
+      teamDescription.trim() || "Mencari rekan kolaborator",
+      teamContact.trim() ? `Kontak: ${teamContact.trim()}` : null,
+    ]
+      .filter(Boolean)
+      .join(" • ");
 
     try {
       const res = await createTeamRequest({
@@ -181,16 +236,19 @@ export default function OpportunityDetail({
         creator_id: userProfile.id,
         creator_name: userProfile.full_name,
         team_name: newTeamName.trim(),
-        role_needed: fullRoleNeeded,
+        role_needed: needsSummary,
       });
 
       if (res.error || !res.data) {
         setCreateTeamMessage(res.error || "Gagal membuat tim.");
       } else {
         setNewTeamName("");
-        setRoleDetail("");
+        setTeamDescription("");
+        setTeamContact("");
         setCreateTeamMessage("Tim berhasil didaftarkan ke bursa kolaborasi.");
+        setTeamNoticeBanner(null);
         setTeamRequests((prev) => [res.data as TeamRequest, ...prev]);
+        setTeamViewMode("list");
       }
     } catch {
       setCreateTeamMessage("Terjadi kegagalan jaringan saat mendaftarkan tim.");
@@ -241,16 +299,16 @@ export default function OpportunityDetail({
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-[#FAFAFA] flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-300">
+    <div className="min-h-screen bg-gradient-to-b from-[#004aad] via-[#003d91] to-[#002b66] text-white flex flex-col font-sans selection:bg-amber-400/30 selection:text-amber-200">
       {/* Top Header Navigation */}
-      <header className="sticky top-0 z-30 bg-[#050505]/85 backdrop-blur-md border-b border-white/[0.07]">
+      <header className="sticky top-0 z-30 bg-[#004aad]/80 backdrop-blur-md border-b border-white/20">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0C0C0E] hover:bg-white/[0.06] border border-white/[0.07] hover:border-white/[0.14] text-xs font-medium text-[#FAFAFA] transition active:scale-[0.98] cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition active:scale-[0.98] cursor-pointer shadow-sm backdrop-blur-md"
           >
-            <ArrowLeft className="w-3.5 h-3.5 text-[#888890]" />
+            <ArrowLeft className="w-3.5 h-3.5 text-white/80" />
             <span>Kembali ke Feed</span>
           </button>
 
@@ -259,19 +317,19 @@ export default function OpportunityDetail({
             <button
               type="button"
               onClick={handleToggleBookmark}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition active:scale-[0.98] cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition active:scale-[0.98] cursor-pointer shadow-sm backdrop-blur-md ${
                 isBookmarked
-                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                  : "bg-[#0C0C0E] border-white/[0.07] text-[#888890] hover:text-[#FAFAFA] hover:border-white/[0.14]"
+                  ? "bg-amber-400/20 border-amber-300/40 text-amber-300 font-semibold"
+                  : "bg-white/10 border-white/20 text-white/80 hover:text-white hover:border-white/40"
               }`}
             >
-              <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? "fill-emerald-400" : ""}`} />
+              <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? "fill-amber-300" : ""}`} />
               <span>{isBookmarked ? "Tersimpan" : "Simpan"}</span>
             </button>
 
             <div className="flex items-center gap-2 font-mono text-xs">
-              <span className="text-[#888890] hidden sm:inline">Kesesuaian:</span>
-              <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 font-semibold tabular-nums">
+              <span className="text-white/70 hidden sm:inline">Kesesuaian:</span>
+              <span className="px-2 py-0.5 rounded-md bg-amber-400/20 border border-amber-300/30 text-amber-300 font-semibold tabular-nums">
                 {opportunity.matchPercentage}% Relevan
               </span>
             </div>
@@ -282,51 +340,51 @@ export default function OpportunityDetail({
       {/* Main Content */}
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8 animate-fade-slide-up">
         {/* Opportunity Editorial Header Card */}
-        <section className="p-6 sm:p-8 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] space-y-6">
+        <section className="surface-panel p-6 sm:p-8 rounded-2xl space-y-6">
           <div className="flex items-center justify-between gap-3 text-xs font-mono">
             <div className="flex items-center gap-2">
-              <span className="text-[#888890] uppercase tracking-wider text-[11px]">
+              <span className="text-white/80 uppercase tracking-wider text-[11px]">
                 {opportunity.category}
               </span>
               {opportunity.is_verified && (
-                <span className="inline-flex items-center gap-1 text-emerald-400 font-medium text-[11px]">
-                  <ShieldCheck className="w-3 h-3" />
+                <span className="inline-flex items-center gap-1 text-amber-300 font-medium text-[11px]">
+                  <ShieldCheck className="w-3 h-3 text-amber-300" />
                   <span>Terverifikasi</span>
                 </span>
               )}
             </div>
 
-            <div className="text-[#888890] flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5" />
-              <span>Batas waktu: <strong className="text-[#FAFAFA] font-normal tabular-nums">{deadline}</strong></span>
+            <div className="text-white/80 flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-white/70" />
+              <span>Batas waktu: <strong className="text-white font-normal tabular-nums">{deadline}</strong></span>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <h1 className="text-2xl sm:text-3xl font-semibold tracking-[-0.03em] text-[#FAFAFA] leading-tight">
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-[-0.03em] text-white leading-tight">
               {opportunity.title}
             </h1>
-            <p className="text-xs text-[#888890]">
-              Diselenggarakan oleh <strong className="text-[#FAFAFA] font-medium">{opportunity.organizer}</strong>
+            <p className="text-xs text-white/80">
+              Diselenggarakan oleh <strong className="text-white font-medium">{opportunity.organizer}</strong>
             </p>
           </div>
 
           {/* AI Reason Callout */}
-          <div className="p-4 rounded-xl bg-[#050505] border border-white/[0.06] border-l-2 border-l-emerald-500 space-y-1">
-            <span className="text-[10px] font-mono tracking-wider text-emerald-400 uppercase">
+          <div className="p-4 rounded-xl bg-white/[0.08] border border-white/20 border-l-4 border-l-amber-400 space-y-1 backdrop-blur-sm">
+            <span className="text-[10px] font-mono tracking-wider text-amber-300 uppercase font-semibold">
               Rekomendasi Personalisasi AI
             </span>
-            <p className="text-xs text-[#FAFAFA] leading-relaxed italic">
+            <p className="text-xs text-white leading-relaxed italic">
               &ldquo;{opportunity.recommendationReason}&rdquo;
             </p>
           </div>
 
           {/* Description */}
-          <div className="space-y-2 pt-2 border-t border-white/[0.04]">
-            <h2 className="text-xs font-mono uppercase text-[#888890] tracking-wider">
+          <div className="space-y-2 pt-2 border-t border-white/10">
+            <h2 className="text-xs font-mono uppercase text-white/80 tracking-wider">
               Deskripsi Program
             </h2>
-            <p className="text-xs sm:text-sm text-[#888890] leading-relaxed whitespace-pre-line">
+            <p className="text-xs sm:text-sm text-white/80 leading-relaxed whitespace-pre-line">
               {description}
             </p>
           </div>
@@ -336,14 +394,14 @@ export default function OpportunityDetail({
             (opportunity.required_skills && opportunity.required_skills.length > 0)) && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
               {opportunity.requirements && opportunity.requirements.length > 0 && (
-                <div className="p-4 rounded-xl bg-[#050505] border border-white/[0.06] space-y-2">
-                  <h3 className="text-xs font-mono uppercase text-[#888890] tracking-wider">
+                <div className="p-4 rounded-xl bg-white/[0.06] border border-white/15 space-y-2 backdrop-blur-sm">
+                  <h3 className="text-xs font-mono uppercase text-white/80 tracking-wider">
                     Persyaratan
                   </h3>
-                  <ul className="space-y-1.5 text-xs text-[#888890]">
+                  <ul className="space-y-1.5 text-xs text-white/80">
                     {opportunity.requirements.map((req, i) => (
                       <li key={i} className="flex items-start gap-2">
-                        <span className="text-emerald-400 shrink-0">&bull;</span>
+                        <span className="text-amber-300 shrink-0">&bull;</span>
                         <span>{req}</span>
                       </li>
                     ))}
@@ -352,15 +410,15 @@ export default function OpportunityDetail({
               )}
 
               {opportunity.required_skills && opportunity.required_skills.length > 0 && (
-                <div className="p-4 rounded-xl bg-[#050505] border border-white/[0.06] space-y-2">
-                  <h3 className="text-xs font-mono uppercase text-[#888890] tracking-wider">
+                <div className="p-4 rounded-xl bg-white/[0.06] border border-white/15 space-y-2 backdrop-blur-sm">
+                  <h3 className="text-xs font-mono uppercase text-white/80 tracking-wider">
                     Kualifikasi Keahlian
                   </h3>
                   <div className="flex flex-wrap gap-1.5">
                     {opportunity.required_skills.map((skill, i) => (
                       <span
                         key={i}
-                        className="px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.07] text-xs font-mono text-[#888890]"
+                        className="px-2 py-0.5 rounded-md bg-white/10 border border-white/20 text-xs font-mono text-white"
                       >
                         {skill}
                       </span>
@@ -372,32 +430,32 @@ export default function OpportunityDetail({
           )}
 
           {/* Official Registration CTA */}
-          <div className="pt-2 flex items-center justify-between gap-4 flex-wrap border-t border-white/[0.04]">
-            <span className="text-xs text-[#888890]">
+          <div className="pt-2 flex items-center justify-between gap-4 flex-wrap border-t border-white/10">
+            <span className="text-xs text-white/80">
               Tautan menuju formulir dan petunjuk teknis resmi panitia penyelenggara.
             </span>
             <a
               href={opportunity.registration_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#FAFAFA] hover:bg-[#E5E5E5] text-[#050505] font-semibold text-xs transition active:scale-[0.98]"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white hover:bg-white/90 text-[#004aad] font-bold text-xs transition active:scale-[0.98] shadow-md"
             >
               <span>Buka Portal Resmi</span>
-              <ExternalLink className="w-3.5 h-3.5" />
+              <ExternalLink className="w-3.5 h-3.5 text-[#004aad]" />
             </a>
           </div>
         </section>
 
         {/* Segmented Tab Controls */}
         <div className="space-y-6">
-          <div className="inline-flex p-1 bg-[#0C0C0E] border border-white/[0.07] rounded-xl">
+          <div className="inline-flex p-1 bg-white/10 border border-white/20 rounded-xl backdrop-blur-md shadow-sm">
             <button
               type="button"
               onClick={() => setActiveTab("roadmap")}
               className={`px-4 py-2 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer active:scale-[0.98] ${
                 activeTab === "roadmap"
-                  ? "bg-white/[0.08] text-[#FAFAFA] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]"
-                  : "text-[#888890] hover:text-[#FAFAFA]"
+                  ? "bg-white text-[#004aad] font-bold shadow-md"
+                  : "text-white/80 hover:text-white"
               }`}
             >
               Roadmap Persiapan AI
@@ -405,11 +463,14 @@ export default function OpportunityDetail({
 
             <button
               type="button"
-              onClick={() => setActiveTab("team")}
+              onClick={() => {
+                setActiveTab("team");
+                setShowTeamActionModal(true);
+              }}
               className={`px-4 py-2 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer active:scale-[0.98] ${
                 activeTab === "team"
-                  ? "bg-white/[0.08] text-[#FAFAFA] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]"
-                  : "text-[#888890] hover:text-[#FAFAFA]"
+                  ? "bg-white text-[#004aad] font-bold shadow-md"
+                  : "text-white/80 hover:text-white"
               }`}
             >
               Cari Rekan Tim
@@ -423,10 +484,10 @@ export default function OpportunityDetail({
             <div className="space-y-6 animate-fade-slide-up">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <h2 className="text-base font-semibold tracking-[-0.02em] text-[#FAFAFA]">
+                  <h2 className="text-base font-semibold tracking-[-0.02em] text-white">
                     Panduan Persiapan Menuju Deadline
                   </h2>
-                  <p className="text-xs text-[#888890]">
+                  <p className="text-xs text-white/80">
                     Milestone terstruktur dan strategi pemenangan yang dikalibrasi oleh AI.
                   </p>
                 </div>
@@ -435,31 +496,31 @@ export default function OpportunityDetail({
                   type="button"
                   onClick={handleGenerateRoadmap}
                   disabled={isRoadmapLoading}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0C0C0E] hover:bg-white/[0.06] border border-white/[0.07] hover:border-white/[0.14] text-xs font-medium text-[#FAFAFA] transition active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition active:scale-[0.98] disabled:opacity-50 cursor-pointer backdrop-blur-md"
                 >
                   {isRoadmapLoading ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#888890]" />
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white/70" />
                   ) : (
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
                   )}
                   <span>Perbarui Analisis</span>
                 </button>
               </div>
 
               {isRoadmapLoading ? (
-                <div className="p-10 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] flex flex-col items-center justify-center gap-2.5">
-                  <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />
-                  <p className="text-xs text-[#888890]">
+                <div className="surface-panel p-10 rounded-2xl flex flex-col items-center justify-center gap-2.5">
+                  <Loader2 className="w-6 h-6 text-amber-300 animate-spin" />
+                  <p className="text-xs text-white/80">
                     AI sedang menyusun linimasa, berkas kelolosan, dan strategi pemenangan...
                   </p>
                 </div>
               ) : roadmapError ? (
-                <div className="p-6 rounded-2xl bg-[#0C0C0E] border border-rose-900/40 text-center space-y-2">
-                  <p className="text-xs text-rose-300">{roadmapError}</p>
+                <div className="p-6 rounded-2xl bg-rose-950/30 border border-rose-500/30 text-center space-y-2">
+                  <p className="text-xs text-rose-200">{roadmapError}</p>
                   <button
                     type="button"
                     onClick={handleGenerateRoadmap}
-                    className="px-3 py-1.5 rounded-lg bg-white/[0.06] text-xs text-[#FAFAFA] cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-white/15 text-xs text-white cursor-pointer"
                   >
                     Coba Lagi
                   </button>
@@ -467,20 +528,20 @@ export default function OpportunityDetail({
               ) : roadmap ? (
                 <div className="space-y-6">
                   {/* Minimalist Vertical Timeline Rail */}
-                  <div className="p-6 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] space-y-4">
-                    <h3 className="text-xs font-mono uppercase text-[#888890] tracking-wider flex items-center gap-2">
-                      <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                  <div className="surface-panel p-6 rounded-2xl space-y-4">
+                    <h3 className="text-xs font-mono uppercase text-white/80 tracking-wider flex items-center gap-2">
+                      <Clock className="w-3.5 h-3.5 text-amber-300" />
                       <span>Linimasa Bertahap</span>
                     </h3>
 
-                    <div className="relative pl-6 border-l border-white/[0.08] space-y-6 ml-2 my-2">
+                    <div className="relative pl-6 border-l border-white/20 space-y-6 ml-2 my-2">
                       {roadmap.timeline.map((item, idx) => (
                         <div key={idx} className="relative space-y-1">
-                          <span className="absolute -left-[31px] top-1 w-2.5 h-2.5 rounded-full bg-[#050505] border-2 border-emerald-400" />
-                          <span className="font-mono text-xs text-emerald-400 font-medium">
+                          <span className="absolute -left-[31px] top-1 w-2.5 h-2.5 rounded-full bg-[#002b66] border-2 border-amber-300" />
+                          <span className="font-mono text-xs text-amber-300 font-semibold">
                             {item.phase}
                           </span>
-                          <p className="text-xs sm:text-sm text-[#888890] leading-relaxed">
+                          <p className="text-xs sm:text-sm text-white/80 leading-relaxed">
                             {item.action}
                           </p>
                         </div>
@@ -489,9 +550,9 @@ export default function OpportunityDetail({
                   </div>
 
                   {/* Checklist Dokumen Interaktif */}
-                  <div className="p-6 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] space-y-4">
-                    <h3 className="text-xs font-mono uppercase text-[#888890] tracking-wider flex items-center gap-2">
-                      <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                  <div className="surface-panel p-6 rounded-2xl space-y-4">
+                    <h3 className="text-xs font-mono uppercase text-white/80 tracking-wider flex items-center gap-2">
+                      <FileText className="w-3.5 h-3.5 text-amber-300" />
                       <span>Checklist Berkas &amp; Dokumen</span>
                     </h3>
 
@@ -502,23 +563,23 @@ export default function OpportunityDetail({
                           <div
                             key={idx}
                             onClick={() => toggleCheckDoc(idx)}
-                            className={`p-3.5 rounded-xl border transition-all duration-150 cursor-pointer flex items-start gap-3 select-none ${
+                            className={`p-3.5 rounded-xl border transition-all duration-150 cursor-pointer flex items-start gap-3 select-none backdrop-blur-sm ${
                               isDone
-                                ? "bg-white/[0.02] border-white/[0.04] text-[#888890]/60"
-                                : "bg-[#050505] border-white/[0.06] hover:border-white/[0.14] text-[#FAFAFA]"
+                                ? "bg-white/[0.04] border-white/10 text-white/40"
+                                : "bg-white/[0.08] border-white/15 hover:border-white/30 text-white"
                             }`}
                           >
                             <input
                               type="checkbox"
                               checked={isDone}
                               onChange={() => toggleCheckDoc(idx)}
-                              className="mt-0.5 w-4 h-4 accent-emerald-500 cursor-pointer"
+                              className="mt-0.5 w-4 h-4 accent-amber-400 cursor-pointer"
                             />
                             <div className="space-y-0.5 flex-1 text-xs">
-                              <p className={`font-medium ${isDone ? "line-through text-[#888890]/60" : "text-[#FAFAFA]"}`}>
+                              <p className={`font-semibold ${isDone ? "line-through text-white/40" : "text-white"}`}>
                                 {doc.item}
                               </p>
-                              <p className="text-[#888890] leading-relaxed">
+                              <p className="text-white/80 leading-relaxed">
                                 {doc.tip}
                               </p>
                             </div>
@@ -529,9 +590,9 @@ export default function OpportunityDetail({
                   </div>
 
                   {/* 3 Strategi Pemenangan */}
-                  <div className="p-6 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] space-y-4">
-                    <h3 className="text-xs font-mono uppercase text-[#888890] tracking-wider flex items-center gap-2">
-                      <Award className="w-3.5 h-3.5 text-emerald-400" />
+                  <div className="surface-panel p-6 rounded-2xl space-y-4">
+                    <h3 className="text-xs font-mono uppercase text-white/80 tracking-wider flex items-center gap-2">
+                      <Award className="w-3.5 h-3.5 text-amber-300" />
                       <span>Strategi Kunci Kelolosan</span>
                     </h3>
 
@@ -539,12 +600,12 @@ export default function OpportunityDetail({
                       {roadmap.winning_strategy.map((strat, idx) => (
                         <div
                           key={idx}
-                          className="p-4 rounded-xl bg-[#050505] border border-white/[0.06] space-y-2"
+                          className="p-4 rounded-xl bg-white/[0.08] border border-white/15 space-y-2 backdrop-blur-sm"
                         >
-                          <span className="font-mono text-xs font-semibold text-emerald-400">
+                          <span className="font-mono text-xs font-bold text-amber-300">
                             0{idx + 1}
                           </span>
-                          <p className="text-xs text-[#888890] leading-relaxed">
+                          <p className="text-xs text-white/80 leading-relaxed">
                             {strat}
                           </p>
                         </div>
@@ -556,16 +617,16 @@ export default function OpportunityDetail({
                   {(roadmap.recommended_tools || roadmap.curation_tips) && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {roadmap.recommended_tools && roadmap.recommended_tools.length > 0 && (
-                        <div className="p-5 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] space-y-3">
-                          <h4 className="text-xs font-mono uppercase text-[#888890] tracking-wider flex items-center gap-2">
-                            <Wrench className="w-3.5 h-3.5 text-emerald-400" />
+                        <div className="surface-panel p-5 rounded-2xl space-y-3">
+                          <h4 className="text-xs font-mono uppercase text-white/80 tracking-wider flex items-center gap-2">
+                            <Wrench className="w-3.5 h-3.5 text-amber-300" />
                             <span>Perangkat Kerja Pendukung</span>
                           </h4>
                           <div className="flex flex-wrap gap-1.5">
                             {roadmap.recommended_tools.map((t, idx) => (
                               <span
                                 key={idx}
-                                className="px-2.5 py-1 rounded-lg bg-[#050505] border border-white/[0.06] text-xs font-mono text-[#FAFAFA]"
+                                className="px-2.5 py-1 rounded-lg bg-white/10 border border-white/20 text-xs font-mono text-white"
                               >
                                 {t}
                               </span>
@@ -575,15 +636,15 @@ export default function OpportunityDetail({
                       )}
 
                       {roadmap.curation_tips && roadmap.curation_tips.length > 0 && (
-                        <div className="p-5 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] space-y-3">
-                          <h4 className="text-xs font-mono uppercase text-[#888890] tracking-wider flex items-center gap-2">
-                            <Layers className="w-3.5 h-3.5 text-emerald-400" />
+                        <div className="surface-panel p-5 rounded-2xl space-y-3">
+                          <h4 className="text-xs font-mono uppercase text-white/80 tracking-wider flex items-center gap-2">
+                            <Layers className="w-3.5 h-3.5 text-amber-300" />
                             <span>Kriteria Kurasi Juri</span>
                           </h4>
-                          <ul className="space-y-1.5 text-xs text-[#888890]">
+                          <ul className="space-y-1.5 text-xs text-white/80">
                             {roadmap.curation_tips.map((tip, idx) => (
                               <li key={idx} className="flex items-start gap-2">
-                                <span className="text-emerald-400 shrink-0">&bull;</span>
+                                <span className="text-amber-300 shrink-0">&bull;</span>
                                 <span>{tip}</span>
                               </li>
                             ))}
@@ -598,206 +659,423 @@ export default function OpportunityDetail({
           )}
 
           {/* ========================================================= */}
-          {/* TAB 2: TEAM FINDING (ANTI-DUPLIKASI) */}
+          {/* TAB 2: TEAM FINDING (ANTI-DUPLIKASI & BEBAS EMOJI) */}
           {/* ========================================================= */}
           {activeTab === "team" && (
             <div className="space-y-6 animate-fade-slide-up">
-              {/* Form Ringkas: Buat Lowongan Tim Baru */}
-              <div className="p-6 sm:p-8 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] space-y-4">
-                <div className="space-y-1">
-                  <h3 className="text-base font-semibold tracking-[-0.02em] text-[#FAFAFA]">
-                    Inisiasi Tim Kolaborasi
-                  </h3>
-                  <p className="text-xs text-[#888890]">
-                    Pilih posisi anggota yang dibutuhkan berdasarkan pembagian peran Hacker, Hipster, atau Hustler.
+              {/* Header Tab Tim & Mode Navigation */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/15">
+                <div className="space-y-0.5">
+                  <h2 className="text-base font-semibold tracking-[-0.02em] text-white">
+                    Bursa Kolaborasi Tim
+                  </h2>
+                  <p className="text-xs text-white/80">
+                    Inisiasi tim baru atau temukan tim yang siap menerima kolaborasi rekan sejawat.
                   </p>
                 </div>
 
-                <form onSubmit={handleCreateTeam} className="space-y-3.5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="block text-xs font-mono text-[#888890]">
-                        Nama Tim
+                {/* Mode Switcher Pills & Re-open Modal */}
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                  <div className="inline-flex p-1 bg-white/10 border border-white/20 rounded-xl gap-0.5 backdrop-blur-md">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTeamNoticeBanner(null);
+                        setTeamViewMode("list");
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+                        teamViewMode === "list"
+                          ? "bg-white text-[#004aad] font-bold shadow-md"
+                          : "text-white/80 hover:text-white"
+                      }`}
+                    >
+                      Daftar Tim ({teamRequests.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTeamNoticeBanner(null);
+                        setTeamViewMode("create");
+                        setTimeout(() => teamNameInputRef.current?.focus(), 100);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+                        teamViewMode === "create"
+                          ? "bg-white text-[#004aad] font-bold shadow-md"
+                          : "text-white/80 hover:text-white"
+                      }`}
+                    >
+                      Buat Tim Baru
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowTeamActionModal(true)}
+                    className="px-2.5 py-1.5 rounded-xl bg-white/10 border border-white/20 hover:border-white/40 text-xs text-white transition cursor-pointer backdrop-blur-md"
+                    title="Buka Pilihan Mode Aksi Kolaborasi"
+                  >
+                    Pilih Aksi
+                  </button>
+                </div>
+              </div>
+
+              {/* Banner Pemberitahuan jika Tim Kosong saat memilih Join Tim Lain */}
+              {teamNoticeBanner && (
+                <div className="p-4 rounded-xl bg-amber-400/20 border border-amber-300/40 text-amber-200 flex items-center justify-between gap-3 text-xs animate-fade-slide-up backdrop-blur-md shadow-md">
+                  <div className="flex items-center gap-2.5">
+                    <AlertCircle className="w-4 h-4 text-amber-300 shrink-0" />
+                    <span className="font-semibold">{teamNoticeBanner}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setTeamNoticeBanner(null)}
+                    className="text-amber-300 hover:text-amber-100 text-xs font-mono transition cursor-pointer"
+                  >
+                    Tutup
+                  </button>
+                </div>
+              )}
+
+              {/* TAMPILAN 1: FORMULIR INISIASI TIM BARU (TANPA ROLE HACKER/HIPSTER/HUSTLER) */}
+              {teamViewMode === "create" && (
+                <div className="surface-panel p-6 sm:p-8 rounded-2xl space-y-5 animate-fade-slide-up">
+                  <div className="space-y-1">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-400/20 border border-amber-300/40 text-amber-300 text-[11px] font-mono">
+                      <PlusCircle className="w-3.5 h-3.5" />
+                      <span>Form Inisiasi Tim</span>
+                    </div>
+                    <h3 className="text-base font-semibold tracking-[-0.02em] text-white">
+                      Daftarkan Tim Kolaborasi Baru
+                    </h3>
+                    <p className="text-xs text-white/80">
+                      Tentukan nama tim dan rincikan kriteria rekan kolaborator yang Anda perlukan untuk peluang ini.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleCreateTeam} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-mono text-white/80">
+                        Nama Tim <span className="text-amber-300">*</span>
                       </label>
                       <input
+                        ref={teamNameInputRef}
                         type="text"
                         placeholder="Contoh: Nusantara Vision"
                         value={newTeamName}
                         onChange={(e) => setNewTeamName(e.target.value)}
-                        className="w-full px-3.5 py-2 rounded-xl bg-[#050505] border border-white/[0.07] focus:border-white/20 text-xs sm:text-sm text-[#FAFAFA] placeholder:text-[#888890]/50 focus:outline-none transition"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.08] border border-white/20 focus:border-white/40 text-xs sm:text-sm text-white placeholder:text-white/50 focus:outline-none transition backdrop-blur-sm shadow-sm"
                       />
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="block text-xs font-mono text-[#888890]">
-                        Role yang Dibutuhkan
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-mono text-white/80">
+                        Deskripsi Kebutuhan Kolaborator
                       </label>
-                      <div className="flex gap-1.5">
-                        {(["Hacker", "Hipster", "Hustler"] as TeamRole[]).map((r) => (
-                          <button
-                            key={r}
-                            type="button"
-                            onClick={() => setSelectedRole(r)}
-                            className={`flex-1 py-2 px-2.5 rounded-lg text-xs font-medium transition cursor-pointer active:scale-[0.98] ${
-                              selectedRole === r
-                                ? "bg-white/[0.1] text-[#FAFAFA] border border-white/[0.16]"
-                                : "bg-[#050505] text-[#888890] border border-white/[0.07] hover:text-[#FAFAFA]"
-                            }`}
-                          >
-                            {r}
-                          </button>
-                        ))}
-                      </div>
+                      <textarea
+                        rows={2}
+                        placeholder="Contoh: Mencari rekan yang berkomitmen mengerjakan proposal, riset kebutuhan pengguna, atau implementasi teknis..."
+                        value={teamDescription}
+                        onChange={(e) => setTeamDescription(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.08] border border-white/20 focus:border-white/40 text-xs sm:text-sm text-white placeholder:text-white/50 focus:outline-none transition resize-none backdrop-blur-sm shadow-sm"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-mono text-white/80">
+                        Kontak / Saluran Komunikasi (Opsional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: WhatsApp 08123456789 atau Discord @username"
+                        value={teamContact}
+                        onChange={(e) => setTeamContact(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.08] border border-white/20 focus:border-white/40 text-xs sm:text-sm text-white placeholder:text-white/50 focus:outline-none transition backdrop-blur-sm shadow-sm"
+                      />
+                    </div>
+
+                    {createTeamMessage && (
+                      <p
+                        className={`text-xs p-3 rounded-xl border ${
+                          createTeamMessage.includes("berhasil")
+                            ? "bg-amber-400/20 border-amber-300/40 text-amber-300 font-medium"
+                            : "bg-rose-950/40 border-rose-500/40 text-rose-200"
+                        }`}
+                      >
+                        {createTeamMessage}
+                      </p>
+                    )}
+
+                    <div className="flex items-center gap-2 pt-2">
+                      <button
+                        type="submit"
+                        disabled={isCreatingTeam || !newTeamName.trim()}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white hover:bg-white/90 text-[#004aad] font-bold text-xs transition disabled:opacity-40 cursor-pointer active:scale-[0.98] shadow-md"
+                      >
+                        {isCreatingTeam ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-[#004aad]" />
+                        ) : (
+                          <Plus className="w-3.5 h-3.5 text-[#004aad]" />
+                        )}
+                        <span>Daftarkan Tim</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTeamNoticeBanner(null);
+                          setTeamViewMode("list");
+                        }}
+                        className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition cursor-pointer"
+                      >
+                        Batal
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* TAMPILAN 2: DAFTAR TIM AKTIF (BURSA KOLABORASI) */}
+              {teamViewMode === "list" && (
+                <div className="space-y-4 animate-fade-slide-up">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-mono uppercase text-white/80">
+                      Bursa Tim Terdaftar (<span className="tabular-nums text-white font-semibold">{teamRequests.length}</span>)
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTeamNoticeBanner(null);
+                          setTeamViewMode("create");
+                          setTimeout(() => teamNameInputRef.current?.focus(), 100);
+                        }}
+                        className="text-xs font-semibold text-amber-300 hover:text-amber-200 transition cursor-pointer flex items-center gap-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Inisiasi Tim Baru</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={loadTeamRequests}
+                        className="text-white/80 hover:text-white transition cursor-pointer"
+                      >
+                        Muat Ulang
+                      </button>
                     </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="block text-xs font-mono text-[#888890]">
-                      Kualifikasi Tambahan (Opsional)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Contoh: Menguasai Next.js & Supabase..."
-                      value={roleDetail}
-                      onChange={(e) => setRoleDetail(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl bg-[#050505] border border-white/[0.07] focus:border-white/20 text-xs sm:text-sm text-[#FAFAFA] placeholder:text-[#888890]/50 focus:outline-none transition"
-                    />
-                  </div>
+                  {isTeamLoading ? (
+                    <div className="surface-panel p-10 rounded-2xl text-center space-y-2">
+                      <Loader2 className="w-5 h-5 text-amber-300 animate-spin mx-auto" />
+                      <p className="text-xs text-white/80">Memeriksa bursa tim...</p>
+                    </div>
+                  ) : teamError ? (
+                    <div className="p-6 rounded-2xl bg-rose-950/30 border border-rose-500/30 text-center text-xs text-rose-200">
+                      {teamError}
+                    </div>
+                  ) : teamRequests.length === 0 ? (
+                    <div className="surface-panel p-10 rounded-2xl text-center space-y-3">
+                      <div className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center mx-auto text-white">
+                        <Users className="w-5 h-5" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-white">
+                          Belum ada tim terdaftar
+                        </p>
+                        <p className="text-xs text-white/80 max-w-sm mx-auto">
+                          Jadilah inisiator pertama dengan mendaftarkan tim Anda untuk ajang ini.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTeamNoticeBanner(null);
+                          setTeamViewMode("create");
+                          setTimeout(() => teamNameInputRef.current?.focus(), 100);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white hover:bg-white/90 text-[#004aad] text-xs font-bold transition active:scale-[0.98] cursor-pointer shadow-md"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-[#004aad]" />
+                        <span>Inisiasi Tim Pertama</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {teamRequests.map((team) => {
+                        const isCreator = team.creator_id === userProfile.id;
+                        const status = inviteStatus[team.id];
 
-                  {createTeamMessage && (
-                    <p
-                      className={`text-xs p-3 rounded-lg border ${
-                        createTeamMessage.includes("berhasil")
-                          ? "bg-emerald-950/20 border-emerald-500/30 text-emerald-400"
-                          : "bg-rose-950/20 border-rose-800/30 text-rose-300"
-                      }`}
-                    >
-                      {createTeamMessage}
-                    </p>
-                  )}
+                        return (
+                          <div
+                            key={team.id}
+                            className="surface-panel p-5 rounded-2xl space-y-3.5 flex flex-col justify-between"
+                          >
+                            <div className="space-y-2.5">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="space-y-0.5">
+                                  <h4 className="text-sm font-semibold text-white">
+                                    {team.team_name}
+                                  </h4>
+                                  <p className="text-xs text-white/80">
+                                    Inisiator: <strong className="text-white font-medium">{team.creator_name}</strong>
+                                    {isCreator && (
+                                      <span className="text-amber-300 ml-1.5 font-mono text-[11px] font-semibold">(Anda)</span>
+                                    )}
+                                  </p>
+                                </div>
 
-                  <button
-                    type="submit"
-                    disabled={isCreatingTeam || !newTeamName.trim()}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#FAFAFA] hover:bg-[#E5E5E5] text-[#050505] font-semibold text-xs transition disabled:opacity-40 cursor-pointer active:scale-[0.98]"
-                  >
-                    {isCreatingTeam ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Plus className="w-3.5 h-3.5" />
-                    )}
-                    <span>Daftarkan Tim</span>
-                  </button>
-                </form>
-              </div>
+                                {isCreator && (
+                                  <span className="px-2 py-0.5 rounded-md bg-amber-400/20 border border-amber-300/30 text-[10px] font-mono text-amber-300 shrink-0 font-semibold">
+                                    Tim Anda
+                                  </span>
+                                )}
+                              </div>
 
-              {/* Daftar Tim Aktif */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-mono uppercase text-[#888890]">
-                    Bursa Tim Terdaftar (<span className="tabular-nums text-[#FAFAFA]">{teamRequests.length}</span>)
-                  </span>
-                  <button
-                    type="button"
-                    onClick={loadTeamRequests}
-                    className="text-[#888890] hover:text-[#FAFAFA] transition cursor-pointer"
-                  >
-                    Muat Ulang
-                  </button>
-                </div>
-
-                {isTeamLoading ? (
-                  <div className="p-8 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] text-center space-y-2">
-                    <Loader2 className="w-5 h-5 text-emerald-400 animate-spin mx-auto" />
-                    <p className="text-xs text-[#888890]">Memeriksa bursa tim...</p>
-                  </div>
-                ) : teamError ? (
-                  <div className="p-6 rounded-2xl bg-[#0C0C0E] border border-rose-900/30 text-center text-xs text-rose-300">
-                    {teamError}
-                  </div>
-                ) : teamRequests.length === 0 ? (
-                  <div className="p-8 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] text-center space-y-1">
-                    <p className="text-xs text-[#FAFAFA] font-medium">
-                      Belum ada tim terdaftar
-                    </p>
-                    <p className="text-[11px] text-[#888890]">
-                      Jadilah inisiator pertama dengan mendaftarkan tim Anda di atas.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {teamRequests.map((team) => {
-                      const isCreator = team.creator_id === userProfile.id;
-                      const status = inviteStatus[team.id];
-
-                      return (
-                        <div
-                          key={team.id}
-                          className="surface-panel p-5 rounded-2xl space-y-3 flex flex-col justify-between"
-                        >
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-xs font-semibold text-[#FAFAFA]">
-                                {team.team_name}
-                              </span>
-                              <span className="px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.08] text-[11px] font-mono text-emerald-400">
-                                {team.role_needed}
-                              </span>
+                              {/* Ringkasan Kebutuhan Tim (Tanpa Role Hacker/Hipster/Hustler) */}
+                              {team.role_needed && (
+                                <div className="p-3 rounded-xl bg-white/[0.08] border border-white/15 text-xs text-white/80 leading-relaxed space-y-1 backdrop-blur-sm">
+                                  <span className="text-[10px] font-mono uppercase text-white/70 tracking-wider block">
+                                    Kebutuhan Tim:
+                                  </span>
+                                  <p className="text-white line-clamp-3">
+                                    {team.role_needed}
+                                  </p>
+                                </div>
+                              )}
                             </div>
 
-                            <p className="text-xs text-[#888890]">
-                              Inisiator: <strong className="text-[#FAFAFA] font-normal">{team.creator_name}</strong>
-                              {isCreator && " (Anda)"}
-                            </p>
-                          </div>
+                            <div className="pt-2 border-t border-white/10 space-y-2">
+                              {status?.error && (
+                                <p className="text-[11px] text-rose-300 flex items-center gap-1">
+                                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                  <span>{status.error}</span>
+                                </p>
+                              )}
 
-                          <div className="pt-2 border-t border-white/[0.04] space-y-2">
-                            {status?.error && (
-                              <p className="text-[11px] text-rose-400 flex items-center gap-1">
-                                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                                <span>{status.error}</span>
-                              </p>
-                            )}
-
-                            {isCreator ? (
-                              <span className="inline-flex items-center gap-1.5 text-xs text-[#888890] font-mono">
-                                <UserCheck className="w-3 h-3 text-emerald-400" />
-                                <span>Tim Anda</span>
-                              </span>
-                            ) : status?.success ? (
-                              <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
-                                <CheckCircle2 className="w-3 h-3" />
-                                <span>Permintaan Terkirim</span>
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => handleSendInvite(team.id)}
-                                disabled={status?.loading}
-                                className="w-full py-1.5 px-3 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] text-xs font-medium text-[#FAFAFA] transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98] disabled:opacity-50"
-                              >
-                                {status?.loading ? (
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                ) : (
-                                  <Send className="w-3 h-3" />
-                                )}
-                                <span>Ajukan Kolaborasi</span>
-                              </button>
-                            )}
+                              {isCreator ? (
+                                <div className="inline-flex items-center gap-1.5 text-xs text-white/80 font-mono py-1">
+                                  <UserCheck className="w-3.5 h-3.5 text-amber-300" />
+                                  <span>Anda adalah inisiator tim ini</span>
+                                </div>
+                              ) : status?.success ? (
+                                <div className="inline-flex items-center gap-1.5 text-xs text-amber-300 font-semibold py-1">
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>Permintaan Terkirim</span>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSendInvite(team.id)}
+                                  disabled={status?.loading}
+                                  className="w-full py-2 px-3 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-xs font-semibold text-white transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98] disabled:opacity-50 shadow-sm"
+                                >
+                                  {status?.loading ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <Send className="w-3.5 h-3.5 text-white" />
+                                  )}
+                                  <span>Ajukan Kolaborasi</span>
+                                </button>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
       </main>
 
+      {/* ========================================================= */}
+      {/* MODAL / POP-UP KONFIRMASI AKSI KOLABORASI TIM (ROYAL GLASS) */}
+      {/* ========================================================= */}
+      {showTeamActionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
+          <div className="relative w-full max-w-md p-6 rounded-2xl bg-[#003175]/95 border border-white/25 shadow-2xl space-y-5 animate-scale-up text-white backdrop-blur-xl">
+            {/* Header Modal & Tombol Close */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-400/20 border border-amber-300/30 text-amber-300 text-[11px] font-mono font-semibold">
+                  <Users className="w-3 h-3" />
+                  <span>Kolaborasi Tim</span>
+                </div>
+                <h3 className="text-base font-semibold tracking-tight text-white">
+                  Pilih Tindakan Kolaborasi
+                </h3>
+                <p className="text-xs text-white/80 leading-relaxed">
+                  Tentukan apakah Anda ingin menginisiasi tim baru atau mencari tim yang siap menerima rekan kolaborator.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowTeamActionModal(false)}
+                className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                aria-label="Tutup"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Dua Pilihan Aksi: Buat Tim Baru vs Join Tim Lain */}
+            <div className="grid grid-cols-1 gap-3">
+              {/* Pilihan 1: Buat Tim Baru */}
+              <button
+                type="button"
+                onClick={handleSelectCreateTeam}
+                className="p-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 hover:border-amber-300/40 text-left transition group cursor-pointer space-y-1.5 backdrop-blur-md shadow-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-white group-hover:text-amber-300 transition-colors">
+                    <PlusCircle className="w-4 h-4 text-amber-300" />
+                    <span>Buat Tim Baru</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-white/70 group-hover:text-amber-300 transition-transform group-hover:translate-x-0.5" />
+                </div>
+                <p className="text-xs text-white/80 leading-relaxed">
+                  Inisiasi kelompok kerja baru dan publikasikan kriteria rekan tim yang Anda cari.
+                </p>
+              </button>
+
+              {/* Pilihan 2: Join Tim Lain */}
+              <button
+                type="button"
+                onClick={handleSelectJoinTeam}
+                className="p-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 hover:border-amber-300/40 text-left transition group cursor-pointer space-y-1.5 backdrop-blur-md shadow-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-white group-hover:text-amber-300 transition-colors">
+                    <UserPlus className="w-4 h-4 text-amber-300" />
+                    <span>Join Tim Lain</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-white/70 group-hover:text-amber-300 transition-transform group-hover:translate-x-0.5" />
+                </div>
+                <p className="text-xs text-white/80 leading-relaxed">
+                  Jelajahi tim yang sudah terdaftar dan ajukan diri untuk berkolaborasi.
+                </p>
+              </button>
+            </div>
+
+            {/* Footer Modal */}
+            <div className="pt-1 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowTeamActionModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-medium text-white/80 hover:text-white hover:bg-white/10 transition cursor-pointer"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Editorial Clean Footer */}
-      <footer className="text-center py-6 text-[11px] text-[#888890]/50 font-mono border-t border-white/[0.04]">
+      <footer className="text-center py-6 text-[11px] text-white/60 font-mono border-t border-white/20 mt-10">
         ANGKASA &bull; EXPLOR[AI]TION HACKATHON
       </footer>
     </div>

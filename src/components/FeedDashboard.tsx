@@ -34,7 +34,7 @@ export interface FeedDashboardProps {
   onLogout: () => void;
 }
 
-type CategoryFilter = "Semua" | "Lomba" | "Beasiswa" | "Seminar" | "Tersimpan";
+type CategoryFilter = "Semua" | "Lomba" | "Beasiswa" | "Seminar";
 
 export default function FeedDashboard({
   userProfile,
@@ -44,6 +44,7 @@ export default function FeedDashboard({
 }: FeedDashboardProps) {
   const [opportunities, setOpportunities] = useState<PersonalizedOpportunity[]>([]);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
+  const [isBookmarkedOnly, setIsBookmarkedOnly] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -145,12 +146,11 @@ export default function FeedDashboard({
 
   const filteredOpportunities = useMemo(() => {
     return opportunities.filter((item) => {
+      if (isBookmarkedOnly && !bookmarkedIds.has(item.id)) {
+        return false;
+      }
       const matchCat =
-        selectedCategory === "Semua"
-          ? true
-          : selectedCategory === "Tersimpan"
-          ? bookmarkedIds.has(item.id)
-          : item.category === selectedCategory;
+        selectedCategory === "Semua" ? true : item.category === selectedCategory;
       const q = searchQuery.toLowerCase().trim();
       const matchSearch =
         !q ||
@@ -159,20 +159,20 @@ export default function FeedDashboard({
         (item.caption || item.deadline || "").toLowerCase().includes(q);
       return matchCat && matchSearch;
     });
-  }, [opportunities, selectedCategory, searchQuery, bookmarkedIds]);
+  }, [opportunities, selectedCategory, searchQuery, bookmarkedIds, isBookmarkedOnly]);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-[#FAFAFA] flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-300">
-      {/* Top Header — Minimalist Navigation */}
-      <header className="sticky top-0 z-30 bg-[#050505]/85 backdrop-blur-md border-b border-white/[0.07]">
+    <div className="min-h-screen bg-gradient-to-b from-[#004aad] via-[#003d91] to-[#002b66] text-white flex flex-col font-sans selection:bg-amber-400/30 selection:text-amber-200">
+      {/* Top Header — Minimalist Royal Glass Navigation */}
+      <header className="sticky top-0 z-30 bg-[#004aad]/80 backdrop-blur-md border-b border-white/20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
           {/* Brand & User Breadcrumb */}
           <div className="flex items-center gap-3">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
             <div className="flex items-center gap-2 text-xs font-mono">
-              <span className="font-semibold text-[#FAFAFA] tracking-tight">ANGKASA</span>
-              <span className="text-[#888890]">&bull;</span>
-              <span className="text-[#888890] truncate max-w-[180px] sm:max-w-xs">
+              <span className="font-semibold text-white tracking-tight">ANGKASA</span>
+              <span className="text-white/50">&bull;</span>
+              <span className="text-white/80 truncate max-w-[180px] sm:max-w-xs">
                 {userProfile.full_name}
               </span>
             </div>
@@ -184,13 +184,13 @@ export default function FeedDashboard({
             <button
               type="button"
               onClick={() => setIsCuratorOpen(true)}
-              className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 text-xs font-medium text-emerald-400 transition active:scale-[0.98] flex items-center gap-1.5 cursor-pointer"
+              className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/25 text-xs font-medium text-white transition active:scale-[0.98] flex items-center gap-1.5 cursor-pointer backdrop-blur-md shadow-sm"
               title="Panel Kurator & Verifikator Manual"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-400" />
+              <SlidersHorizontal className="w-3.5 h-3.5 text-amber-300" />
               <span className="hidden sm:inline">Panel Kurator</span>
               {pendingCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-emerald-500 text-slate-950 font-mono text-[10px] font-bold tabular-nums">
+                <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-[#004aad] font-mono text-[10px] font-bold tabular-nums">
                   {pendingCount}
                 </span>
               )}
@@ -199,16 +199,16 @@ export default function FeedDashboard({
             <button
               type="button"
               onClick={onEditProfile}
-              className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#0C0C0E] hover:bg-white/[0.06] border border-white/[0.07] hover:border-white/[0.14] text-xs font-medium text-[#FAFAFA] transition active:scale-[0.98] flex items-center gap-1.5 cursor-pointer"
+              className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition active:scale-[0.98] flex items-center gap-1.5 cursor-pointer backdrop-blur-md shadow-sm"
             >
-              <Edit3 className="w-3 h-3 text-[#888890]" />
+              <Edit3 className="w-3 h-3 text-white/70" />
               <span>Minat ({userProfile.profiling?.length || 0})</span>
             </button>
 
             <button
               type="button"
               onClick={onLogout}
-              className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#0C0C0E] hover:bg-rose-950/20 border border-white/[0.07] hover:border-rose-900/40 text-xs font-medium text-[#888890] hover:text-rose-300 transition active:scale-[0.98] flex items-center gap-1.5 cursor-pointer"
+              className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-white/10 hover:bg-rose-500/20 border border-white/20 hover:border-rose-400/40 text-xs font-medium text-white/80 hover:text-rose-200 transition active:scale-[0.98] flex items-center gap-1.5 cursor-pointer backdrop-blur-md"
             >
               <LogOut className="w-3 h-3" />
               <span className="hidden sm:inline">Keluar</span>
@@ -217,16 +217,16 @@ export default function FeedDashboard({
         </div>
 
         {/* Minimalist Profile Pills Strip */}
-        <div className="border-t border-white/[0.04] bg-[#0C0C0E]/40">
+        <div className="border-t border-white/10 bg-white/[0.06] backdrop-blur-sm">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar">
-            <span className="text-[10px] font-mono uppercase text-[#888890] tracking-wider shrink-0">
+            <span className="text-[10px] font-mono uppercase text-white/70 tracking-wider shrink-0">
               Profil:
             </span>
             <div className="flex items-center gap-1.5 shrink-0">
               {(userProfile.profiling || []).map((tag) => (
                 <span
                   key={tag}
-                  className="px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/[0.06] text-[11px] text-[#888890] font-mono whitespace-nowrap"
+                  className="px-2 py-0.5 rounded-md bg-white/10 border border-white/20 text-[11px] text-white/90 font-mono whitespace-nowrap"
                 >
                   {tag}
                 </span>
@@ -241,63 +241,85 @@ export default function FeedDashboard({
         {/* Editorial Subheader & Stats */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-2">
           <div className="space-y-1">
-            <h1 className="text-2xl sm:text-3xl font-semibold tracking-[-0.03em] text-[#FAFAFA]">
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-[-0.03em] text-white">
               Rekomendasi Peluang Terkurasi
             </h1>
-            <p className="text-xs text-[#888890]">
+            <p className="text-xs text-white/80">
               Disaring otomatis berdasarkan keselarasan profiling dan kualifikasi resmi penyelenggara.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-auto text-xs font-mono text-[#888890]">
-            <span className="tabular-nums text-[#FAFAFA] font-semibold">
+          <div className="flex items-center gap-2 self-start sm:self-auto text-xs font-mono text-white/80">
+            <span className="tabular-nums text-white font-semibold">
               {filteredOpportunities.length}
             </span>
-            <span>tayang terverifikasi</span>
+            <span>{isBookmarkedOnly ? "tersimpan" : "tayang terverifikasi"}</span>
           </div>
         </div>
 
-        {/* Controls: Segmented Filter & Search */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          {/* Segmented Tab Filter (Termasuk P7 Tersimpan) */}
-          <div className="inline-flex p-1 bg-[#0C0C0E] border border-white/[0.07] rounded-xl self-start flex-wrap gap-0.5">
-            {(["Semua", "Lomba", "Beasiswa", "Seminar", "Tersimpan"] as CategoryFilter[]).map((cat) => {
-              const isSavedTab = cat === "Tersimpan";
-              const count = isSavedTab ? bookmarkedIds.size : null;
-
-              return (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer active:scale-[0.98] flex items-center gap-1.5 ${
-                    selectedCategory === cat
-                      ? "bg-white/[0.08] text-[#FAFAFA] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]"
-                      : "text-[#888890] hover:text-[#FAFAFA]"
-                  }`}
-                >
-                  {isSavedTab && <Bookmark className="w-3 h-3 text-emerald-400" />}
-                  <span>{cat}</span>
-                  {count !== null && count > 0 && (
-                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-500/15 text-emerald-400 tabular-nums">
-                      {count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+        {/* Controls: Segmented Filter (Kiri) & Tombol Tersimpan + Search Box (Kanan) */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          {/* Segmented Tab Filter Utama */}
+          <div className="inline-flex p-1 bg-white/10 border border-white/20 rounded-xl self-start flex-wrap gap-0.5 backdrop-blur-md shadow-sm">
+            {(["Semua", "Lomba", "Beasiswa", "Seminar"] as CategoryFilter[]).map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer active:scale-[0.98] ${
+                  selectedCategory === cat
+                    ? "bg-white text-[#004aad] font-bold shadow-md"
+                    : "text-white/80 hover:text-white"
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
           </div>
 
-          {/* Search Box */}
-          <div className="relative w-full sm:w-72">
-            <Search className="w-3.5 h-3.5 text-[#888890] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Cari peluang atau instansi..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-[#0C0C0E] border border-white/[0.07] focus:border-white/20 text-xs sm:text-sm text-[#FAFAFA] placeholder:text-[#888890]/50 focus:outline-none transition shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]"
-            />
+          {/* Sisi Kanan: Tombol Toggle Mandiri Tersimpan (P7) + Search Box */}
+          <div className="flex items-center gap-2.5 w-full md:w-auto">
+            {/* Tombol Toggle Mandiri Tersimpan */}
+            <button
+              type="button"
+              onClick={() => setIsBookmarkedOnly((prev) => !prev)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all duration-150 cursor-pointer active:scale-[0.98] flex items-center gap-2 shrink-0 backdrop-blur-md shadow-sm ${
+                isBookmarkedOnly
+                  ? "bg-amber-400/25 border-amber-300/40 text-amber-300 shadow-sm font-semibold"
+                  : "bg-white/10 border-white/20 text-white/80 hover:text-white hover:border-white/40"
+              }`}
+              title={isBookmarkedOnly ? "Tampilkan semua peluang" : "Filter peluang tersimpan"}
+            >
+              <Bookmark
+                className={`w-3.5 h-3.5 ${
+                  isBookmarkedOnly ? "fill-amber-300 text-amber-300" : "text-white/80"
+                }`}
+              />
+              <span>Tersimpan</span>
+              {bookmarkedIds.size > 0 && (
+                <span
+                  className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full tabular-nums ${
+                    isBookmarkedOnly
+                      ? "bg-amber-400 text-[#004aad] font-bold"
+                      : "bg-white/20 text-white"
+                  }`}
+                >
+                  {bookmarkedIds.size}
+                </span>
+              )}
+            </button>
+
+            {/* Search Box */}
+            <div className="relative w-full md:w-64">
+              <Search className="w-3.5 h-3.5 text-white/60 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Cari peluang atau instansi..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-white/[0.08] border border-white/20 focus:border-white/40 text-xs sm:text-sm text-white placeholder:text-white/50 focus:outline-none transition backdrop-blur-md shadow-sm"
+              />
+            </div>
           </div>
         </div>
 
@@ -308,25 +330,25 @@ export default function FeedDashboard({
             {[1, 2, 3, 4, 5, 6].map((n) => (
               <div
                 key={n}
-                className="rounded-2xl bg-[#0C0C0E] border border-white/[0.07] overflow-hidden animate-pulse space-y-4"
+                className="rounded-2xl surface-panel overflow-hidden animate-pulse space-y-4"
               >
-                <div className="w-full aspect-[16/9] bg-white/[0.04]" />
+                <div className="w-full aspect-[16/9] bg-white/[0.06]" />
                 <div className="p-5 space-y-3">
-                  <div className="h-4 w-24 bg-white/[0.04] rounded" />
-                  <div className="h-5 w-4/5 bg-white/[0.06] rounded" />
-                  <div className="h-4 w-full bg-white/[0.03] rounded" />
+                  <div className="h-4 w-24 bg-white/[0.08] rounded" />
+                  <div className="h-5 w-4/5 bg-white/[0.12] rounded" />
+                  <div className="h-4 w-full bg-white/[0.06] rounded" />
                 </div>
               </div>
             ))}
           </div>
         ) : errorMessage ? (
           /* Error State */
-          <div className="p-8 rounded-2xl bg-[#0C0C0E] border border-rose-900/40 text-center space-y-3">
-            <p className="text-xs text-rose-300">{errorMessage}</p>
+          <div className="p-8 rounded-2xl bg-rose-950/30 border border-rose-500/30 text-center space-y-3">
+            <p className="text-xs text-rose-200">{errorMessage}</p>
             <button
               type="button"
               onClick={loadFeed}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-xs text-[#FAFAFA] border border-white/[0.08] transition active:scale-[0.98] cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-xs text-white border border-white/20 transition active:scale-[0.98] cursor-pointer"
             >
               <RefreshCw className="w-3 h-3" />
               Muat Ulang
@@ -334,19 +356,28 @@ export default function FeedDashboard({
           </div>
         ) : filteredOpportunities.length === 0 ? (
           /* Empty State */
-          <div className="p-12 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] text-center space-y-2">
-            <p className="text-sm font-medium text-[#FAFAFA]">
-              {selectedCategory === "Tersimpan"
+          <div className="surface-panel p-12 rounded-2xl text-center space-y-3">
+            <p className="text-sm font-semibold text-white">
+              {isBookmarkedOnly
                 ? "Belum ada peluang yang disimpan"
                 : "Tidak ada peluang yang cocok"}
             </p>
-            <p className="text-xs text-[#888890]">
-              {selectedCategory === "Tersimpan"
+            <p className="text-xs text-white/80 max-w-sm mx-auto">
+              {isBookmarkedOnly
                 ? "Klik ikon simpan pada kartu peluang untuk menyimpannya ke daftar pribadi Anda."
                 : searchQuery
                 ? `Tidak ditemukan hasil dengan kata kunci "${searchQuery}".`
                 : "Belum ada peluang terverifikasi pada kategori ini."}
             </p>
+            {isBookmarkedOnly && (
+              <button
+                type="button"
+                onClick={() => setIsBookmarkedOnly(false)}
+                className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white hover:bg-white/90 text-xs font-semibold text-[#004aad] shadow-md transition cursor-pointer"
+              >
+                Kembali ke Semua Peluang
+              </button>
+            )}
           </div>
         ) : (
           /* Grid Poster/Flyer Card Layout (Responsive 1-2-3 Col) */
@@ -365,7 +396,7 @@ export default function FeedDashboard({
                   className="surface-panel surface-interactive group rounded-2xl cursor-pointer flex flex-col justify-between overflow-hidden relative animate-fade-slide-up"
                 >
                   {/* Top Area: Poster / Flyer Visual Aspect 16:9 */}
-                  <div className="relative w-full aspect-[16/9] rounded-t-xl overflow-hidden bg-[#0C0C0E] border-b border-white/[0.07]">
+                  <div className="relative w-full aspect-[16/9] rounded-t-xl overflow-hidden bg-[#002b66]/60 border-b border-white/15">
                     <img
                       src={item.image_url || DEFAULT_POSTER_URL}
                       alt={item.title}
@@ -377,14 +408,14 @@ export default function FeedDashboard({
                         }
                       }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0C0C0E]/90 via-transparent to-black/30 pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#002b66]/90 via-transparent to-black/30 pointer-events-none" />
 
                     {/* Overlaid Badges on Poster */}
                     <div className="absolute inset-x-3 top-3 flex items-center justify-between gap-2 pointer-events-none z-10">
                       {/* Left: Lencana Verified */}
                       {item.is_verified && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-[#050505]/85 backdrop-blur-md border border-emerald-500/30 text-emerald-400 px-2.5 py-0.5 rounded-lg shadow-sm">
-                          <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-[#002b66]/90 backdrop-blur-md border border-white/20 text-white px-2.5 py-0.5 rounded-lg shadow-sm">
+                          <ShieldCheck className="w-3 h-3 text-amber-300" />
                           <span>Terverifikasi</span>
                         </span>
                       )}
@@ -393,8 +424,8 @@ export default function FeedDashboard({
                       <span
                         className={`font-mono text-xs font-semibold tabular-nums px-2 py-0.5 rounded-lg backdrop-blur-md border shadow-sm ml-auto ${
                           isHighMatch
-                            ? "bg-[#050505]/85 border-emerald-500/30 text-emerald-400"
-                            : "bg-[#050505]/85 border-white/[0.1] text-[#888890]"
+                            ? "bg-[#002b66]/90 border-amber-300/40 text-amber-300"
+                            : "bg-[#002b66]/90 border-white/20 text-white/80"
                         }`}
                       >
                         {matchScore}% Cocok
@@ -405,28 +436,28 @@ export default function FeedDashboard({
                   {/* Bottom Content Area */}
                   <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
                     <div className="space-y-1.5">
-                      <div className="flex items-center justify-between gap-2 text-xs font-mono text-[#888890]">
+                      <div className="flex items-center justify-between gap-2 text-xs font-mono text-white/70">
                         <span className="truncate">{item.organizer}</span>
-                        <span className="uppercase text-[10px] px-1.5 py-0.2 rounded bg-white/[0.04] border border-white/[0.06]">
+                        <span className="uppercase text-[10px] px-1.5 py-0.2 rounded bg-white/10 border border-white/15 text-white/90">
                           {item.category}
                         </span>
                       </div>
 
-                      <h3 className="text-sm sm:text-base font-semibold tracking-[-0.02em] text-[#FAFAFA] group-hover:text-emerald-400 transition-colors line-clamp-2 leading-snug">
+                      <h3 className="text-sm sm:text-base font-semibold tracking-[-0.02em] text-white group-hover:text-amber-300 transition-colors line-clamp-2 leading-snug">
                         {item.title}
                       </h3>
 
                       {/* Tepat 1 Kalimat Alasan AI (Secondary Clean) */}
-                      <p className="text-xs text-[#888890] leading-relaxed line-clamp-2 pt-1 border-t border-white/[0.04]">
-                        <span className="text-emerald-400/80 mr-1.5 font-medium">&bull;</span>
+                      <p className="text-xs text-white/80 leading-relaxed line-clamp-2 pt-1 border-t border-white/10">
+                        <span className="text-amber-300 mr-1.5 font-bold">&bull;</span>
                         {item.recommendationReason}
                       </p>
                     </div>
 
                     {/* Footer: Deadline & Tombol Bookmark (P7) */}
-                    <div className="pt-2 border-t border-white/[0.04] flex items-center justify-between text-xs">
-                      <span className="text-[11px] font-mono text-[#888890] flex items-center gap-1.5">
-                        <Calendar className="w-3 h-3 text-[#888890]" />
+                    <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs">
+                      <span className="text-[11px] font-mono text-white/70 flex items-center gap-1.5">
+                        <Calendar className="w-3 h-3 text-white/70" />
                         <span className="tabular-nums">{deadline}</span>
                       </span>
 
@@ -437,20 +468,20 @@ export default function FeedDashboard({
                           onClick={(e) => handleToggleBookmark(e, item.id)}
                           className={`p-1.5 rounded-lg border transition active:scale-[0.95] cursor-pointer ${
                             isBookmarked
-                              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                              : "bg-white/[0.04] border-white/[0.07] text-[#888890] hover:text-[#FAFAFA] hover:border-white/[0.14]"
+                              ? "bg-amber-400/20 border-amber-300/40 text-amber-300"
+                              : "bg-white/10 border-white/20 text-white/80 hover:text-white hover:border-white/40"
                           }`}
                           title={isBookmarked ? "Hapus dari Tersimpan" : "Simpan Peluang"}
                           aria-label="Bookmark"
                         >
                           <Bookmark
                             className={`w-3.5 h-3.5 ${
-                              isBookmarked ? "fill-emerald-400" : ""
+                              isBookmarked ? "fill-amber-300" : ""
                             }`}
                           />
                         </button>
 
-                        <div className="p-1.5 rounded-lg border border-white/[0.07] bg-white/[0.04] text-[#888890] group-hover:text-[#FAFAFA] group-hover:border-white/[0.14] transition">
+                        <div className="p-1.5 rounded-lg border border-white/20 bg-white/10 text-white/80 group-hover:text-white group-hover:bg-white/20 transition">
                           <ArrowUpRight className="w-3.5 h-3.5" />
                         </div>
                       </div>
@@ -474,7 +505,7 @@ export default function FeedDashboard({
       />
 
       {/* Editorial Clean Footer */}
-      <footer className="text-center py-6 text-[11px] text-[#888890]/50 font-mono border-t border-white/[0.04] mt-10">
+      <footer className="text-center py-6 text-[11px] text-white/60 font-mono border-t border-white/20 mt-10">
         ANGKASA &bull; EXPLOR[AI]TION HACKATHON
       </footer>
     </div>

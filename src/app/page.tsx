@@ -1,22 +1,24 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import LandingView from "@/components/LandingView";
 import AuthView from "@/components/AuthView";
 import ProfilingView from "@/components/ProfilingView";
 import FeedDashboard from "@/components/FeedDashboard";
 import OpportunityDetail from "@/components/OpportunityDetail";
 import { UserProfile, ScoredOpportunity } from "@/types/schema";
-import { logoutUser } from "@/lib/apiClient";
+import { logoutUser, loginDemoUser } from "@/lib/apiClient";
 import { supabaseClient, isSupabaseConfigured } from "@/lib/supabaseClient";
+import { ArrowLeft } from "lucide-react";
 
-type ActiveView = "auth" | "profiling" | "feed" | "detail";
+type ActiveView = "landing" | "auth" | "profiling" | "feed" | "detail";
 
 const ACTIVE_SESSION_STORAGE_KEY = "angkasa_active_session";
 
 export default function Home() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentProfile, setCurrentProfile] = useState<UserProfile | null>(null);
-  const [currentView, setCurrentView] = useState<ActiveView>("auth");
+  const [currentView, setCurrentView] = useState<ActiveView>("landing");
   const [selectedOpportunity, setSelectedOpportunity] = useState<ScoredOpportunity | null>(null);
   const [isRestoringSession, setIsRestoringSession] = useState<boolean>(true);
 
@@ -114,7 +116,7 @@ export default function Home() {
               localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
               setCurrentUser(null);
               setCurrentProfile(null);
-              setCurrentView("auth");
+              setCurrentView("landing");
             }
           }
         }
@@ -157,6 +159,23 @@ export default function Home() {
     }
   };
 
+  // Handler Login Demo 1-Klik Langsung dari LandingView
+  const handleDirectDemoLogin = async () => {
+    setIsRestoringSession(true);
+    try {
+      const res = await loginDemoUser();
+      if (res.data) {
+        handleAuthSuccess(res.data.user, res.data.profile);
+      } else {
+        setCurrentView("auth");
+      }
+    } catch {
+      setCurrentView("auth");
+    } finally {
+      setIsRestoringSession(false);
+    }
+  };
+
   // Handler Selesai Pengisian Profiling (P2 -> P3)
   const handleProfilingComplete = (updatedProfile: UserProfile) => {
     setCurrentProfile(updatedProfile);
@@ -193,7 +212,7 @@ export default function Home() {
       setCurrentUser(null);
       setCurrentProfile(null);
       setSelectedOpportunity(null);
-      setCurrentView("auth");
+      setCurrentView("landing");
     }
   };
 
@@ -202,11 +221,11 @@ export default function Home() {
   // ==========================================================
   if (isRestoringSession) {
     return (
-      <div className="min-h-screen bg-[#050505] text-[#FAFAFA] flex flex-col items-center justify-center p-4 font-sans selection:bg-emerald-500/20 selection:text-emerald-300">
-        <div className="flex flex-col items-center gap-3 animate-fade-slide-up">
-          <div className="w-8 h-8 rounded-full border-2 border-emerald-500/20 border-t-emerald-400 animate-spin" />
-          <div className="flex items-center gap-2 text-xs font-mono text-[#888890] tracking-wider uppercase">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+      <div className="min-h-screen bg-gradient-to-b from-[#004aad] via-[#003d91] to-[#002b66] text-white flex flex-col items-center justify-center p-4 font-sans selection:bg-amber-400/30 selection:text-amber-200">
+        <div className="flex flex-col items-center gap-3 animate-fade-slide-up p-6 rounded-2xl bg-white/[0.10] backdrop-blur-md border border-white/20 shadow-2xl">
+          <div className="w-8 h-8 rounded-full border-2 border-white/20 border-t-amber-400 animate-spin" />
+          <div className="flex items-center gap-2 text-xs font-mono text-white/90 tracking-wider uppercase">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
             <span>Memulihkan Sesi Angkasa...</span>
           </div>
         </div>
@@ -215,10 +234,38 @@ export default function Home() {
   }
 
   // ==========================================================
+  // VIEW 0: LANDING PAGE (Saat Tidak Ada Sesi Login Aktif)
+  // ==========================================================
+  if (!currentProfile && currentView === "landing") {
+    return (
+      <LandingView
+        onStartAuth={() => setCurrentView("auth")}
+        onDemoLogin={handleDirectDemoLogin}
+      />
+    );
+  }
+
+  // ==========================================================
   // VIEW 1: AUTHENTICATION (P1: Login, Register, 1-Click Demo)
   // ==========================================================
   if (!currentProfile || currentView === "auth") {
-    return <AuthView onSuccess={handleAuthSuccess} />;
+    return (
+      <div className="relative min-h-screen bg-gradient-to-b from-[#004aad] via-[#003d91] to-[#002b66] text-white">
+        {/* Tombol Kembali ke Landing Page */}
+        <div className="absolute top-4 left-4 z-50">
+          <button
+            type="button"
+            onClick={() => setCurrentView("landing")}
+            className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/40 text-xs font-medium text-white transition flex items-center gap-2 cursor-pointer shadow-md active:scale-[0.98] backdrop-blur-md"
+            title="Kembali ke Beranda"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Kembali ke Beranda</span>
+          </button>
+        </div>
+        <AuthView onSuccess={handleAuthSuccess} />
+      </div>
+    );
   }
 
   // ==========================================================
