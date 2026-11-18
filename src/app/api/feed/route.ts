@@ -4,40 +4,91 @@ import { supabaseClient } from "@/lib/supabaseClient";
 import { mockOpportunities } from "@/lib/mockData";
 import { Opportunity, PersonalizedOpportunity, UserProfile } from "@/types/schema";
 
-const MODELS = ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.8-flash"];
+const MODELS = [
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-3.6-flash",
+  "gemini-3.8-flash",
+];
 
 /**
- * Fallback algoritma heuristik lokal jika AI offline atau terkena rate limit
+ * Normalisasi objek peluang agar selaras dengan skema database Supabase
+ * (caption sebagai deadline, description_roadmap sebagai deskripsi)
+ */
+function normalizeOpportunity(opp: any): Opportunity {
+  const deadlineVal = opp.caption || opp.deadline || "Segera";
+  const descVal = opp.description_roadmap || opp.description || "";
+  return {
+    ...opp,
+    caption: deadlineVal,
+    deadline: deadlineVal,
+    description_roadmap: descVal,
+    description: descVal,
+    requirements: Array.isArray(opp.requirements) ? opp.requirements : [],
+    required_skills: Array.isArray(opp.required_skills) ? opp.required_skills : [],
+    is_verified: opp.is_verified ?? true,
+  };
+}
+
+/**
+ * Fallback algoritma heuristik & mentor cerdas lokal jika Gemini AI offline / kena rate limit.
+ * Menghasilkan alasan tajam bergaya mentor karier (anti AI-slop) yang langsung mengaitkan
+ * profiling user dengan peluang yang ditargetkan.
  */
 function calculateLocalMatch(
   user: UserProfile,
   opp: Opportunity
 ): { matchPercentage: number; recommendationReason: string } {
-  const userProfiling = (user.profiling || []).map((p) => p.toLowerCase());
-  const oppSkills = (opp.required_skills || []).map((s) => s.toLowerCase());
-  const oppText = `${opp.title} ${opp.description} ${opp.category}`.toLowerCase();
+  const userProfiling = (user.profiling || []).map((p) => p.trim());
+  const userProfilingLower = userProfiling.map((p) => p.toLowerCase());
+  const oppSkills = (opp.required_skills || []).map((s) => s.trim());
+  const oppSkillsLower = oppSkills.map((s) => s.toLowerCase());
 
-  const matchedSkills = (opp.required_skills || []).filter((s) =>
-    userProfiling.some((up) => up.includes(s.toLowerCase()) || s.toLowerCase().includes(up))
-  );
+  const oppText = `${opp.title} ${opp.description_roadmap || opp.description || ""} ${opp.category}`.toLowerCase();
 
-  const matchedKeywords = userProfiling.filter((up) =>
-    oppText.includes(up.toLowerCase())
-  );
+  // Hitung kecocokan skill eksplisit
+  const matchedSkills: string[] = [];
+  for (const s of oppSkills) {
+    const sLower = s.toLowerCase();
+    if (userProfilingLower.some((up) => up.includes(sLower) || sLower.includes(up))) {
+      matchedSkills.push(s);
+    }
+  }
 
-  let score = 55;
-  score += Math.min(matchedSkills.length * 15, 30);
-  score += Math.min(matchedKeywords.length * 10, 15);
+  // Hitung kecocokan kata kunci minat/bakat terhadap deskripsi peluang
+  const matchedInterests: string[] = [];
+  for (const p of userProfiling) {
+    const pLower = p.toLowerCase();
+    if (oppText.includes(pLower) && !matchedSkills.some((ms) => ms.toLowerCase() === pLower)) {
+      matchedInterests.push(p);
+    }
+  }
 
-  const finalScore = Math.min(Math.max(score, 60), 98);
+  // Pembobotan skor terkalibrasi
+  let score = 62;
+  score += Math.min(matchedSkills.length * 14, 24);
+  score += Math.min(matchedInterests.length * 8, 12);
 
-  let reason = `Peluang kategori ${opp.category} ini sangat strategis untuk memperkuat rekam jejak portofolio Anda.`;
-  if (matchedSkills.length > 0 && matchedKeywords.length > 0) {
-    reason = `Peluang ini sangat cocok karena membutuhkan keahlian ${matchedSkills[0]} serta selaras dengan fokus ${matchedKeywords[0]} Anda.`;
-  } else if (matchedSkills.length > 0) {
-    reason = `Profil keahlian Anda di bidang ${matchedSkills[0]} memenuhi kualifikasi utama yang dicari penyelenggara.`;
-  } else if (matchedKeywords.length > 0) {
-    reason = `Program ini sangat relevan untuk memperdalam fokus minat dan bakat Anda pada ${matchedKeywords[0]}.`;
+  // Bonus relevansi jenjang pendidikan
+  if (user.education_level && oppText.includes(user.education_level.toLowerCase())) {
+    score += 4;
+  }
+
+  const finalScore = Math.min(Math.max(score, 65), 98);
+
+  // Sintesis narasi rekomendasi bergaya Career Mentor (tepat 1 kalimat ringkas <= 15 kata)
+  const primaryCompetency = matchedSkills[0] || userProfiling[0] || "keahlian Anda";
+
+  let reason = "";
+
+  if (opp.category === "Lomba") {
+    reason = `Keahlian ${primaryCompetency} Anda menjadi modal kompetitif utama untuk meraih juara.`;
+  } else if (opp.category === "Beasiswa") {
+    reason = `Fokus ${primaryCompetency} Anda sangat selaras dengan kriteria penerima beasiswa ini.`;
+  } else {
+    // Seminar / Webinar / Workshop
+    reason = `Sangat strategis memperdalam pemahaman ${primaryCompetency} langsung bersama praktisi industri.`;
   }
 
   return { matchPercentage: finalScore, recommendationReason: reason };
@@ -56,7 +107,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const profilingList = Array.isArray(userProfile.profiling) ? userProfile.profiling : [];
+    const profilingList = Array.isArray(userProfile.profiling)
+      ? userProfile.profiling.filter((item: any) => typeof item === "string" && item.trim().length > 0)
+      : [];
 
     if (profilingList.length === 0) {
       return NextResponse.json(
@@ -72,7 +125,7 @@ export async function POST(req: Request) {
     let oppPool: Opportunity[] = [];
 
     if (Array.isArray(rawOpportunities) && rawOpportunities.length > 0) {
-      oppPool = rawOpportunities;
+      oppPool = rawOpportunities.map(normalizeOpportunity);
     } else {
       try {
         const { data, error } = await supabaseClient
@@ -81,20 +134,20 @@ export async function POST(req: Request) {
           .eq("is_verified", true);
 
         if (!error && Array.isArray(data) && data.length > 0) {
-          oppPool = data as Opportunity[];
+          oppPool = data.map(normalizeOpportunity);
         } else {
-          oppPool = mockOpportunities;
+          oppPool = mockOpportunities.map(normalizeOpportunity);
         }
       } catch {
-        oppPool = mockOpportunities;
+        oppPool = mockOpportunities.map(normalizeOpportunity);
       }
     }
 
     if (oppPool.length === 0) {
-      oppPool = mockOpportunities;
+      oppPool = mockOpportunities.map(normalizeOpportunity);
     }
 
-    // 3. Penilaian Berbasis Gemini AI dengan Fallback Berantai
+    // 3. Penilaian Berbasis Gemini AI dengan Fallback Berantai & Prompt Mentor Anti-Slop
     const apiKey = process.env.GEMINI_API_KEY;
     let aiResults: Array<{
       opportunityId: string;
@@ -109,24 +162,26 @@ export async function POST(req: Request) {
         id: o.id,
         title: o.title,
         category: o.category,
+        organizer: o.organizer,
+        deadline: o.caption || o.deadline,
         required_skills: o.required_skills,
-        description: o.description,
+        description: o.description_roadmap || o.description,
       }));
 
-      const prompt = `Anda adalah sistem rekomendasi karir & kompetensi pintar untuk mahasiswa Indonesia (Aplikasi Angkasa).
-Tugas Anda adalah menilai kecocokan profil pengguna terhadap masing-masing peluang yang tersedia berdasarkan data profiling terintegrasi (skills, minat, dan bakat).
+      const prompt = `Anda adalah Senior Career Mentor terkemuka untuk mahasiswa Indonesia di platform "Aplikasi Angkasa".
+Tugas Anda adalah mengevaluasi relevansi profil mahasiswa terhadap setiap peluang yang tersedia.
 
-PROFIL PENGGUNA:
+PROFIL MAHASISWA:
 - Nama: ${userProfile.full_name || "Mahasiswa"}
 - Jenjang: ${userProfile.education_level || "Perguruan Tinggi"}
-- Profiling (Keahlian, Minat & Bakat): ${profilingList.join(", ")}
+- Profiling Keahlian: ${profilingList.join(", ")}
 
 DAFTAR PELUANG:
 ${JSON.stringify(oppContext, null, 2)}
 
-ATURAN PENILAIAN:
-1. Berikan matchPercentage (angka integer 0-100) berdasarkan seberapa relevan peluang tersebut terhadap data profiling pengguna.
-2. Berikan recommendationReason tepat 1 kalimat padat berbahasa Indonesia yang jelas, persuasif, dan menyebutkan relevansi keahlian atau minat pengguna secara spesifik.`;
+ATURAN WAJIB (P3 COMPLIANCE):
+1. matchPercentage: Bilangan bulat integer (0 - 100) berdasarkan relevansi profil.
+2. recommendationReason: WAJIB TEPAT 1 kalimat ringkas berbahasa Indonesia (maksimal 15 kata) yang langsung menyebutkan korelasi keahlian spesifik user terhadap peluang tanpa basa-basi atau kata klise.`;
 
       for (const modelName of MODELS) {
         try {
@@ -134,25 +189,26 @@ ATURAN PENILAIAN:
             model: modelName,
             contents: prompt,
             config: {
+              temperature: 0.2,
               responseMimeType: "application/json",
               responseSchema: {
                 type: Type.ARRAY,
-                description: "Daftar penilaian kecocokan setiap peluang terhadap user",
+                description: "Daftar penilaian kecocokan setiap peluang terhadap mahasiswa",
                 items: {
                   type: Type.OBJECT,
                   properties: {
                     opportunityId: {
                       type: Type.STRING,
-                      description: "ID peluang yang sesuai",
+                      description: "ID unik peluang yang dinilai",
                     },
                     matchPercentage: {
                       type: Type.INTEGER,
-                      description: "Persentase kecocokan 0-100",
+                      description: "Skor persentase kecocokan 0-100",
                     },
                     recommendationReason: {
                       type: Type.STRING,
                       description:
-                        "1 kalimat padat berbahasa Indonesia mengapa peluang ini cocok untuk user",
+                        "Tepat 1 kalimat ringkas (maksimal 15 kata) alasan kecocokan keahlian",
                     },
                   },
                   required: ["opportunityId", "matchPercentage", "recommendationReason"],
@@ -167,19 +223,19 @@ ATURAN PENILAIAN:
             break;
           }
         } catch (err: any) {
-          console.warn(`[AI Feed] Model ${modelName} gagal (${err?.status || err?.message}), mencoba model berikutnya...`);
+          console.warn(`[AI Feed] Model ${modelName} gagal (${err?.status || err?.message}), beralih ke model berikutnya...`);
         }
       }
     }
 
-    // 4. Gabungkan Hasil (AI atau Heuristik Lokal)
+    // 4. Gabungkan Hasil (AI atau Heuristik Mentor Lokal)
     const aiResultMap = new Map<string, { matchPercentage: number; recommendationReason: string }>();
     if (aiResults) {
       for (const item of aiResults) {
         if (item.opportunityId) {
           aiResultMap.set(item.opportunityId, {
             matchPercentage: Math.min(Math.max(item.matchPercentage || 70, 0), 100),
-            recommendationReason: item.recommendationReason || "Peluang yang sangat direkomendasikan untuk pengembangan kompetensi Anda.",
+            recommendationReason: item.recommendationReason || "Peluang strategis untuk memperkuat rekam jejak portofolio dan kompetensi Anda.",
           });
         }
       }
@@ -202,7 +258,7 @@ ATURAN PENILAIAN:
       };
     });
 
-    // 5. Urutkan dari matchPercentage tertinggi ke terendah
+    // 5. Urutkan secara ketat dari matchPercentage tertinggi ke terendah
     personalizedList.sort((a, b) => b.matchPercentage - a.matchPercentage);
 
     return NextResponse.json(personalizedList);

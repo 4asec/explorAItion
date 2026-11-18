@@ -35,18 +35,23 @@ export interface Opportunity {
   title: string;
   category: OpportunityCategory;
   organizer: string;
-  deadline: string;
-  description: string;
-  requirements: string[];
-  required_skills: string[];
+  deadline?: string;
+  caption?: string; // Sesuai kolom database Supabase
+  description?: string;
+  description_roadmap?: string; // Sesuai kolom database Supabase
+  requirements?: string[];
+  required_skills?: string[];
   registration_url: string;
   is_verified: boolean;
+  created_at?: string;
 }
 
 export interface PersonalizedOpportunity extends Opportunity {
   matchPercentage: number;
-  recommendationReason: string; // 1 kalimat padat berbahasa Indonesia
+  recommendationReason: string; // 1–2 kalimat tajam bergaya mentor karier
 }
+
+export type ScoredOpportunity = PersonalizedOpportunity;
 
 export interface DocumentChecklistItem {
   item: string;
@@ -62,6 +67,8 @@ export interface RoadmapResponse {
   document_checklist: DocumentChecklistItem[];
   winning_strategy: string[];
   timeline: RoadmapTimelineItem[];
+  recommended_tools?: string[];
+  curation_tips?: string[];
 }
 
 export interface TeamRequest {
@@ -96,7 +103,34 @@ export interface TeamInvite {
 }
 
 /**
- * Tipe tambahan untuk AI Career & Talent Analyzer
+ * Kontrak Ekstraksi & Verifikasi Informasi Peluang (Anti-Hoaks)
+ */
+export interface ExtractedOpportunity {
+  title: string;
+  organizer: string;
+  category: OpportunityCategory;
+  caption: string;
+  description_roadmap: string;
+  registration_url?: string;
+  requirements?: string[];
+  required_skills?: string[];
+}
+
+export interface OpportunityVerificationResult {
+  isCredible: boolean;
+  trustScore: number; // 0 - 100
+  redFlags: string[];
+  verdict: string;
+  extractedOpportunity: ExtractedOpportunity;
+  // Kompatibilitas dengan analisis lama
+  skor_kesiapan?: number;
+  diagnosis_singkat?: string;
+  rekomendasi_aksi?: string[];
+  _modelUsed?: string;
+}
+
+/**
+ * Tipe tambahan untuk AI Career & Talent Analyzer (Legacy / Backward Compatibility)
  */
 export interface AIAnalysisResult {
   skor_kesiapan: number;

@@ -8,6 +8,7 @@ import {
   RoadmapResponse,
   TeamRequest,
   CreateTeamPayload,
+  OpportunityVerificationResult,
 } from "@/types/schema";
 
 /**
@@ -293,6 +294,25 @@ export async function logoutUser(): Promise<{ success: boolean; error: string | 
 // =================================================================
 
 /**
+ * Helper untuk invalidasi cache session feed saat profil diperbarui
+ */
+function invalidateUserFeedCache(userId: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key && key.startsWith(`angkasa_feed_${userId}`)) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((k) => sessionStorage.removeItem(k));
+  } catch (e) {
+    console.warn("[Cache Invalidation Warning]", e);
+  }
+}
+
+/**
  * Memperbarui data profiling minat, bakat, dan keahlian pengguna ke 1 kolom `profiling: string[]`
  */
 export async function updateUserProfile(
@@ -305,6 +325,9 @@ export async function updateUserProfile(
       : Array.isArray(updates?.profiling)
       ? updates.profiling
       : [];
+
+    // Invalidate feed cache agar rekomendasi langsung diperbarui
+    invalidateUserFeedCache(userId);
 
     if (isSupabaseConfigured) {
       const { data, error } = await supabaseClient
@@ -337,15 +360,34 @@ export async function updateUserProfile(
 }
 
 // =================================================================
-// 3. AI PERSONALIZED FEED (P3)
+// 3. AI PERSONALIZED FEED (P3) DENGAN SESSION STORAGE CACHING
 // =================================================================
 
 /**
  * Mengambil daftar rekomendasi peluang terpersonalisasi AI via POST /api/feed
+ * Dilengkapi caching sessionStorage berdasarkan ID & tag profiling
  */
 export async function fetchPersonalizedFeed(
   userProfile: UserProfile
 ): Promise<ApiResponse<PersonalizedOpportunity[]>> {
+  const profilingHash = (userProfile.profiling || []).slice().sort().join(",");
+  const cacheKey = `angkasa_feed_${userProfile.id}_${profilingHash}`;
+
+  // 1. Periksa cache sessionStorage jika tersedia
+  if (typeof window !== "undefined") {
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return { data: parsed as PersonalizedOpportunity[], error: null };
+        }
+      }
+    } catch (e) {
+      console.warn("[Feed Cache Read Warning]", e);
+    }
+  }
+
   try {
     const res = await fetch("/api/feed", {
       method: "POST",
@@ -362,14 +404,25 @@ export async function fetchPersonalizedFeed(
       };
     }
 
-    return { data: json as PersonalizedOpportunity[], error: null };
+    const data = json as PersonalizedOpportunity[];
+
+    // Simpan ke cache sessionStorage
+    if (typeof window !== "undefined" && Array.isArray(data)) {
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify(data));
+      } catch (e) {
+        console.warn("[Feed Cache Write Warning]", e);
+      }
+    }
+
+    return { data, error: null };
   } catch (err) {
     console.warn("[fetchPersonalizedFeed Network Warning]", err);
     // Fallback darurat jika jaringan fetch putus
     const emergencyList: PersonalizedOpportunity[] = mockOpportunities.map((o, idx) => ({
       ...o,
       matchPercentage: 95 - idx * 2,
-      recommendationReason: `Peluang kategori ${o.category} ini sangat selaras dengan profil kompetensi dan minat Anda.`,
+      recommendationReason: `Sangat selaras dengan keahlian Anda di bidang ${o.category}.`,
     }));
 
     return { data: emergencyList, error: null };
@@ -377,16 +430,46 @@ export async function fetchPersonalizedFeed(
 }
 
 // =================================================================
-// 4. AI PREPARATION ROADMAP (P5)
+// 4. AI PREPARATION ROADMAP (P5) DENGAN SESSION STORAGE CACHING
 // =================================================================
 
 /**
  * Menghasilkan roadmap persiapan berstruktur via POST /api/roadmap
+ * Mendukung pemanggilan fleksibel (userProfile, opportunity) maupun (opportunity, userProfile)
+ * Dilengkapi caching sessionStorage berdasarkan ID user & ID peluang
  */
 export async function fetchPreparationRoadmap(
-  userProfile: UserProfile,
-  opportunity: Opportunity
+  arg1: UserProfile | Opportunity,
+  arg2: Opportunity | UserProfile
 ): Promise<ApiResponse<RoadmapResponse>> {
+  let userProfile: UserProfile;
+  let opportunity: Opportunity;
+
+  if ("profiling" in arg1 || "email" in arg1) {
+    userProfile = arg1 as UserProfile;
+    opportunity = arg2 as Opportunity;
+  } else {
+    opportunity = arg1 as Opportunity;
+    userProfile = arg2 as UserProfile;
+  }
+
+  const cacheKey = `angkasa_roadmap_${userProfile.id}_${opportunity.id}`;
+
+  // 1. Periksa cache sessionStorage jika tersedia
+  if (typeof window !== "undefined") {
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && Array.isArray(parsed.timeline)) {
+          return { data: parsed as RoadmapResponse, error: null };
+        }
+      }
+    } catch (e) {
+      console.warn("[Roadmap Cache Read Warning]", e);
+    }
+  }
+
   try {
     const res = await fetch("/api/roadmap", {
       method: "POST",
@@ -403,7 +486,18 @@ export async function fetchPreparationRoadmap(
       };
     }
 
-    return { data: json as RoadmapResponse, error: null };
+    const data = json as RoadmapResponse;
+
+    // Simpan ke cache sessionStorage
+    if (typeof window !== "undefined" && data) {
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify(data));
+      } catch (e) {
+        console.warn("[Roadmap Cache Write Warning]", e);
+      }
+    }
+
+    return { data, error: null };
   } catch (err) {
     return {
       data: null,
@@ -413,13 +507,42 @@ export async function fetchPreparationRoadmap(
 }
 
 // =================================================================
-// 5. BOOKMARKS (P7)
+// 5. BOOKMARKS (P7) DENGAN PERSISTENSI SUPABASE & LOCALSTORAGE
 // =================================================================
+
+/**
+ * Helper penyimpanan bookmark per-user di localStorage
+ */
+function getStorageBookmarks(userId: string): string[] {
+  if (typeof window === "undefined") return Array.from(localBookmarksCache);
+  try {
+    const stored = localStorage.getItem(`angkasa_bookmarks_${userId}`);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {
+    console.warn("[Storage Bookmarks Read Error]", e);
+  }
+  return Array.from(localBookmarksCache);
+}
+
+function setStorageBookmarks(userId: string, ids: string[]): void {
+  ids.forEach((id) => localBookmarksCache.add(id));
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(`angkasa_bookmarks_${userId}`, JSON.stringify(ids));
+  } catch (e) {
+    console.warn("[Storage Bookmarks Write Error]", e);
+  }
+}
 
 /**
  * Mengambil daftar opportunityId yang dibookmark oleh pengguna
  */
 export async function getUserBookmarks(userId: string): Promise<ApiResponse<string[]>> {
+  const localList = getStorageBookmarks(userId);
+
   try {
     if (isSupabaseConfigured) {
       const { data, error } = await supabaseClient
@@ -429,14 +552,14 @@ export async function getUserBookmarks(userId: string): Promise<ApiResponse<stri
 
       if (!error && Array.isArray(data)) {
         const ids = data.map((b: { opportunity_id: string }) => b.opportunity_id);
+        setStorageBookmarks(userId, ids);
         return { data: ids, error: null };
       }
     }
 
-    // Fallback local memory
-    return { data: Array.from(localBookmarksCache), error: null };
+    return { data: localList, error: null };
   } catch (err) {
-    return { data: Array.from(localBookmarksCache), error: null };
+    return { data: localList, error: null };
   }
 }
 
@@ -447,9 +570,11 @@ export async function toggleBookmark(
   userId: string,
   opportunityId: string
 ): Promise<{ isBookmarked: boolean; error: string | null }> {
+  const currentList = getStorageBookmarks(userId);
+  const alreadyBookmarked = currentList.includes(opportunityId);
+
   try {
     if (isSupabaseConfigured) {
-      // Periksa apakah bookmark sudah ada
       const { data: existing } = await supabaseClient
         .from("bookmarks")
         .select("id")
@@ -465,8 +590,11 @@ export async function toggleBookmark(
           .eq("id", existing.id);
 
         if (delErr) {
-          return { isBookmarked: true, error: "Gagal mencabut bookmark." };
+          console.warn("[Bookmark Delete Remote Warning]", delErr.message);
         }
+
+        const nextList = currentList.filter((id) => id !== opportunityId);
+        setStorageBookmarks(userId, nextList);
         localBookmarksCache.delete(opportunityId);
         return { isBookmarked: false, error: null };
       } else {
@@ -476,23 +604,35 @@ export async function toggleBookmark(
           .insert({ user_id: userId, opportunity_id: opportunityId });
 
         if (insErr) {
-          return { isBookmarked: false, error: "Gagal menyimpan bookmark." };
+          console.warn("[Bookmark Insert Remote Warning]", insErr.message);
         }
+
+        const nextList = Array.from(new Set([...currentList, opportunityId]));
+        setStorageBookmarks(userId, nextList);
         localBookmarksCache.add(opportunityId);
         return { isBookmarked: true, error: null };
       }
     }
 
-    // Toggle Fallback Mode
-    if (localBookmarksCache.has(opportunityId)) {
+    // Fallback mode menggunakan localStorage per-user
+    if (alreadyBookmarked) {
+      const nextList = currentList.filter((id) => id !== opportunityId);
+      setStorageBookmarks(userId, nextList);
       localBookmarksCache.delete(opportunityId);
       return { isBookmarked: false, error: null };
     } else {
+      const nextList = Array.from(new Set([...currentList, opportunityId]));
+      setStorageBookmarks(userId, nextList);
       localBookmarksCache.add(opportunityId);
       return { isBookmarked: true, error: null };
     }
   } catch (err: any) {
-    return { isBookmarked: false, error: "Terjadi kesalahan saat memproses bookmark." };
+    // Tangani offline fallback agar UI tidak pernah crash
+    const nextList = alreadyBookmarked
+      ? currentList.filter((id) => id !== opportunityId)
+      : Array.from(new Set([...currentList, opportunityId]));
+    setStorageBookmarks(userId, nextList);
+    return { isBookmarked: !alreadyBookmarked, error: null };
   }
 }
 
@@ -622,7 +762,42 @@ export async function sendTeamInvite(
 }
 
 // =================================================================
-// 7. ALIAS KONSISTENSI PENAMAAN FUNGSI
+// 7. VERIFIKASI PELUANG & ANTI-HOAKS (ANTI-HOAX ENGINE)
+// =================================================================
+
+/**
+ * Memverifikasi keabsahan broadcast atau caption peluang serta mengekstraksi data terstruktur
+ */
+export async function verifyOpportunity(
+  text: string
+): Promise<ApiResponse<OpportunityVerificationResult>> {
+  try {
+    const res = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      return {
+        data: null,
+        error: json.error || "Gagal melakukan verifikasi peluang.",
+      };
+    }
+
+    return { data: json as OpportunityVerificationResult, error: null };
+  } catch (err) {
+    return {
+      data: null,
+      error: "Gagal terhubung ke layanan verifikasi peluang.",
+    };
+  }
+}
+
+// =================================================================
+// 8. ALIAS KONSISTENSI PENAMAAN FUNGSI
 // =================================================================
 export const loginWithDemo = loginDemoUser;
 export const updateProfile = updateUserProfile;
@@ -631,4 +806,6 @@ export const getPreparationRoadmap = fetchPreparationRoadmap;
 export const login = loginUser;
 export const register = registerUser;
 export const logout = logoutUser;
+export const analyzeOpportunity = verifyOpportunity;
+export const fetchTeamRequests = getTeamRequests;
 
