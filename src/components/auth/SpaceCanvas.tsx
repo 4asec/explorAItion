@@ -34,11 +34,12 @@ export default function SpaceCanvas() {
     const starCount = 110;
     const stars: Star[] = [];
     const colors = [
-      "rgba(52, 211, 153, ",  // emerald-400
-      "rgba(110, 231, 183, ", // emerald-300
-      "rgba(148, 163, 184, ", // slate-400
+      "rgba(192, 132, 252, ", // purple-400
+      "rgba(216, 180, 254, ", // purple-300
+      "rgba(147, 51, 234, ",  // purple-600
       "rgba(241, 245, 249, ", // slate-100
-      "rgba(45, 212, 191, ",  // teal-400
+      "rgba(148, 163, 184, ", // slate-400
+      "rgba(52, 211, 153, ",  // emerald-400
     ];
 
     for (let i = 0; i < starCount; i++) {

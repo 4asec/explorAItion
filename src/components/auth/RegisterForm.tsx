@@ -1,23 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  User,
-  Mail,
-  Lock,
-  Building2,
-  Calendar,
-  GraduationCap,
-  MapPin,
-  Eye,
-  EyeOff,
-  ArrowRight,
-  Loader2,
-} from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, ArrowRight, Loader2, Check } from "lucide-react";
 import { registerUser } from "@/lib/apiClient";
 import { UserProfile, RegisterPayload } from "@/types/schema";
 
 interface RegisterFormProps {
+  currentStep: number;
+  setCurrentStep: (step: number) => void;
   onSuccess: (user: any, profile: UserProfile) => void;
   onError: (msg: string) => void;
   isLoading: boolean;
@@ -75,9 +65,14 @@ const EDUCATION_LEVEL_OPTIONS = [
 ];
 
 /**
- * Komponen Form Registrasi (P1: 9 Field Wajib Identitas Akademik Mahasiswa)
+ * Formulir Pendaftaran Bertahap (RegisterForm)
+ * - 100% mematuhi 9 kolom skema database tabel `profiles` di REQUIREMENTS.md
+ * - Menggunakan token input & tombol persis sesuai desain halaman utama
+ * - Format ringkas anti-scroll di layar laptop
  */
 export default function RegisterForm({
+  currentStep,
+  setCurrentStep,
   onSuccess,
   onError,
   isLoading,
@@ -85,10 +80,9 @@ export default function RegisterForm({
 }: RegisterFormProps) {
   const [form, setForm] = useState({
     full_name: "",
-    email: "",
     username: "",
+    email: "",
     password: "",
-    confirmPassword: "",
     institution: "",
     birth_date: "",
     education_level: EDUCATION_LEVEL_OPTIONS[3],
@@ -97,10 +91,10 @@ export default function RegisterForm({
   });
 
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const validate = (): boolean => {
+  // Validasi Step 1: Akun & Kredensial
+  const validateStep1 = (): boolean => {
     const errors: Record<string, string> = {};
 
     if (!form.full_name.trim()) {
@@ -109,16 +103,16 @@ export default function RegisterForm({
       errors.full_name = "Nama lengkap minimal 2 karakter.";
     }
 
+    if (!form.username.trim()) {
+      errors.username = "Username wajib diisi.";
+    } else if (!/^[a-zA-Z0-9_]{3,20}$/.test(form.username.trim())) {
+      errors.username = "Username 3-20 karakter alfanumerik.";
+    }
+
     if (!form.email.trim()) {
       errors.email = "Email wajib diisi.";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
       errors.email = "Format email tidak valid.";
-    }
-
-    if (!form.username.trim()) {
-      errors.username = "Username wajib diisi.";
-    } else if (!/^[a-zA-Z0-9_]{3,20}$/.test(form.username.trim())) {
-      errors.username = "Username 3-20 karakter alfanumerik (tanpa spasi).";
     }
 
     if (!form.password) {
@@ -127,12 +121,16 @@ export default function RegisterForm({
       errors.password = "Kata sandi minimal 6 karakter.";
     }
 
-    if (form.password !== form.confirmPassword) {
-      errors.confirmPassword = "Konfirmasi kata sandi tidak cocok.";
-    }
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Validasi Step 2: Data Akademik
+  const validateStep2 = (): boolean => {
+    const errors: Record<string, string> = {};
 
     if (!form.institution.trim()) {
-      errors.institution = "Asal institusi / universitas wajib diisi.";
+      errors.institution = "Institusi / sekolah wajib diisi.";
     }
 
     if (!form.birth_date) {
@@ -142,6 +140,14 @@ export default function RegisterForm({
     if (!form.education_level) {
       errors.education_level = "Jenjang pendidikan wajib dipilih.";
     }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Validasi Step 3: Domisili
+  const validateStep3 = (): boolean => {
+    const errors: Record<string, string> = {};
 
     if (!form.province) {
       errors.province = "Asal provinsi wajib dipilih.";
@@ -155,9 +161,23 @@ export default function RegisterForm({
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleNextStep1 = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (validateStep1()) {
+      setCurrentStep(2);
+    }
+  };
+
+  const handleNextStep2 = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (validateStep2()) {
+      setCurrentStep(3);
+    }
+  };
+
+  const handleFinalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateStep3()) return;
 
     setIsLoading(true);
     try {
@@ -176,14 +196,12 @@ export default function RegisterForm({
       const response = await registerUser(payload);
 
       if (response.error || !response.data) {
-        onError(
-          response.error || "Gagal melakukan pendaftaran. Silakan coba kembali."
-        );
+        onError(response.error || "Gagal melakukan pendaftaran. Silakan coba kembali.");
         return;
       }
 
       onSuccess(response.data.user, response.data.profile);
-    } catch (err) {
+    } catch {
       onError("Terjadi gangguan jaringan saat memproses pendaftaran.");
     } finally {
       setIsLoading(false);
@@ -191,296 +209,280 @@ export default function RegisterForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3.5 max-h-[460px] overflow-y-auto pr-1" noValidate>
-      {/* Row 1: Nama Lengkap & Username */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-300">
-            Nama Lengkap <span className="text-emerald-400">*</span>
-          </label>
-          <div className="relative">
-            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+    <div className="w-full">
+      {/* ============================================================== */}
+      {/* STEP 1: DAFTAR AKUN (Nama Lengkap, Username, Email, Kata Sandi) */}
+      {/* ============================================================== */}
+      {currentStep === 1 && (
+        <form onSubmit={handleNextStep1} className="space-y-2.5 sm:space-y-3" noValidate>
+          {/* Kolom Tunggal: Nama Lengkap (full_name) */}
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-white/90">
+              Nama Lengkap <span className="text-amber-300">*</span>
+            </label>
             <input
               type="text"
-              placeholder="Ahmad Zaki"
+              placeholder="Contoh: John Francisco"
               value={form.full_name}
               onChange={(e) => {
                 setForm({ ...form, full_name: e.target.value });
                 if (fieldErrors.full_name) setFieldErrors({ ...fieldErrors, full_name: "" });
               }}
-              className={`w-full pl-9 pr-3 py-2 rounded-xl bg-slate-950 border ${
-                fieldErrors.full_name ? "border-rose-500" : "border-slate-800"
-              } text-slate-100 text-xs focus:border-emerald-500 focus:outline-none`}
+              className={`w-full bg-white/[0.08] border ${
+                fieldErrors.full_name ? "border-rose-400" : "border-white/20 focus:border-white/50"
+              } rounded-xl px-3.5 py-2 text-white placeholder:text-white/50 text-sm focus:outline-none transition font-normal`}
             />
+            {fieldErrors.full_name && (
+              <p className="text-[11px] text-rose-300 font-normal">{fieldErrors.full_name}</p>
+            )}
           </div>
-          {fieldErrors.full_name && (
-            <p className="text-[11px] text-rose-400">{fieldErrors.full_name}</p>
-          )}
-        </div>
 
-        <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-300">
-            Username <span className="text-emerald-400">*</span>
-          </label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-bold">
-              @
-            </span>
+          {/* Kolom Username */}
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-white/90">
+              Username <span className="text-amber-300">*</span>
+            </label>
             <input
               type="text"
-              placeholder="ahmadzaki"
+              placeholder="Contoh: johnfrancisco"
               value={form.username}
               onChange={(e) => {
-                setForm({
-                  ...form,
-                  username: e.target.value.replace(/\s+/g, ""),
-                });
+                setForm({ ...form, username: e.target.value.replace(/\s+/g, "") });
                 if (fieldErrors.username) setFieldErrors({ ...fieldErrors, username: "" });
               }}
-              className={`w-full pl-8 pr-3 py-2 rounded-xl bg-slate-950 border ${
-                fieldErrors.username ? "border-rose-500" : "border-slate-800"
-              } text-slate-100 text-xs focus:border-emerald-500 focus:outline-none`}
+              className={`w-full bg-white/[0.08] border ${
+                fieldErrors.username ? "border-rose-400" : "border-white/20 focus:border-white/50"
+              } rounded-xl px-3.5 py-2 text-white placeholder:text-white/50 text-sm focus:outline-none transition font-normal`}
             />
+            {fieldErrors.username && (
+              <p className="text-[11px] text-rose-300 font-normal">{fieldErrors.username}</p>
+            )}
           </div>
-          {fieldErrors.username && (
-            <p className="text-[11px] text-rose-400">{fieldErrors.username}</p>
-          )}
-        </div>
-      </div>
 
-      {/* Row 2: Email */}
-      <div className="space-y-1">
-        <label className="block text-xs font-medium text-slate-300">
-          Alamat Email <span className="text-emerald-400">*</span>
-        </label>
-        <div className="relative">
-          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
-          <input
-            type="email"
-            placeholder="nama@kampus.ac.id"
-            value={form.email}
-            onChange={(e) => {
-              setForm({ ...form, email: e.target.value });
-              if (fieldErrors.email) setFieldErrors({ ...fieldErrors, email: "" });
-            }}
-            className={`w-full pl-9 pr-3 py-2 rounded-xl bg-slate-950 border ${
-              fieldErrors.email ? "border-rose-500" : "border-slate-800"
-            } text-slate-100 text-xs focus:border-emerald-500 focus:outline-none`}
-          />
-        </div>
-        {fieldErrors.email && (
-          <p className="text-[11px] text-rose-400">{fieldErrors.email}</p>
-        )}
-      </div>
-
-      {/* Row 3: Kata Sandi & Konfirmasi */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-300">
-            Kata Sandi <span className="text-emerald-400">*</span>
-          </label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+          {/* Kolom Email */}
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-white/90">
+              Email <span className="text-amber-300">*</span>
+            </label>
             <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Min. 6 karakter"
-              value={form.password}
+              type="email"
+              placeholder="Contoh: johnfrans@gmail.com"
+              value={form.email}
               onChange={(e) => {
-                setForm({ ...form, password: e.target.value });
-                if (fieldErrors.password) setFieldErrors({ ...fieldErrors, password: "" });
+                setForm({ ...form, email: e.target.value });
+                if (fieldErrors.email) setFieldErrors({ ...fieldErrors, email: "" });
               }}
-              className={`w-full pl-9 pr-8 py-2 rounded-xl bg-slate-950 border ${
-                fieldErrors.password ? "border-rose-500" : "border-slate-800"
-              } text-slate-100 text-xs focus:border-emerald-500 focus:outline-none`}
+              className={`w-full bg-white/[0.08] border ${
+                fieldErrors.email ? "border-rose-400" : "border-white/20 focus:border-white/50"
+              } rounded-xl px-3.5 py-2 text-white placeholder:text-white/50 text-sm focus:outline-none transition font-normal`}
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-            >
-              {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-            </button>
+            {fieldErrors.email && (
+              <p className="text-[11px] text-rose-300 font-normal">{fieldErrors.email}</p>
+            )}
           </div>
-          {fieldErrors.password && (
-            <p className="text-[11px] text-rose-400">{fieldErrors.password}</p>
-          )}
-        </div>
 
-        <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-300">
-            Ulangi Sandi <span className="text-emerald-400">*</span>
-          </label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
-            <input
-              type={showConfirmPassword ? "text" : "password"}
-              placeholder="Ketik ulang"
-              value={form.confirmPassword}
-              onChange={(e) => {
-                setForm({ ...form, confirmPassword: e.target.value });
-                if (fieldErrors.confirmPassword)
-                  setFieldErrors({ ...fieldErrors, confirmPassword: "" });
-              }}
-              className={`w-full pl-9 pr-8 py-2 rounded-xl bg-slate-950 border ${
-                fieldErrors.confirmPassword ? "border-rose-500" : "border-slate-800"
-              } text-slate-100 text-xs focus:border-emerald-500 focus:outline-none`}
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-            >
-              {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-            </button>
+          {/* Kolom Kata Sandi */}
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-white/90">
+              Kata Sandi <span className="text-amber-300">*</span>
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Masukkan kata sandi"
+                value={form.password}
+                onChange={(e) => {
+                  setForm({ ...form, password: e.target.value });
+                  if (fieldErrors.password) setFieldErrors({ ...fieldErrors, password: "" });
+                }}
+                className={`w-full bg-white/[0.08] border ${
+                  fieldErrors.password ? "border-rose-400" : "border-white/20 focus:border-white/50"
+                } rounded-xl pl-3.5 pr-10 py-2 text-white placeholder:text-white/50 text-sm focus:outline-none transition font-normal`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white p-1 cursor-pointer"
+                aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            <p className="text-[10px] text-white/60 font-normal">Minimal 6 karakter.</p>
+            {fieldErrors.password && (
+              <p className="text-[11px] text-rose-300 font-normal">{fieldErrors.password}</p>
+            )}
           </div>
-          {fieldErrors.confirmPassword && (
-            <p className="text-[11px] text-rose-400">{fieldErrors.confirmPassword}</p>
-          )}
-        </div>
-      </div>
 
-      {/* Row 4: Institusi & Tanggal Lahir */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-300">
-            Institusi / Kampus <span className="text-emerald-400">*</span>
-          </label>
-          <div className="relative">
-            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+          {/* Tombol Lanjut ke Tahap 2 (CTA Token) */}
+          <button
+            type="submit"
+            className="w-full mt-1.5 bg-white text-[#004aad] font-semibold rounded-xl px-5 py-2.5 hover:bg-white/90 transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer text-sm"
+          >
+            <span>Lanjutkan ke Identitas Akademik</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </form>
+      )}
+
+      {/* ============================================================== */}
+      {/* STEP 2: IDENTITAS AKADEMIK (Institusi, Tanggal Lahir, Jenjang) */}
+      {/* ============================================================== */}
+      {currentStep === 2 && (
+        <form onSubmit={handleNextStep2} className="space-y-3" noValidate>
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-white/90">
+              Institusi / Perguruan Tinggi / Sekolah <span className="text-amber-300">*</span>
+            </label>
             <input
               type="text"
-              placeholder="ITB, UI, Polinema"
+              placeholder="Contoh: Institut Teknologi Bandung, Polinema"
               value={form.institution}
               onChange={(e) => {
                 setForm({ ...form, institution: e.target.value });
-                if (fieldErrors.institution)
-                  setFieldErrors({ ...fieldErrors, institution: "" });
+                if (fieldErrors.institution) setFieldErrors({ ...fieldErrors, institution: "" });
               }}
-              className={`w-full pl-9 pr-3 py-2 rounded-xl bg-slate-950 border ${
-                fieldErrors.institution ? "border-rose-500" : "border-slate-800"
-              } text-slate-100 text-xs focus:border-emerald-500 focus:outline-none`}
+              className={`w-full bg-white/[0.08] border ${
+                fieldErrors.institution ? "border-rose-400" : "border-white/20 focus:border-white/50"
+              } rounded-xl px-3.5 py-2 text-white placeholder:text-white/50 text-sm focus:outline-none transition font-normal`}
             />
+            {fieldErrors.institution && (
+              <p className="text-[11px] text-rose-300 font-normal">{fieldErrors.institution}</p>
+            )}
           </div>
-          {fieldErrors.institution && (
-            <p className="text-[11px] text-rose-400">{fieldErrors.institution}</p>
-          )}
-        </div>
 
-        <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-300">
-            Tanggal Lahir <span className="text-emerald-400">*</span>
-          </label>
-          <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-white/90">
+              Tanggal Lahir <span className="text-amber-300">*</span>
+            </label>
             <input
               type="date"
               value={form.birth_date}
               onChange={(e) => {
                 setForm({ ...form, birth_date: e.target.value });
-                if (fieldErrors.birth_date)
-                  setFieldErrors({ ...fieldErrors, birth_date: "" });
+                if (fieldErrors.birth_date) setFieldErrors({ ...fieldErrors, birth_date: "" });
               }}
-              className={`w-full pl-9 pr-3 py-2 rounded-xl bg-slate-950 border ${
-                fieldErrors.birth_date ? "border-rose-500" : "border-slate-800"
-              } text-slate-100 text-xs focus:border-emerald-500 focus:outline-none`}
+              className={`w-full bg-white/[0.08] border ${
+                fieldErrors.birth_date ? "border-rose-400" : "border-white/20 focus:border-white/50"
+              } rounded-xl px-3.5 py-2 text-white text-sm focus:outline-none transition font-normal`}
             />
+            {fieldErrors.birth_date && (
+              <p className="text-[11px] text-rose-300 font-normal">{fieldErrors.birth_date}</p>
+            )}
           </div>
-          {fieldErrors.birth_date && (
-            <p className="text-[11px] text-rose-400">{fieldErrors.birth_date}</p>
-          )}
-        </div>
-      </div>
 
-      {/* Row 5: Jenjang Pendidikan */}
-      <div className="space-y-1">
-        <label className="block text-xs font-medium text-slate-300">
-          Jenjang Pendidikan <span className="text-emerald-400">*</span>
-        </label>
-        <div className="relative">
-          <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
-          <select
-            value={form.education_level}
-            onChange={(e) =>
-              setForm({ ...form, education_level: e.target.value })
-            }
-            className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-xs focus:border-emerald-500 focus:outline-none appearance-none cursor-pointer"
-          >
-            {EDUCATION_LEVEL_OPTIONS.map((level) => (
-              <option key={level} value={level} className="bg-slate-900 text-slate-100">
-                {level}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-white/90">
+              Jenjang Pendidikan <span className="text-amber-300">*</span>
+            </label>
+            <select
+              value={form.education_level}
+              onChange={(e) => setForm({ ...form, education_level: e.target.value })}
+              className="w-full bg-white/[0.08] border border-white/20 rounded-xl px-3.5 py-2 text-white text-sm focus:outline-none focus:border-white/50 transition appearance-none cursor-pointer font-normal"
+            >
+              {EDUCATION_LEVEL_OPTIONS.map((lvl) => (
+                <option key={lvl} value={lvl} className="bg-[#003d91] text-white font-normal">
+                  {lvl}
+                </option>
+              ))}
+            </select>
+          </div>
 
-      {/* Row 6: Asal Provinsi & Asal Kota */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-300">
-            Asal Provinsi <span className="text-emerald-400">*</span>
-          </label>
-          <div className="relative">
-            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+          {/* Tombol Navigasi Tahap 2 */}
+          <div className="flex gap-2.5 pt-1.5">
+            <button
+              type="button"
+              onClick={() => setCurrentStep(1)}
+              className="flex-1 bg-white/[0.12] text-white border border-white/20 rounded-xl px-4 py-2.5 hover:bg-white/[0.18] transition flex items-center justify-center gap-1.5 cursor-pointer text-sm font-medium"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Kembali</span>
+            </button>
+            <button
+              type="submit"
+              className="flex-1 bg-white text-[#004aad] font-semibold rounded-xl px-5 py-2.5 hover:bg-white/90 transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer text-sm"
+            >
+              <span>Lanjutkan</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* ============================================================== */}
+      {/* STEP 3: DATA DOMISILI (Asal Provinsi & Asal Kota/Kabupaten)    */}
+      {/* ============================================================== */}
+      {currentStep === 3 && (
+        <form onSubmit={handleFinalSubmit} className="space-y-3" noValidate>
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-white/90">
+              Asal Provinsi <span className="text-amber-300">*</span>
+            </label>
             <select
               value={form.province}
-              onChange={(e) =>
-                setForm({ ...form, province: e.target.value })
-              }
-              className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-xs focus:border-emerald-500 focus:outline-none appearance-none cursor-pointer"
+              onChange={(e) => setForm({ ...form, province: e.target.value })}
+              className="w-full bg-white/[0.08] border border-white/20 rounded-xl px-3.5 py-2 text-white text-sm focus:outline-none focus:border-white/50 transition appearance-none cursor-pointer font-normal"
             >
               {PROVINCE_OPTIONS.map((prov) => (
-                <option key={prov} value={prov} className="bg-slate-900 text-slate-100">
+                <option key={prov} value={prov} className="bg-[#003d91] text-white font-normal">
                   {prov}
                 </option>
               ))}
             </select>
           </div>
-        </div>
 
-        <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-300">
-            Asal Kota / Kabupaten <span className="text-emerald-400">*</span>
-          </label>
-          <div className="relative">
-            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-white/90">
+              Asal Kota / Kabupaten <span className="text-amber-300">*</span>
+            </label>
             <input
               type="text"
-              placeholder="Surabaya / Bandung"
+              placeholder="Contoh: Surabaya, Bandung, Jakarta Selatan"
               value={form.city}
               onChange={(e) => {
                 setForm({ ...form, city: e.target.value });
                 if (fieldErrors.city) setFieldErrors({ ...fieldErrors, city: "" });
               }}
-              className={`w-full pl-9 pr-3 py-2 rounded-xl bg-slate-950 border ${
-                fieldErrors.city ? "border-rose-500" : "border-slate-800"
-              } text-slate-100 text-xs focus:border-emerald-500 focus:outline-none`}
+              className={`w-full bg-white/[0.08] border ${
+                fieldErrors.city ? "border-rose-400" : "border-white/20 focus:border-white/50"
+              } rounded-xl px-3.5 py-2 text-white placeholder:text-white/50 text-sm focus:outline-none transition font-normal`}
             />
+            {fieldErrors.city && (
+              <p className="text-[11px] text-rose-300 font-normal">{fieldErrors.city}</p>
+            )}
           </div>
-          {fieldErrors.city && (
-            <p className="text-[11px] text-rose-400">{fieldErrors.city}</p>
-          )}
-        </div>
-      </div>
 
-      {/* Submit Register Button */}
-      <button
-        type="submit"
-        disabled={isLoading}
-        className="w-full mt-2 py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm transition duration-200 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-lg shadow-emerald-500/10"
-      >
-        {isLoading ? (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>Mendaftarkan Akun...</span>
-          </>
-        ) : (
-          <>
-            <span>Daftar Sekarang</span>
-            <ArrowRight className="w-4 h-4" />
-          </>
-        )}
-      </button>
-    </form>
+          {/* Tombol Navigasi Tahap 3 (Final Submit) */}
+          <div className="flex gap-2.5 pt-1.5">
+            <button
+              type="button"
+              onClick={() => setCurrentStep(2)}
+              disabled={isLoading}
+              className="flex-1 bg-white/[0.12] text-white border border-white/20 rounded-xl px-4 py-2.5 hover:bg-white/[0.18] transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 text-sm font-medium"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Kembali</span>
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="flex-1 bg-white text-[#004aad] font-semibold rounded-xl px-5 py-2.5 hover:bg-white/90 transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 text-sm"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Mendaftarkan...</span>
+                </>
+              ) : (
+                <>
+                  <span>Daftar Akun</span>
+                  <Check className="w-4 h-4 stroke-[2.5]" />
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
   );
 }
