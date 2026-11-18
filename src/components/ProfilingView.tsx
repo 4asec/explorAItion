@@ -10,12 +10,7 @@ import {
   Loader2,
   ArrowRight,
   AlertCircle,
-  Cpu,
-  Shield,
-  Briefcase,
-  Palette,
-  BookOpen,
-  Award,
+  ArrowLeft,
 } from "lucide-react";
 
 export interface ProfilingViewProps {
@@ -26,14 +21,12 @@ export interface ProfilingViewProps {
 
 interface CategoryGroup {
   name: string;
-  icon: React.ElementType;
   tags: string[];
 }
 
-const CATEGORY_GROUPS: CategoryGroup[] = [
+const CATEGORIES: CategoryGroup[] = [
   {
-    name: "Teknologi & AI",
-    icon: Cpu,
+    name: "Teknologi & Kecerdasan Buatan",
     tags: [
       "Next.js",
       "React",
@@ -42,65 +35,57 @@ const CATEGORY_GROUPS: CategoryGroup[] = [
       "Artificial Intelligence",
       "Prompt Engineering",
       "Machine Learning",
-      "Cloud Computing",
-      "Mobile Development",
+      "Cloud Architecture",
+      "Mobile Dev",
     ],
   },
   {
-    name: "Keamanan Siber",
-    icon: Shield,
+    name: "Keamanan Siber & Sistem",
     tags: [
       "Cybersecurity",
       "Ethical Hacking",
-      "Network Security",
+      "Network Defense",
       "Penetration Testing",
       "Cryptography",
     ],
   },
   {
-    name: "Bisnis & Startup",
-    icon: Briefcase,
+    name: "Produk, Bisnis & Startup",
     tags: [
       "Business Strategy",
-      "Pitching",
+      "Pitching & Storytelling",
       "Market Research",
       "Product Management",
-      "Growth Hacking",
       "Financial Modeling",
     ],
   },
   {
-    name: "Desain & UI/UX",
-    icon: Palette,
+    name: "Desain Antarmuka & UX",
     tags: [
       "UI/UX Design",
-      "Figma",
-      "Design Thinking",
+      "Figma Prototyping",
+      "Design Systems",
       "User Research",
-      "Graphic Design",
-      "Prototyping",
+      "Interaction Design",
     ],
   },
   {
-    name: "Riset & Karya Tulis",
-    icon: BookOpen,
+    name: "Riset Ilmiah & Kepenulisan",
     tags: [
       "Karya Tulis Ilmiah (KTI)",
-      "Metodologi Penelitian",
+      "Metodologi Riset",
       "Academic Writing",
       "Data Analysis",
-      "Studi Literatur",
+      "Literature Review",
     ],
   },
   {
     name: "Kepemimpinan & Beasiswa",
-    icon: Award,
     tags: [
       "Public Speaking",
-      "Community Service",
-      "Student Leadership",
+      "Community Leadership",
       "International Exchange",
-      "Volunteerism",
+      "Youth Advocacy",
       "English Debate",
     ],
   },
@@ -132,7 +117,7 @@ export default function ProfilingView({
     const trimmed = customInput.trim();
     if (!trimmed) return;
     if (selectedTags.some((t) => t.toLowerCase() === trimmed.toLowerCase())) {
-      setErrorMessage(`Keahlian "${trimmed}" sudah ada di daftar pilihan.`);
+      setErrorMessage(`Keahlian "${trimmed}" sudah tercantum.`);
       return;
     }
     setSelectedTags([...selectedTags, trimmed]);
@@ -149,7 +134,7 @@ export default function ProfilingView({
 
   const handleSave = async () => {
     if (selectedTags.length === 0) {
-      setErrorMessage("Pilih minimal 1 minat atau keahlian untuk mempersonalisasi rekomendasi AI.");
+      setErrorMessage("Pilih minimal 1 keahlian atau minat untuk mempersonalisasi rekomendasi AI.");
       return;
     }
 
@@ -165,80 +150,73 @@ export default function ProfilingView({
         onComplete(res.data);
       }
     } catch {
-      setErrorMessage("Terjadi kesalahan koneksi saat menyimpan profiling.");
+      setErrorMessage("Terjadi gangguan koneksi saat menyimpan profiling.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#09090B] text-slate-100 flex flex-col justify-between p-4 sm:p-6 lg:p-10 font-sans">
-      <div className="w-full max-w-4xl mx-auto space-y-8 py-4">
-        {/* Top Bar / Navigation */}
-        <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-emerald-400" />
-            </div>
-            <div>
-              <h2 className="text-sm font-semibold tracking-wide text-slate-100">
-                PROFILING MINAT &amp; BAKAT
-              </h2>
-              <p className="text-xs text-slate-400">
-                Langkah P2 &bull; Kalibrasi Algoritma Rekomendasi Angkasa
-              </p>
-            </div>
+    <div className="min-h-screen bg-[#050505] text-[#FAFAFA] flex flex-col justify-between p-4 sm:p-6 lg:p-12 font-sans selection:bg-emerald-500/20 selection:text-emerald-300">
+      <main className="w-full max-w-2xl mx-auto space-y-10 py-6 animate-fade-slide-up">
+        {/* Top Minimal Navigation */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span className="text-[11px] font-mono tracking-wider uppercase text-[#888890]">
+              ANGKASA &bull; PROFILING P2
+            </span>
           </div>
 
           {onCancel && (
             <button
               type="button"
               onClick={onCancel}
-              className="text-xs font-medium text-slate-400 hover:text-slate-200 transition px-3 py-1.5 rounded-lg border border-white/[0.08] hover:border-white/[0.18]"
+              className="inline-flex items-center gap-1.5 text-xs text-[#888890] hover:text-[#FAFAFA] transition active:scale-[0.98]"
             >
-              Batal
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Kembali</span>
             </button>
           )}
         </div>
 
-        {/* Hero Section */}
-        <div className="space-y-2">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-50">
-            Tentukan Fokus Keahlian &amp; Target Karir Anda
+        {/* Heading & Context */}
+        <div className="space-y-3">
+          <h1 className="text-3xl sm:text-4xl font-semibold tracking-[-0.03em] text-[#FAFAFA] leading-tight">
+            Tentukan profil minat &amp; keahlian Anda
           </h1>
-          <p className="text-sm text-slate-400 max-w-2xl leading-relaxed">
-            Pilih topik yang sesuai dengan kemampuan teknis, minat penelitian, atau kompetensi kepemimpinan Anda.
-            Model AI Gemini kami menyaring ratusan lomba dan beasiswa untuk mencocokkan peluang dengan probabilitas keberhasilan tertinggi.
+          <p className="text-sm text-[#888890] leading-relaxed max-w-xl">
+            Pilih domain kompetensi teknis, karya ilmiah, atau kepemimpinan Anda. Algoritma cerdas Angkasa memfilter ribuan peluang menjadi rekomendasi presisi tinggi.
           </p>
         </div>
 
-        {/* Active Selected Tags Bar */}
-        <div className="p-5 rounded-2xl bg-[#111113] border border-white/[0.08] space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Minat Terpilih ({selectedTags.length})
+        {/* Selected Tags Summary Pillbox */}
+        <section className="p-5 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] space-y-3">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-mono text-[#888890] tracking-wider uppercase">
+              Terpilih (<span className="tabular-nums text-[#FAFAFA]">{selectedTags.length}</span>)
             </span>
             {selectedTags.length > 0 && (
               <button
                 type="button"
                 onClick={() => setSelectedTags([])}
-                className="text-xs text-slate-400 hover:text-rose-400 transition"
+                className="text-[#888890] hover:text-rose-400 transition"
               >
-                Reset Semua
+                Hapus semua
               </button>
             )}
           </div>
 
-          <div className="min-h-[52px] flex flex-wrap gap-2 items-center">
+          <div className="min-h-[44px] flex flex-wrap gap-2 items-center">
             {selectedTags.length === 0 ? (
-              <p className="text-xs text-slate-500 italic">
-                Belum ada tag dipilih. Silakan klik chip kategori di bawah atau tambahkan keahlian kustom Anda.
+              <p className="text-xs text-[#888890]/60 italic font-mono">
+                Belum ada tag dipilih. Pilih dari opsi di bawah atau tambahkan sendiri.
               </p>
             ) : (
               selectedTags.map((tag) => (
                 <span
                   key={tag}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-medium"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-medium tracking-tight"
                 >
                   {tag}
                   <button
@@ -253,118 +231,95 @@ export default function ProfilingView({
               ))
             )}
           </div>
-        </div>
+        </section>
 
-        {/* Custom Tag Input */}
-        <div className="p-5 rounded-2xl bg-[#111113] border border-white/[0.08] space-y-3">
-          <label htmlFor="custom-tag-input" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Tambahkan Keahlian / Minat Spesifik Lainnya
-          </label>
-          <div className="flex gap-2">
+        {/* Custom Input */}
+        <div className="space-y-2">
+          <div className="relative flex items-center">
             <input
-              id="custom-tag-input"
               type="text"
-              placeholder="Ketik topik kustom (contoh: Golang, Bioinformatika, Pitch Deck Strategy)..."
+              placeholder="Ketik topik kustom lalu tekan Enter..."
               value={customInput}
               onChange={(e) => setCustomInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="flex-1 px-4 py-2.5 rounded-xl bg-[#09090B] border border-white/[0.08] focus:border-emerald-500 text-xs sm:text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none transition"
+              className="w-full pl-4 pr-24 py-3 rounded-xl bg-[#0C0C0E] border border-white/[0.07] focus:border-white/20 text-sm text-[#FAFAFA] placeholder:text-[#888890]/50 focus:outline-none transition shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]"
             />
             <button
               type="button"
               onClick={addCustomTag}
-              className="px-4 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] border border-white/[0.12] text-xs sm:text-sm font-semibold text-slate-200 transition flex items-center gap-1.5 shrink-0"
+              disabled={!customInput.trim()}
+              className="absolute right-2 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-xs font-medium text-[#FAFAFA] transition active:scale-[0.98] disabled:opacity-40"
             >
-              <Plus className="w-4 h-4 text-emerald-400" />
-              <span>Tambah</span>
+              Tambah
             </button>
           </div>
         </div>
 
-        {/* Category Groups Selector */}
-        <div className="space-y-6">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Kategori Kompetensi Terverifikasi
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {CATEGORY_GROUPS.map((group) => {
-              const Icon = group.icon;
-              return (
-                <div
-                  key={group.name}
-                  className="p-5 rounded-2xl bg-[#111113] border border-white/[0.08] hover:border-white/[0.15] transition space-y-3"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
-                      <Icon className="w-4 h-4 text-emerald-400" />
-                    </div>
-                    <span className="text-xs font-semibold text-slate-200 tracking-wide">
-                      {group.name}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {group.tags.map((tag) => {
-                      const isSelected = selectedTags.some(
-                        (t) => t.toLowerCase() === tag.toLowerCase()
-                      );
-                      return (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={() => toggleTag(tag)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer ${
-                            isSelected
-                              ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-semibold"
-                              : "bg-[#09090B] text-slate-400 hover:text-slate-200 border border-white/[0.06] hover:border-white/[0.15]"
-                          }`}
-                        >
-                          {isSelected ? `✓ ${tag}` : `+ ${tag}`}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+        {/* Category Groups (Clean Editorial Stack) */}
+        <div className="space-y-7 pt-2">
+          {CATEGORIES.map((cat) => (
+            <div key={cat.name} className="space-y-2.5">
+              <h2 className="text-xs font-medium text-[#888890] tracking-wide">
+                {cat.name}
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {cat.tags.map((tag) => {
+                  const isSelected = selectedTags.some(
+                    (t) => t.toLowerCase() === tag.toLowerCase()
+                  );
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => toggleTag(tag)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer active:scale-[0.98] ${
+                        isSelected
+                          ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/35 shadow-[0_0_12px_-3px_rgba(16,185,129,0.3)]"
+                          : "bg-[#0C0C0E] text-[#888890] hover:text-[#FAFAFA] border border-white/[0.07] hover:border-white/[0.16]"
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Error Alert */}
         {errorMessage && (
-          <div className="p-4 rounded-xl bg-rose-950/30 border border-rose-800/40 text-rose-300 text-xs sm:text-sm flex items-center gap-2.5">
+          <div className="p-4 rounded-xl bg-rose-950/20 border border-rose-900/40 text-rose-300 text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
             <span>{errorMessage}</span>
           </div>
         )}
 
-        {/* Primary Action Button */}
-        <div className="pt-2">
+        {/* High-Contrast Monochrome Primary Button */}
+        <div className="pt-4">
           <button
             type="button"
             onClick={handleSave}
             disabled={isSubmitting || selectedTags.length === 0}
-            className="w-full py-4 px-6 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm tracking-wide transition flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/10 cursor-pointer"
+            className="w-full py-3.5 px-5 rounded-xl bg-[#FAFAFA] hover:bg-[#E5E5E5] text-[#050505] font-semibold text-sm tracking-tight transition-all duration-150 flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer active:scale-[0.98] shadow-sm"
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
-                <span>Menghubungkan ke Gemini AI &amp; Menyusun Rekomendasi...</span>
+                <Loader2 className="w-4 h-4 animate-spin text-[#050505]" />
+                <span>Menghubungkan ke AI Engine...</span>
               </>
             ) : (
               <>
-                <span>Simpan &amp; Muat Rekomendasi Peluang</span>
+                <span>Simpan &amp; Tampilkan Rekomendasi Peluang</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
           </button>
         </div>
-      </div>
+      </main>
 
-      {/* Footer Meta */}
-      <footer className="text-center py-6 text-[11px] text-slate-500 border-t border-white/[0.04] mt-8">
-        Aplikasi Angkasa &bull; Sistem Rekomendasi Peluang AI Mahasiswa Indonesia
+      <footer className="text-center py-6 text-[11px] text-[#888890]/60 font-mono border-t border-white/[0.04]">
+        ANGKASA &bull; CAREER &amp; TALENT INTELLIGENCE
       </footer>
     </div>
   );

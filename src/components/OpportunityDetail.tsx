@@ -16,10 +16,7 @@ import {
 import {
   ArrowLeft,
   Calendar,
-  Building2,
   ExternalLink,
-  Sparkles,
-  Users,
   ShieldCheck,
   CheckCircle2,
   Clock,
@@ -162,7 +159,6 @@ export default function OpportunityDetail({
         setNewTeamName("");
         setRoleDetail("");
         setCreateTeamMessage("Tim berhasil didaftarkan ke bursa kolaborasi.");
-        // Tambahkan ke state lokal
         setTeamRequests((prev) => [res.data as TeamRequest, ...prev]);
       }
     } catch {
@@ -214,77 +210,76 @@ export default function OpportunityDetail({
   };
 
   return (
-    <div className="min-h-screen bg-[#09090B] text-slate-100 flex flex-col font-sans">
-      {/* Top Navigation */}
-      <header className="sticky top-0 z-30 bg-[#09090B]/90 backdrop-blur-md border-b border-white/[0.08]">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-[#050505] text-[#FAFAFA] flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-300">
+      {/* Top Header Navigation */}
+      <header className="sticky top-0 z-30 bg-[#050505]/85 backdrop-blur-md border-b border-white/[0.07]">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#111113] hover:bg-white/[0.06] border border-white/[0.08] hover:border-white/[0.18] text-xs font-semibold text-slate-200 transition cursor-pointer"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0C0C0E] hover:bg-white/[0.06] border border-white/[0.07] hover:border-white/[0.14] text-xs font-medium text-[#FAFAFA] transition active:scale-[0.98]"
           >
-            <ArrowLeft className="w-4 h-4 text-emerald-400" />
+            <ArrowLeft className="w-3.5 h-3.5 text-[#888890]" />
             <span>Kembali ke Feed</span>
           </button>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400">Skor Kecocokan AI:</span>
-            <span className="px-3 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
+          <div className="flex items-center gap-2 font-mono text-xs">
+            <span className="text-[#888890]">Kesesuaian:</span>
+            <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 font-semibold tabular-nums">
               {opportunity.matchPercentage}% Relevan
             </span>
           </div>
         </div>
       </header>
 
-      {/* Main Container */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Opportunity Header Meta Card */}
-        <section className="p-6 sm:p-8 rounded-3xl bg-[#111113] border border-white/[0.08] space-y-6">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
+      {/* Main Content */}
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8 animate-fade-slide-up">
+        {/* Opportunity Editorial Header Card */}
+        <section className="p-6 sm:p-8 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] space-y-6">
+          <div className="flex items-center justify-between gap-3 text-xs font-mono">
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs font-semibold text-slate-300">
+              <span className="text-[#888890] uppercase tracking-wider text-[11px]">
                 {opportunity.category}
               </span>
               {opportunity.is_verified && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-medium">
-                  <ShieldCheck className="w-4 h-4" />
-                  Peluang Terverifikasi
+                <span className="inline-flex items-center gap-1 text-emerald-400 font-medium text-[11px]">
+                  <ShieldCheck className="w-3 h-3" />
+                  <span>Terverifikasi</span>
                 </span>
               )}
             </div>
 
-            <div className="flex items-center gap-2 text-xs text-slate-400">
-              <Calendar className="w-4 h-4 text-emerald-400" />
-              <span>Batas Pendaftaran: <strong className="text-slate-200 font-semibold">{deadline}</strong></span>
+            <div className="text-[#888890] flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Batas waktu: <strong className="text-[#FAFAFA] font-normal tabular-nums">{deadline}</strong></span>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-50 leading-tight">
+          <div className="space-y-1.5">
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-[-0.03em] text-[#FAFAFA] leading-tight">
               {opportunity.title}
             </h1>
-            <p className="text-sm text-slate-400 flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-slate-500" />
-              <span>Penyelenggara: <strong className="text-slate-300 font-medium">{opportunity.organizer}</strong></span>
+            <p className="text-xs text-[#888890]">
+              Diselenggarakan oleh <strong className="text-[#FAFAFA] font-medium">{opportunity.organizer}</strong>
             </p>
           </div>
 
-          {/* AI Mentor Reason Callout */}
-          <div className="p-4 rounded-2xl bg-[#09090B] border-l-2 border-emerald-500 space-y-1">
-            <span className="text-[11px] font-bold tracking-wider text-emerald-400 uppercase">
-              Analisis Personalisasi AI Mahasiswa
+          {/* AI Reason Callout */}
+          <div className="p-4 rounded-xl bg-[#050505] border border-white/[0.06] border-l-2 border-l-emerald-500 space-y-1">
+            <span className="text-[10px] font-mono tracking-wider text-emerald-400 uppercase">
+              Rekomendasi Personalisasi AI
             </span>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed italic">
+            <p className="text-xs text-[#FAFAFA] leading-relaxed italic">
               &ldquo;{opportunity.recommendationReason}&rdquo;
             </p>
           </div>
 
           {/* Description */}
-          <div className="space-y-2 pt-2 border-t border-white/[0.06]">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Deskripsi Peluang
-            </h3>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed whitespace-pre-line">
+          <div className="space-y-2 pt-2 border-t border-white/[0.04]">
+            <h2 className="text-xs font-mono uppercase text-[#888890] tracking-wider">
+              Deskripsi Program
+            </h2>
+            <p className="text-xs sm:text-sm text-[#888890] leading-relaxed whitespace-pre-line">
               {description}
             </p>
           </div>
@@ -294,11 +289,11 @@ export default function OpportunityDetail({
             (opportunity.required_skills && opportunity.required_skills.length > 0)) && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
               {opportunity.requirements && opportunity.requirements.length > 0 && (
-                <div className="p-4 rounded-xl bg-[#09090B] border border-white/[0.06] space-y-2">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Persyaratan Utama
-                  </h4>
-                  <ul className="space-y-1.5 text-xs text-slate-300">
+                <div className="p-4 rounded-xl bg-[#050505] border border-white/[0.06] space-y-2">
+                  <h3 className="text-xs font-mono uppercase text-[#888890] tracking-wider">
+                    Persyaratan
+                  </h3>
+                  <ul className="space-y-1.5 text-xs text-[#888890]">
                     {opportunity.requirements.map((req, i) => (
                       <li key={i} className="flex items-start gap-2">
                         <span className="text-emerald-400 shrink-0">&bull;</span>
@@ -310,15 +305,15 @@ export default function OpportunityDetail({
               )}
 
               {opportunity.required_skills && opportunity.required_skills.length > 0 && (
-                <div className="p-4 rounded-xl bg-[#09090B] border border-white/[0.06] space-y-2">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Keahlian yang Dicari
-                  </h4>
+                <div className="p-4 rounded-xl bg-[#050505] border border-white/[0.06] space-y-2">
+                  <h3 className="text-xs font-mono uppercase text-[#888890] tracking-wider">
+                    Kualifikasi Keahlian
+                  </h3>
                   <div className="flex flex-wrap gap-1.5">
                     {opportunity.required_skills.map((skill, i) => (
                       <span
                         key={i}
-                        className="px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs text-slate-300"
+                        className="px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.07] text-xs font-mono text-[#888890]"
                       >
                         {skill}
                       </span>
@@ -330,49 +325,47 @@ export default function OpportunityDetail({
           )}
 
           {/* Official Registration CTA */}
-          <div className="pt-2 flex items-center justify-between gap-4 flex-wrap">
-            <span className="text-xs text-slate-500">
-              Informasi langsung terhubung dengan kanal resmi penyelenggara.
+          <div className="pt-2 flex items-center justify-between gap-4 flex-wrap border-t border-white/[0.04]">
+            <span className="text-xs text-[#888890]">
+              Tautan menuju formulir dan petunjuk teknis resmi panitia penyelenggara.
             </span>
             <a
               href={opportunity.registration_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm transition shadow-md shadow-emerald-500/10 cursor-pointer"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#FAFAFA] hover:bg-[#E5E5E5] text-[#050505] font-semibold text-xs transition active:scale-[0.98]"
             >
-              <span>Buka Portal Pendaftaran Resmi</span>
-              <ExternalLink className="w-4 h-4" />
+              <span>Buka Portal Resmi</span>
+              <ExternalLink className="w-3.5 h-3.5" />
             </a>
           </div>
         </section>
 
-        {/* Tab Controls */}
-        <section className="space-y-6">
-          <div className="flex border-b border-white/[0.08] gap-4">
+        {/* Segmented Tab Controls */}
+        <div className="space-y-6">
+          <div className="inline-flex p-1 bg-[#0C0C0E] border border-white/[0.07] rounded-xl">
             <button
               type="button"
               onClick={() => setActiveTab("roadmap")}
-              className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition cursor-pointer ${
+              className={`px-4 py-2 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer active:scale-[0.98] ${
                 activeTab === "roadmap"
-                  ? "border-emerald-400 text-emerald-400"
-                  : "border-transparent text-slate-400 hover:text-slate-200"
+                  ? "bg-white/[0.08] text-[#FAFAFA] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]"
+                  : "text-[#888890] hover:text-[#FAFAFA]"
               }`}
             >
-              <Sparkles className="w-4 h-4" />
-              <span>Roadmap Persiapan AI (P5)</span>
+              Roadmap Persiapan AI
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab("team")}
-              className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition cursor-pointer ${
+              className={`px-4 py-2 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer active:scale-[0.98] ${
                 activeTab === "team"
-                  ? "border-emerald-400 text-emerald-400"
-                  : "border-transparent text-slate-400 hover:text-slate-200"
+                  ? "bg-white/[0.08] text-[#FAFAFA] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]"
+                  : "text-[#888890] hover:text-[#FAFAFA]"
               }`}
             >
-              <Users className="w-4 h-4" />
-              <span>Cari Rekan Tim Kolaborasi (P6)</span>
+              Cari Rekan Tim
             </button>
           </div>
 
@@ -380,14 +373,14 @@ export default function OpportunityDetail({
           {/* TAB 1: AI PREPARATION ROADMAP */}
           {/* ========================================================= */}
           {activeTab === "roadmap" && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-fade-slide-up">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <h2 className="text-base font-bold text-slate-100">
-                    Panduan Persiapan Bertahap Menuju Deadline
+                  <h2 className="text-base font-semibold tracking-[-0.02em] text-[#FAFAFA]">
+                    Panduan Persiapan Menuju Deadline
                   </h2>
-                  <p className="text-xs text-slate-400">
-                    Disusun khusus oleh AI sesuai profiling keahlian Anda dan kriteria penyelenggara.
+                  <p className="text-xs text-[#888890]">
+                    Milestone terstruktur dan strategi pemenangan yang dikalibrasi oleh AI.
                   </p>
                 </div>
 
@@ -395,104 +388,91 @@ export default function OpportunityDetail({
                   type="button"
                   onClick={handleGenerateRoadmap}
                   disabled={isRoadmapLoading}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#111113] hover:bg-white/[0.06] border border-white/[0.08] hover:border-white/[0.18] text-xs font-semibold text-emerald-400 transition cursor-pointer disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0C0C0E] hover:bg-white/[0.06] border border-white/[0.07] hover:border-white/[0.14] text-xs font-medium text-[#FAFAFA] transition active:scale-[0.98] disabled:opacity-50"
                 >
                   {isRoadmapLoading ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#888890]" />
                   ) : (
-                    <Sparkles className="w-3.5 h-3.5" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                   )}
-                  <span>Perbarui Analisis AI</span>
+                  <span>Perbarui Analisis</span>
                 </button>
               </div>
 
               {isRoadmapLoading ? (
-                <div className="p-12 rounded-3xl bg-[#111113] border border-white/[0.08] flex flex-col items-center justify-center gap-3">
-                  <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
-                  <p className="text-xs sm:text-sm text-slate-300 font-medium">
-                    AI Gemini sedang merancang strategi persiapan, checklist berkas, dan linimasa...
+                <div className="p-10 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] flex flex-col items-center justify-center gap-2.5">
+                  <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />
+                  <p className="text-xs text-[#888890]">
+                    AI sedang menyusun linimasa, berkas kelolosan, dan strategi pemenangan...
                   </p>
-                  <p className="text-[11px] text-slate-500">Menganalisis deadline dan standar penilaian juri.</p>
                 </div>
               ) : roadmapError ? (
-                <div className="p-6 rounded-2xl bg-[#111113] border border-rose-900/40 text-center space-y-2">
-                  <p className="text-xs sm:text-sm text-rose-300">{roadmapError}</p>
+                <div className="p-6 rounded-2xl bg-[#0C0C0E] border border-rose-900/40 text-center space-y-2">
+                  <p className="text-xs text-rose-300">{roadmapError}</p>
                   <button
                     type="button"
                     onClick={handleGenerateRoadmap}
-                    className="px-4 py-2 rounded-xl bg-white/[0.08] text-xs font-semibold text-slate-200"
+                    className="px-3 py-1.5 rounded-lg bg-white/[0.06] text-xs text-[#FAFAFA]"
                   >
                     Coba Lagi
                   </button>
                 </div>
               ) : roadmap ? (
                 <div className="space-y-6">
-                  {/* Sub-section 1: Timeline Bertahap */}
-                  <div className="p-6 rounded-3xl bg-[#111113] border border-white/[0.08] space-y-4">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-emerald-400" />
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                        Linimasa &amp; Milestone Bertahap
-                      </h3>
-                    </div>
+                  {/* Minimalist Vertical Timeline Rail */}
+                  <div className="p-6 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] space-y-4">
+                    <h3 className="text-xs font-mono uppercase text-[#888890] tracking-wider flex items-center gap-2">
+                      <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Linimasa Bertahap</span>
+                    </h3>
 
-                    <div className="space-y-3">
+                    <div className="relative pl-6 border-l border-white/[0.08] space-y-6 ml-2 my-2">
                       {roadmap.timeline.map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="p-4 rounded-2xl bg-[#09090B] border border-white/[0.06] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
-                        >
-                          <div className="space-y-1">
-                            <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
-                              {item.phase}
-                            </span>
-                            <p className="text-xs sm:text-sm text-slate-200 leading-relaxed pt-1">
-                              {item.action}
-                            </p>
-                          </div>
+                        <div key={idx} className="relative space-y-1">
+                          <span className="absolute -left-[31px] top-1 w-2.5 h-2.5 rounded-full bg-[#050505] border-2 border-emerald-400" />
+                          <span className="font-mono text-xs text-emerald-400 font-medium">
+                            {item.phase}
+                          </span>
+                          <p className="text-xs sm:text-sm text-[#888890] leading-relaxed">
+                            {item.action}
+                          </p>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Sub-section 2: Checklist Dokumen & Berkas */}
-                  <div className="p-6 rounded-3xl bg-[#111113] border border-white/[0.08] space-y-4">
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-emerald-400" />
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                        Checklist Berkas &amp; Dokumen Wajib
-                      </h3>
-                    </div>
+                  {/* Checklist Dokumen Interaktif */}
+                  <div className="p-6 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] space-y-4">
+                    <h3 className="text-xs font-mono uppercase text-[#888890] tracking-wider flex items-center gap-2">
+                      <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Checklist Berkas &amp; Dokumen</span>
+                    </h3>
 
-                    <div className="space-y-3">
+                    <div className="space-y-2.5">
                       {roadmap.document_checklist.map((doc, idx) => {
                         const isDone = !!checkedDocs[idx];
                         return (
                           <div
                             key={idx}
                             onClick={() => toggleCheckDoc(idx)}
-                            className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3.5 ${
+                            className={`p-3.5 rounded-xl border transition-all duration-150 cursor-pointer flex items-start gap-3 select-none ${
                               isDone
-                                ? "bg-emerald-950/20 border-emerald-500/30 text-slate-400"
-                                : "bg-[#09090B] border-white/[0.06] text-slate-200 hover:border-white/[0.15]"
+                                ? "bg-white/[0.02] border-white/[0.04] text-[#888890]/60"
+                                : "bg-[#050505] border-white/[0.06] hover:border-white/[0.14] text-[#FAFAFA]"
                             }`}
                           >
                             <input
                               type="checkbox"
                               checked={isDone}
                               onChange={() => toggleCheckDoc(idx)}
-                              className="mt-1 w-4 h-4 accent-emerald-500 cursor-pointer"
+                              className="mt-0.5 w-4 h-4 accent-emerald-500 cursor-pointer"
                             />
-                            <div className="space-y-1 flex-1">
-                              <p
-                                className={`text-xs sm:text-sm font-semibold ${
-                                  isDone ? "line-through text-slate-400" : "text-slate-100"
-                                }`}
-                              >
+                            <div className="space-y-0.5 flex-1 text-xs">
+                              <p className={`font-medium ${isDone ? "line-through text-[#888890]/60" : "text-[#FAFAFA]"}`}>
                                 {doc.item}
                               </p>
-                              <p className="text-xs text-slate-400 leading-relaxed">
-                                💡 Tip Taktis: {doc.tip}
+                              <p className="text-[#888890] leading-relaxed">
+                                {doc.tip}
                               </p>
                             </div>
                           </div>
@@ -501,25 +481,23 @@ export default function OpportunityDetail({
                     </div>
                   </div>
 
-                  {/* Sub-section 3: 3 Strategi Pemenangan */}
-                  <div className="p-6 rounded-3xl bg-[#111113] border border-white/[0.08] space-y-4">
-                    <div className="flex items-center gap-2">
-                      <Award className="w-4 h-4 text-emerald-400" />
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                        3 Strategi Kunci Pemenangan / Kelolosan
-                      </h3>
-                    </div>
+                  {/* 3 Strategi Pemenangan */}
+                  <div className="p-6 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] space-y-4">
+                    <h3 className="text-xs font-mono uppercase text-[#888890] tracking-wider flex items-center gap-2">
+                      <Award className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Strategi Kunci Kelolosan</span>
+                    </h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       {roadmap.winning_strategy.map((strat, idx) => (
                         <div
                           key={idx}
-                          className="p-4 rounded-2xl bg-[#09090B] border border-white/[0.06] space-y-2"
+                          className="p-4 rounded-xl bg-[#050505] border border-white/[0.06] space-y-2"
                         >
-                          <span className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-bold flex items-center justify-center">
-                            {idx + 1}
+                          <span className="font-mono text-xs font-semibold text-emerald-400">
+                            0{idx + 1}
                           </span>
-                          <p className="text-xs text-slate-300 leading-relaxed">
+                          <p className="text-xs text-[#888890] leading-relaxed">
                             {strat}
                           </p>
                         </div>
@@ -527,22 +505,20 @@ export default function OpportunityDetail({
                     </div>
                   </div>
 
-                  {/* Sub-section 4: Recommended Tools & Curation Tips (jika ada) */}
+                  {/* Recommended Tools & Curation Tips */}
                   {(roadmap.recommended_tools || roadmap.curation_tips) && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {roadmap.recommended_tools && roadmap.recommended_tools.length > 0 && (
-                        <div className="p-6 rounded-3xl bg-[#111113] border border-white/[0.08] space-y-3">
-                          <div className="flex items-center gap-2">
-                            <Wrench className="w-4 h-4 text-emerald-400" />
-                            <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                              Rekomendasi Perangkat / Tools
-                            </h4>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
+                        <div className="p-5 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] space-y-3">
+                          <h4 className="text-xs font-mono uppercase text-[#888890] tracking-wider flex items-center gap-2">
+                            <Wrench className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Perangkat Kerja Pendukung</span>
+                          </h4>
+                          <div className="flex flex-wrap gap-1.5">
                             {roadmap.recommended_tools.map((t, idx) => (
                               <span
                                 key={idx}
-                                className="px-3 py-1 rounded-xl bg-[#09090B] border border-white/[0.06] text-xs text-slate-300 font-medium"
+                                className="px-2.5 py-1 rounded-lg bg-[#050505] border border-white/[0.06] text-xs font-mono text-[#FAFAFA]"
                               >
                                 {t}
                               </span>
@@ -552,14 +528,12 @@ export default function OpportunityDetail({
                       )}
 
                       {roadmap.curation_tips && roadmap.curation_tips.length > 0 && (
-                        <div className="p-6 rounded-3xl bg-[#111113] border border-white/[0.08] space-y-3">
-                          <div className="flex items-center gap-2">
-                            <Layers className="w-4 h-4 text-emerald-400" />
-                            <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                              Tips Penilaian Dewan Juri
-                            </h4>
-                          </div>
-                          <ul className="space-y-1.5 text-xs text-slate-300">
+                        <div className="p-5 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] space-y-3">
+                          <h4 className="text-xs font-mono uppercase text-[#888890] tracking-wider flex items-center gap-2">
+                            <Layers className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Kriteria Kurasi Juri</span>
+                          </h4>
+                          <ul className="space-y-1.5 text-xs text-[#888890]">
                             {roadmap.curation_tips.map((tip, idx) => (
                               <li key={idx} className="flex items-start gap-2">
                                 <span className="text-emerald-400 shrink-0">&bull;</span>
@@ -580,47 +554,47 @@ export default function OpportunityDetail({
           {/* TAB 2: TEAM FINDING (ANTI-DUPLIKASI) */}
           {/* ========================================================= */}
           {activeTab === "team" && (
-            <div className="space-y-8">
+            <div className="space-y-6 animate-fade-slide-up">
               {/* Form Ringkas: Buat Lowongan Tim Baru */}
-              <div className="p-6 sm:p-8 rounded-3xl bg-[#111113] border border-white/[0.08] space-y-4">
-                <div>
-                  <h3 className="text-base font-bold text-slate-100">
-                    Bentuk Tim Baru untuk Peluang Ini
+              <div className="p-6 sm:p-8 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] space-y-4">
+                <div className="space-y-1">
+                  <h3 className="text-base font-semibold tracking-[-0.02em] text-[#FAFAFA]">
+                    Inisiasi Tim Kolaborasi
                   </h3>
-                  <p className="text-xs text-slate-400">
-                    Publikasikan posisi anggota yang dibutuhkan berdasarkan framework Hacker, Hipster, atau Hustler.
+                  <p className="text-xs text-[#888890]">
+                    Pilih posisi anggota yang dibutuhkan berdasarkan pembagian peran Hacker, Hipster, atau Hustler.
                   </p>
                 </div>
 
-                <form onSubmit={handleCreateTeam} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-slate-400">
-                        Nama Tim:
+                <form onSubmit={handleCreateTeam} className="space-y-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-mono text-[#888890]">
+                        Nama Tim
                       </label>
                       <input
                         type="text"
-                        placeholder="Contoh: Tim Garuda Tech"
+                        placeholder="Contoh: Nusantara Vision"
                         value={newTeamName}
                         onChange={(e) => setNewTeamName(e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl bg-[#09090B] border border-white/[0.08] focus:border-emerald-500 text-xs sm:text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none transition"
+                        className="w-full px-3.5 py-2 rounded-xl bg-[#050505] border border-white/[0.07] focus:border-white/20 text-xs sm:text-sm text-[#FAFAFA] placeholder:text-[#888890]/50 focus:outline-none transition"
                       />
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-slate-400">
-                        Role yang Dibutuhkan:
+                    <div className="space-y-1">
+                      <label className="block text-xs font-mono text-[#888890]">
+                        Role yang Dibutuhkan
                       </label>
-                      <div className="flex gap-2">
+                      <div className="flex gap-1.5">
                         {(["Hacker", "Hipster", "Hustler"] as TeamRole[]).map((r) => (
                           <button
                             key={r}
                             type="button"
                             onClick={() => setSelectedRole(r)}
-                            className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                            className={`flex-1 py-2 px-2.5 rounded-lg text-xs font-medium transition cursor-pointer active:scale-[0.98] ${
                               selectedRole === r
-                                ? "bg-emerald-500 text-slate-950"
-                                : "bg-[#09090B] text-slate-400 border border-white/[0.08] hover:border-white/[0.18]"
+                                ? "bg-white/[0.1] text-[#FAFAFA] border border-white/[0.16]"
+                                : "bg-[#050505] text-[#888890] border border-white/[0.07] hover:text-[#FAFAFA]"
                             }`}
                           >
                             {r}
@@ -630,22 +604,22 @@ export default function OpportunityDetail({
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold text-slate-400">
-                      Rincian Kriteria Anggota (Opsional):
+                  <div className="space-y-1">
+                    <label className="block text-xs font-mono text-[#888890]">
+                      Kualifikasi Tambahan (Opsional)
                     </label>
                     <input
                       type="text"
-                      placeholder="Contoh: Menguasai Next.js & Supabase, aktif berkomunikasi..."
+                      placeholder="Contoh: Menguasai Next.js & Supabase..."
                       value={roleDetail}
                       onChange={(e) => setRoleDetail(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl bg-[#09090B] border border-white/[0.08] focus:border-emerald-500 text-xs sm:text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none transition"
+                      className="w-full px-3.5 py-2 rounded-xl bg-[#050505] border border-white/[0.07] focus:border-white/20 text-xs sm:text-sm text-[#FAFAFA] placeholder:text-[#888890]/50 focus:outline-none transition"
                     />
                   </div>
 
                   {createTeamMessage && (
                     <p
-                      className={`text-xs p-3 rounded-xl border ${
+                      className={`text-xs p-3 rounded-lg border ${
                         createTeamMessage.includes("berhasil")
                           ? "bg-emerald-950/20 border-emerald-500/30 text-emerald-400"
                           : "bg-rose-950/20 border-rose-800/30 text-rose-300"
@@ -658,53 +632,53 @@ export default function OpportunityDetail({
                   <button
                     type="submit"
                     disabled={isCreatingTeam || !newTeamName.trim()}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm transition disabled:opacity-40 cursor-pointer"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#FAFAFA] hover:bg-[#E5E5E5] text-[#050505] font-semibold text-xs transition disabled:opacity-40 cursor-pointer active:scale-[0.98]"
                   >
                     {isCreatingTeam ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     ) : (
-                      <Plus className="w-4 h-4" />
+                      <Plus className="w-3.5 h-3.5" />
                     )}
-                    <span>Daftarkan Tim ke Bursa</span>
+                    <span>Daftarkan Tim</span>
                   </button>
                 </form>
               </div>
 
               {/* Daftar Tim Aktif */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Tim Terdaftar ({teamRequests.length})
-                  </h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-mono uppercase text-[#888890]">
+                    Bursa Tim Terdaftar (<span className="tabular-nums text-[#FAFAFA]">{teamRequests.length}</span>)
+                  </span>
                   <button
                     type="button"
                     onClick={loadTeamRequests}
-                    className="text-xs text-slate-400 hover:text-emerald-400 transition"
+                    className="text-[#888890] hover:text-[#FAFAFA] transition"
                   >
                     Muat Ulang
                   </button>
                 </div>
 
                 {isTeamLoading ? (
-                  <div className="p-8 rounded-2xl bg-[#111113] border border-white/[0.08] text-center space-y-2">
-                    <Loader2 className="w-6 h-6 text-emerald-400 animate-spin mx-auto" />
-                    <p className="text-xs text-slate-400">Memeriksa lowongan tim...</p>
+                  <div className="p-8 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] text-center space-y-2">
+                    <Loader2 className="w-5 h-5 text-emerald-400 animate-spin mx-auto" />
+                    <p className="text-xs text-[#888890]">Memeriksa bursa tim...</p>
                   </div>
                 ) : teamError ? (
-                  <div className="p-6 rounded-2xl bg-[#111113] border border-rose-900/30 text-center text-xs text-rose-300">
+                  <div className="p-6 rounded-2xl bg-[#0C0C0E] border border-rose-900/30 text-center text-xs text-rose-300">
                     {teamError}
                   </div>
                 ) : teamRequests.length === 0 ? (
-                  <div className="p-8 rounded-2xl bg-[#111113] border border-white/[0.08] text-center space-y-1">
-                    <p className="text-xs font-semibold text-slate-300">
-                      Belum Ada Tim Terdaftar
+                  <div className="p-8 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] text-center space-y-1">
+                    <p className="text-xs text-[#FAFAFA] font-medium">
+                      Belum ada tim terdaftar
                     </p>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-[11px] text-[#888890]">
                       Jadilah inisiator pertama dengan mendaftarkan tim Anda di atas.
                     </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {teamRequests.map((team) => {
                       const isCreator = team.creator_id === userProfile.id;
                       const status = inviteStatus[team.id];
@@ -712,26 +686,25 @@ export default function OpportunityDetail({
                       return (
                         <div
                           key={team.id}
-                          className="p-5 rounded-2xl bg-[#111113] border border-white/[0.08] space-y-4 flex flex-col justify-between"
+                          className="surface-panel p-5 rounded-2xl space-y-3 flex flex-col justify-between"
                         >
-                          <div className="space-y-2">
+                          <div className="space-y-1.5">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="text-xs font-bold text-slate-100">
+                              <span className="text-xs font-semibold text-[#FAFAFA]">
                                 {team.team_name}
                               </span>
-                              <span className="px-2.5 py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-semibold">
-                                Butuh: {team.role_needed}
+                              <span className="px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.08] text-[11px] font-mono text-emerald-400">
+                                {team.role_needed}
                               </span>
                             </div>
 
-                            <p className="text-xs text-slate-400">
-                              Inisiator: <strong className="text-slate-300">{team.creator_name}</strong>
+                            <p className="text-xs text-[#888890]">
+                              Inisiator: <strong className="text-[#FAFAFA] font-normal">{team.creator_name}</strong>
                               {isCreator && " (Anda)"}
                             </p>
                           </div>
 
-                          {/* Invite Feedback / Button */}
-                          <div className="pt-2 border-t border-white/[0.06] space-y-2">
+                          <div className="pt-2 border-t border-white/[0.04] space-y-2">
                             {status?.error && (
                               <p className="text-[11px] text-rose-400 flex items-center gap-1">
                                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
@@ -740,28 +713,28 @@ export default function OpportunityDetail({
                             )}
 
                             {isCreator ? (
-                              <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-                                <UserCheck className="w-3.5 h-3.5" />
-                                Tim Milik Anda
+                              <span className="inline-flex items-center gap-1.5 text-xs text-[#888890] font-mono">
+                                <UserCheck className="w-3 h-3 text-emerald-400" />
+                                <span>Tim Anda</span>
                               </span>
                             ) : status?.success ? (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                Permintaan Kolaborasi Terkirim
+                              <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
+                                <CheckCircle2 className="w-3 h-3" />
+                                <span>Permintaan Terkirim</span>
                               </span>
                             ) : (
                               <button
                                 type="button"
                                 onClick={() => handleSendInvite(team.id)}
                                 disabled={status?.loading}
-                                className="w-full py-2 px-3 rounded-xl bg-white/[0.06] hover:bg-emerald-500 hover:text-slate-950 border border-white/[0.1] text-xs font-semibold text-slate-200 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                className="w-full py-1.5 px-3 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] text-xs font-medium text-[#FAFAFA] transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98] disabled:opacity-50"
                               >
                                 {status?.loading ? (
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  <Loader2 className="w-3 h-3 animate-spin" />
                                 ) : (
-                                  <Send className="w-3.5 h-3.5" />
+                                  <Send className="w-3 h-3" />
                                 )}
-                                <span>Kirim Permintaan Bergabung</span>
+                                <span>Ajukan Kolaborasi</span>
                               </button>
                             )}
                           </div>
@@ -773,12 +746,12 @@ export default function OpportunityDetail({
               </div>
             </div>
           )}
-        </section>
+        </div>
       </main>
 
-      {/* Editorial Footer */}
-      <footer className="text-center py-6 text-[11px] text-slate-500 border-t border-white/[0.04]">
-        Aplikasi Angkasa &bull; Sistem Rekomendasi Peluang Terkurasi
+      {/* Editorial Clean Footer */}
+      <footer className="text-center py-6 text-[11px] text-[#888890]/50 font-mono border-t border-white/[0.04]">
+        ANGKASA &bull; EXPLOR[AI]TION HACKATHON
       </footer>
     </div>
   );
