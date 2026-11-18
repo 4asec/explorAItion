@@ -134,6 +134,17 @@ export interface OpportunityVerificationResult {
 }
 
 /**
+ * Kontrak AI Career & Skill Insight (P2)
+ */
+export interface ProfileInsightResult {
+  recommendedRole: string;
+  careerInsight: string;
+  extractedTags: string[];
+  _modelUsed?: string;
+  error?: string;
+}
+
+/**
  * Tipe tambahan untuk AI Career & Talent Analyzer (Legacy / Backward Compatibility)
  */
 export interface AIAnalysisResult {
