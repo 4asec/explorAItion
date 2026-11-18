@@ -15,9 +15,7 @@ export interface UserProfile {
   education_level: string;
   province: string;
   city: string;
-  skills: string[];
-  interests: string[];
-  talents: string;
+  profiling: string[];
 }
 
 export interface RegisterPayload {

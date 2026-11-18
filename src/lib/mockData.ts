@@ -215,9 +215,20 @@ export const mockUserProfile: UserProfile = {
   education_level: "D4 Teknik Informatika",
   province: "Jawa Timur",
   city: "Kota Malang",
-  skills: ["Next.js", "TypeScript", "Tailwind CSS", "Supabase", "Gemini API", "Python"],
-  interests: ["Artificial Intelligence", "Full-stack Web", "Hackathons", "EdTech"],
-  talents: "Problem Solving, System Architecture, Rapid Prototyping",
+  profiling: [
+    "Next.js",
+    "TypeScript",
+    "Tailwind CSS",
+    "Supabase",
+    "Gemini API",
+    "Python",
+    "Artificial Intelligence",
+    "Full-stack Web",
+    "Hackathons",
+    "EdTech",
+    "Problem Solving",
+    "System Architecture",
+  ],
 };
 
 /**

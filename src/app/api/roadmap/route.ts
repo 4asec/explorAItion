@@ -12,6 +12,8 @@ function getCategoryFallbackRoadmap(
   opp: Opportunity
 ): RoadmapResponse {
   const deadlineText = opp.deadline || "Jelang Penutupan";
+  const userProfilingList = Array.isArray(user.profiling) ? user.profiling : [];
+  const topCompetencies = userProfilingList.slice(0, 3).join(", ") || "keahlian utama";
 
   if (opp.category === "Beasiswa") {
     return {
@@ -26,9 +28,7 @@ function getCategoryFallbackRoadmap(
         },
         {
           item: "Curriculum Vitae (CV) ATS-Friendly & Portofolio Prestasi",
-          tip: "Soroti keahlian relevan seperti " +
-            (user.skills?.slice(0, 3).join(", ") || "keahlian utama") +
-            " dan kepemimpinan organisasi.",
+          tip: `Soroti kompetensi relevan Anda seperti ${topCompetencies} dan pengalaman kepemimpinan.`,
         },
       ],
       winning_strategy: [
@@ -111,9 +111,7 @@ function getCategoryFallbackRoadmap(
     ],
     winning_strategy: [
       "Fokus pada penyelesaian akar masalah nyata (problem-solution fit) bukan sekadar menumpuk fitur teknologi canggih.",
-      "Optimalkan keahlian anggota tim (" +
-        (user.skills?.slice(0, 3).join(", ") || "Hacker, Hipster, Hustler") +
-        ") dengan pembagian tugas yang terukur.",
+      `Optimalkan keunggulan profil profiling anggota tim (${topCompetencies}) dengan pembagian tugas yang terukur.`,
       "Latih skenario tanya-jawab juri khususnya pada aspek skalabilitas, keamanan sistem, dan model keberlanjutan.",
     ],
     timeline: [
@@ -156,6 +154,8 @@ export async function POST(req: Request) {
       );
     }
 
+    const profilingList = Array.isArray(userProfile.profiling) ? userProfile.profiling : [];
+
     // 2. Upaya Pembuatan Roadmap via Gemini AI
     const apiKey = process.env.GEMINI_API_KEY;
     let roadmapResult: RoadmapResponse | null = null;
@@ -170,9 +170,7 @@ PROFIL MAHASISWA:
 - Nama: ${userProfile.full_name || "Mahasiswa"}
 - Institusi: ${userProfile.institution || "Perguruan Tinggi"}
 - Jenjang: ${userProfile.education_level || "Diploma/Sarjana"}
-- Keahlian: ${(userProfile.skills || []).join(", ") || "Umum"}
-- Minat: ${(userProfile.interests || []).join(", ") || "Teknologi"}
-- Bakat/Potensi: ${userProfile.talents || "-"}
+- Profiling (Keahlian, Minat & Bakat): ${profilingList.join(", ") || "Mahasiswa Berbakat"}
 
 DETAIL PELUANG TARGET:
 - Judul: ${opportunity.title}

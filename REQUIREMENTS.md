@@ -27,7 +27,7 @@ Fragmentasi informasi kompetisi (lomba), beasiswa, dan seminar untuk pelajar dan
 | ID | Fitur | Deskripsi Fungsional & Aturan Teknis |
 | :--- | :--- | :--- |
 | **P1** | **Login & Register** | • **Login:** Autentikasi menggunakan Email dan Password.<br>• **Register:** Mengumpulkan Nama Lengkap, Email, Password, Username, Institusi, Tanggal Lahir, Jenjang Pendidikan, Asal Provinsi, dan Asal Kota.<br>• **Fitur Demo:** Tombol **1-Klik Akun Demo** untuk pengujian instan oleh juri tanpa registrasi manual. |
-| **P2** | **Profiling** | Input data kualitatif pengguna mencakup keahlian (`skills`: string[]), minat (`interests`: string[]), dan potensi/bakat (`talents`: string) sebelum dialihkan ke halaman Feed. |
+| **P2** | **Profiling** | Input data kualitatif minat, bakat, dan keahlian pengguna dalam 1 array terintegrasi (`profiling`: string[]) sebelum dialihkan ke halaman Feed. |
 | **P3** | **AI Personalized Feed** | Mengonsumsi endpoint `POST /api/feed` (Google GenAI Gemini). Menampilkan kartu peluang yang diurutkan menurun berdasarkan skor kecocokan (`matchPercentage` 0–100%), tepat 1 kalimat alasan rekomendasi personal berbahasa Indonesia, serta lencana `Verified`. |
 | **P4** | **Katalog & Detail Informasi** | Menampilkan informasi lengkap peluang: judul, kategori (`Lomba`, `Beasiswa`, `Seminar`), penyelenggara, tenggat waktu (kolom `caption`), deskripsi mendalam (kolom `description_roadmap`), daftar syarat, dan tautan resmi (`registration_url`). |
 | **P5** | **AI Preparation Roadmap** | Mengonsumsi endpoint `POST /api/roadmap` (Gemini AI). Menghasilkan 3 komponen taktis: checklist berkas (`document_checklist`), strategi kelolosan 3 poin (`winning_strategy`), dan lini masa bertahap (`timeline`) hingga tenggat waktu. |
@@ -67,9 +67,7 @@ Menyimpan identitas lengkap dan atribut kompetensi mahasiswa.
 - `education_level` (text, not null)
 - `province` (text, not null)
 - `city` (text, not null)
-- `skills` (text[], default '{}')
-- `interests` (text[], default '{}')
-- `talents` (text, default '')
+- `profiling` (text[], default '{}') — *Array terintegrasi memuat keahlian (skills), minat (interests), dan bakat (talents) pengguna*
 - `created_at` (timestamptz, default now())
 
 #### B. Tabel `opportunities`
@@ -146,7 +144,7 @@ Permintaan bergabung atau ajakan kolaborasi antarpengguna pada tim tertentu.
 1. **Proteksi Autentikasi Halaman:**
    - Pengguna yang belum login/terautentikasi dilarang mengakses tampilan Feed, Roadmap Generator, maupun fitur Team Finding. Sistem wajib menahannya di Landing View atau Auth View.
 2. **Kewajiban Pengisian Profil Minat & Bakat:**
-   - Endpoint `/api/feed` mewajibkan profil pengguna memiliki minimal 1 keahlian (`skills`) atau minat (`interests`). Jika kosong, sistem merespon status `400 Bad Request`:
+   - Endpoint `/api/feed` mewajibkan profil pengguna memiliki data array profiling (`profiling.length > 0`). Jika kosong, sistem merespon status `400 Bad Request`:
      > *"Silakan lengkapi profil minat dan bakat terlebih dahulu sebelum melihat rekomendasi AI."*
 3. **Integritas Kurasi Peluang:**
    - Hanya peluang dengan atribut `is_verified = true` yang boleh disajikan ke pengguna. Peluang yang belum diverifikasi disembunyikan secara otomatis.

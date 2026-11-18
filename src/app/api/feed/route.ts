@@ -13,36 +13,31 @@ function calculateLocalMatch(
   user: UserProfile,
   opp: Opportunity
 ): { matchPercentage: number; recommendationReason: string } {
-  const userSkills = (user.skills || []).map((s) => s.toLowerCase());
-  const userInterests = (user.interests || []).map((i) => i.toLowerCase());
+  const userProfiling = (user.profiling || []).map((p) => p.toLowerCase());
   const oppSkills = (opp.required_skills || []).map((s) => s.toLowerCase());
   const oppText = `${opp.title} ${opp.description} ${opp.category}`.toLowerCase();
 
   const matchedSkills = (opp.required_skills || []).filter((s) =>
-    userSkills.some((us) => us.includes(s.toLowerCase()) || s.toLowerCase().includes(us))
+    userProfiling.some((up) => up.includes(s.toLowerCase()) || s.toLowerCase().includes(up))
   );
 
-  const matchedInterests = (user.interests || []).filter((i) =>
-    oppText.includes(i.toLowerCase())
+  const matchedKeywords = userProfiling.filter((up) =>
+    oppText.includes(up.toLowerCase())
   );
 
   let score = 55;
   score += Math.min(matchedSkills.length * 15, 30);
-  score += Math.min(matchedInterests.length * 10, 15);
-
-  if (opp.category === "Lomba" && user.talents) {
-    score += 5;
-  }
+  score += Math.min(matchedKeywords.length * 10, 15);
 
   const finalScore = Math.min(Math.max(score, 60), 98);
 
   let reason = `Peluang kategori ${opp.category} ini sangat strategis untuk memperkuat rekam jejak portofolio Anda.`;
-  if (matchedSkills.length > 0 && matchedInterests.length > 0) {
-    reason = `Peluang ini sangat cocok karena membutuhkan keahlian ${matchedSkills[0]} serta selaras dengan minat Anda pada ${matchedInterests[0]}.`;
+  if (matchedSkills.length > 0 && matchedKeywords.length > 0) {
+    reason = `Peluang ini sangat cocok karena membutuhkan keahlian ${matchedSkills[0]} serta selaras dengan fokus ${matchedKeywords[0]} Anda.`;
   } else if (matchedSkills.length > 0) {
-    reason = `Profil keahlian Anda di bidang ${matchedSkills[0]} memenuhi kualifikasi utama yang dibutuhkan penyelenggara.`;
-  } else if (matchedInterests.length > 0) {
-    reason = `Program ini sangat relevan untuk memperdalam fokus minat Anda di bidang ${matchedInterests[0]}.`;
+    reason = `Profil keahlian Anda di bidang ${matchedSkills[0]} memenuhi kualifikasi utama yang dicari penyelenggara.`;
+  } else if (matchedKeywords.length > 0) {
+    reason = `Program ini sangat relevan untuk memperdalam fokus minat dan bakat Anda pada ${matchedKeywords[0]}.`;
   }
 
   return { matchPercentage: finalScore, recommendationReason: reason };
@@ -53,7 +48,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { userProfile, opportunities: rawOpportunities } = body;
 
-    // 1. Validasi Profil Pengguna
+    // 1. Validasi Profil Pengguna & Profiling (Single Array)
     if (!userProfile) {
       return NextResponse.json(
         { error: "Data profil pengguna tidak valid atau tidak ditemukan." },
@@ -61,10 +56,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const hasSkills = Array.isArray(userProfile.skills) && userProfile.skills.length > 0;
-    const hasInterests = Array.isArray(userProfile.interests) && userProfile.interests.length > 0;
+    const profilingList = Array.isArray(userProfile.profiling) ? userProfile.profiling : [];
 
-    if (!hasSkills && !hasInterests) {
+    if (profilingList.length === 0) {
       return NextResponse.json(
         {
           error:
@@ -120,20 +114,18 @@ export async function POST(req: Request) {
       }));
 
       const prompt = `Anda adalah sistem rekomendasi karir & kompetensi pintar untuk mahasiswa Indonesia (Aplikasi Angkasa).
-Tugas Anda adalah menilai kecocokan profil pengguna terhadap masing-masing peluang yang tersedia.
+Tugas Anda adalah menilai kecocokan profil pengguna terhadap masing-masing peluang yang tersedia berdasarkan data profiling terintegrasi (skills, minat, dan bakat).
 
 PROFIL PENGGUNA:
 - Nama: ${userProfile.full_name || "Mahasiswa"}
 - Jenjang: ${userProfile.education_level || "Perguruan Tinggi"}
-- Keahlian (Skills): ${(userProfile.skills || []).join(", ") || "Belum diisi"}
-- Minat (Interests): ${(userProfile.interests || []).join(", ") || "Belum diisi"}
-- Bakat/Potensi: ${userProfile.talents || "Belum diisi"}
+- Profiling (Keahlian, Minat & Bakat): ${profilingList.join(", ")}
 
 DAFTAR PELUANG:
 ${JSON.stringify(oppContext, null, 2)}
 
 ATURAN PENILAIAN:
-1. Berikan matchPercentage (angka integer 0-100) berdasarkan seberapa relevan peluang tersebut terhadap keahlian, minat, dan bakat pengguna.
+1. Berikan matchPercentage (angka integer 0-100) berdasarkan seberapa relevan peluang tersebut terhadap data profiling pengguna.
 2. Berikan recommendationReason tepat 1 kalimat padat berbahasa Indonesia yang jelas, persuasif, dan menyebutkan relevansi keahlian atau minat pengguna secara spesifik.`;
 
       for (const modelName of MODELS) {

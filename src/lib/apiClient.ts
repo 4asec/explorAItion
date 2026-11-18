@@ -51,14 +51,27 @@ export async function loginUser(
       }
 
       if (data.user) {
-        const { data: profile, error: profileErr } = await supabaseClient
+        const { data: profile } = await supabaseClient
           .from("profiles")
           .select("*")
           .eq("id", data.user.id)
           .single();
 
         if (profile) {
-          return { data: { user: data.user, profile: profile as UserProfile }, error: null };
+          // Normalisasi field profiling jika masih ada data legacy
+          const normalizedProfile: UserProfile = {
+            id: profile.id,
+            full_name: profile.full_name,
+            email: profile.email,
+            username: profile.username,
+            institution: profile.institution,
+            birth_date: profile.birth_date,
+            education_level: profile.education_level,
+            province: profile.province,
+            city: profile.city,
+            profiling: Array.isArray(profile.profiling) ? profile.profiling : [],
+          };
+          return { data: { user: data.user, profile: normalizedProfile }, error: null };
         }
 
         // Jika profile row belum ada, buatkan draf dasar
@@ -72,9 +85,7 @@ export async function loginUser(
           education_level: "Mahasiswa",
           province: "Indonesia",
           city: "Indonesia",
-          skills: [],
-          interests: [],
-          talents: "",
+          profiling: [],
         };
 
         return { data: { user: data.user, profile: fallbackProfile }, error: null };
@@ -102,9 +113,14 @@ export async function loginUser(
       education_level: "D4 Teknik Informatika",
       province: "Jawa Timur",
       city: "Kota Malang",
-      skills: ["React", "TypeScript", "Tailwind CSS"],
-      interests: ["Artificial Intelligence", "Web Development"],
-      talents: "Creative Problem Solving",
+      profiling: [
+        "React",
+        "TypeScript",
+        "Tailwind CSS",
+        "Artificial Intelligence",
+        "Web Development",
+        "Creative Problem Solving",
+      ],
     };
 
     return {
@@ -154,9 +170,7 @@ export async function registerUser(
           education_level: payload.education_level,
           province: payload.province,
           city: payload.city,
-          skills: [],
-          interests: [],
-          talents: "",
+          profiling: [],
         };
 
         const { error: profileErr } = await supabaseClient
@@ -182,9 +196,7 @@ export async function registerUser(
       education_level: payload.education_level,
       province: payload.province,
       city: payload.city,
-      skills: [],
-      interests: [],
-      talents: "",
+      profiling: [],
     };
 
     return {
@@ -218,8 +230,21 @@ export async function loginDemoUser(): Promise<ApiResponse<{ user: any; profile:
           .single();
 
         if (profile) {
+          const loadedProfile: UserProfile = {
+            id: profile.id,
+            full_name: profile.full_name,
+            email: profile.email,
+            username: profile.username,
+            institution: profile.institution,
+            birth_date: profile.birth_date,
+            education_level: profile.education_level,
+            province: profile.province,
+            city: profile.city,
+            profiling: Array.isArray(profile.profiling) ? profile.profiling : mockUserProfile.profiling,
+          };
+
           return {
-            data: { user: data.user, profile: profile as UserProfile },
+            data: { user: data.user, profile: loadedProfile },
             error: null,
           };
         }
@@ -264,20 +289,24 @@ export async function logoutUser(): Promise<{ success: boolean; error: string | 
 // =================================================================
 
 /**
- * Memperbarui data keahlian, minat, dan bakat pengguna
+ * Memperbarui data profiling minat, bakat, dan keahlian pengguna ke 1 kolom `profiling: string[]`
  */
 export async function updateUserProfile(
   userId: string,
-  updates: { skills: string[]; interests: string[]; talents: string }
+  updates: string[] | { profiling: string[] }
 ): Promise<ApiResponse<UserProfile>> {
   try {
+    const profilingArray: string[] = Array.isArray(updates)
+      ? updates
+      : Array.isArray(updates?.profiling)
+      ? updates.profiling
+      : [];
+
     if (isSupabaseConfigured) {
       const { data, error } = await supabaseClient
         .from("profiles")
         .update({
-          skills: updates.skills,
-          interests: updates.interests,
-          talents: updates.talents,
+          profiling: profilingArray,
         })
         .eq("id", userId)
         .select()
@@ -294,9 +323,7 @@ export async function updateUserProfile(
     const updatedMock: UserProfile = {
       ...mockUserProfile,
       id: userId,
-      skills: updates.skills,
-      interests: updates.interests,
-      talents: updates.talents,
+      profiling: profilingArray,
     };
 
     return { data: updatedMock, error: null };
@@ -338,7 +365,7 @@ export async function fetchPersonalizedFeed(
     const emergencyList: PersonalizedOpportunity[] = mockOpportunities.map((o, idx) => ({
       ...o,
       matchPercentage: 95 - idx * 2,
-      recommendationReason: `Peluang kategori ${o.category} ini relevan dengan latar belakang pendidikan dan keahlian Anda.`,
+      recommendationReason: `Peluang kategori ${o.category} ini sangat selaras dengan profil kompetensi dan minat Anda.`,
     }));
 
     return { data: emergencyList, error: null };
@@ -419,7 +446,7 @@ export async function toggleBookmark(
   try {
     if (isSupabaseConfigured) {
       // Periksa apakah bookmark sudah ada
-      const { data: existing, error: checkErr } = await supabaseClient
+      const { data: existing } = await supabaseClient
         .from("bookmarks")
         .select("id")
         .eq("user_id", userId)
