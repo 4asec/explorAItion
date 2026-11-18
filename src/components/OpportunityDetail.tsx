@@ -15,6 +15,7 @@ import {
   getUserBookmarks,
   toggleBookmark,
 } from "@/lib/apiClient";
+import BackgroundOrnaments from "@/components/BackgroundOrnaments";
 import {
   ArrowLeft,
   Calendar,
@@ -299,7 +300,10 @@ export default function OpportunityDetail({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#004aad] via-[#003d91] to-[#002b66] text-white flex flex-col font-sans selection:bg-amber-400/30 selection:text-amber-200">
+    <div className="relative min-h-screen bg-gradient-to-b from-[#004aad] via-[#003d91] to-[#002b66] text-white flex flex-col font-sans selection:bg-amber-400/30 selection:text-amber-200">
+      {/* Ornamen Background Y2K Tech-Cyber */}
+      <BackgroundOrnaments />
+
       {/* Top Header Navigation */}
       <header className="sticky top-0 z-30 bg-[#004aad]/80 backdrop-blur-md border-b border-white/20">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-2.5">
@@ -339,7 +343,7 @@ export default function OpportunityDetail({
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8 animate-fade-slide-up">
+      <main className="relative z-10 flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8 animate-fade-slide-up">
         {/* Opportunity Editorial Header Card */}
         <section className="surface-panel p-6 sm:p-8 rounded-2xl space-y-6">
           <div className="flex items-center justify-between gap-3 text-xs font-mono">

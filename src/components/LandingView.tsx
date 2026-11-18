@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import BackgroundOrnaments from "@/components/BackgroundOrnaments";
 import {
   Orbit,
   ArrowRight,
@@ -23,7 +24,10 @@ export interface LandingViewProps {
 
 export default function LandingView({ onStartAuth, onDemoLogin }: LandingViewProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#004aad] via-[#003d91] to-[#002b66] text-white flex flex-col font-sans selection:bg-amber-400/30 selection:text-amber-200">
+    <div className="relative min-h-screen bg-gradient-to-b from-[#004aad] via-[#003d91] to-[#002b66] text-white flex flex-col font-sans selection:bg-amber-400/30 selection:text-amber-200">
+      {/* Ornamen Background Y2K Tech-Cyber */}
+      <BackgroundOrnaments />
+
       {/* Top Navbar */}
       <header className="sticky top-0 z-40 bg-[#004aad]/80 backdrop-blur-md border-b border-white/20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
@@ -72,20 +76,34 @@ export default function LandingView({ onStartAuth, onDemoLogin }: LandingViewPro
       </header>
 
       {/* Hero Section */}
-      <section className="relative pt-14 sm:pt-20 pb-16 px-4 sm:px-6 max-w-5xl mx-auto text-center flex flex-col items-center">
+      <section className="relative z-10 pt-14 sm:pt-20 pb-16 px-4 sm:px-6 max-w-5xl mx-auto text-center flex flex-col items-center">
         {/* Lencana Terverifikasi */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/25 text-amber-300 text-xs font-mono mb-6 animate-fade-slide-up shadow-sm backdrop-blur-md">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
           <span>Kurasi Peluang Pelajar &amp; Mahasiswa Terverifikasi</span>
         </div>
 
-        {/* Headline Utama */}
-        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-semibold tracking-[-0.03em] text-white leading-tight sm:leading-[1.1] max-w-4xl">
-          Temukan Peluang Lomba &amp; Beasiswa{" "}
-          <span className="text-amber-300 block sm:inline">
-            Tanpa Information Overload
-          </span>
-        </h1>
+        {/* Headline Utama dengan Tipografi Editorial Modern (Sans + Serif Italic + Floating Badges) */}
+        <div className="relative max-w-4xl my-2">
+          {/* Floating Accent Badge Kiri Atas */}
+          <div className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white/10 border border-white/25 text-amber-300 text-xs font-mono shadow-xl backdrop-blur-md absolute -top-6 -left-4 lg:-left-12 rotate-[-5deg] animate-pulse">
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <span>AI Match Engine</span>
+          </div>
+
+          {/* Floating Accent Badge Kanan Bawah */}
+          <div className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white/10 border border-white/25 text-white/95 text-xs font-mono shadow-xl backdrop-blur-md absolute -bottom-5 -right-4 lg:-right-10 rotate-[4deg]">
+            <Award className="w-3.5 h-3.5 text-amber-300" />
+            <span>Terverifikasi 100%</span>
+          </div>
+
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-semibold tracking-[-0.03em] text-white leading-tight sm:leading-[1.15]">
+            Temukan Peluang Lomba &amp; Beasiswa{" "}
+            <span className="block sm:inline font-serif-editorial italic font-normal text-amber-300 tracking-normal text-4xl sm:text-6xl lg:text-7xl">
+              Tanpa Information Overload
+            </span>
+          </h1>
+        </div>
 
         {/* Sub-headline */}
         <p className="mt-5 text-sm sm:text-base text-white/80 max-w-2xl leading-relaxed">

@@ -4,4 +4,5 @@ export { default as FeedDashboard } from "./FeedDashboard";
 export { default as OpportunityDetail } from "./OpportunityDetail";
 export { default as ProfileView } from "./ProfileView";
 export { default as ProfilePage } from "./ProfilePage";
+export { default as BackgroundOrnaments } from "./BackgroundOrnaments";
 export * from "./auth";

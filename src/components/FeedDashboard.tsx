@@ -15,6 +15,7 @@ import {
   DEFAULT_POSTER_URL,
 } from "@/lib/apiClient";
 import CuratorPanel from "@/components/CuratorPanel";
+import BackgroundOrnaments from "@/components/BackgroundOrnaments";
 import {
   ShieldCheck,
   Search,
@@ -226,7 +227,10 @@ export default function FeedDashboard({
   }, [opportunities]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#004aad] via-[#003d91] to-[#002b66] text-white flex flex-col font-sans selection:bg-amber-400/30 selection:text-amber-200">
+    <div className="relative min-h-screen bg-gradient-to-b from-[#004aad] via-[#003d91] to-[#002b66] text-white flex flex-col font-sans selection:bg-amber-400/30 selection:text-amber-200">
+      {/* Ornamen Background Y2K Tech-Cyber */}
+      <BackgroundOrnaments />
+
       {/* Top Header — Minimalist Royal Glass Navigation */}
       <header className="sticky top-0 z-30 bg-[#004aad]/85 backdrop-blur-md border-b border-white/20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
@@ -298,7 +302,7 @@ export default function FeedDashboard({
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 space-y-7">
+      <main className="relative z-10 flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 space-y-7">
         {/* Editorial Subheader & Stats */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-2">
           <div className="space-y-1">

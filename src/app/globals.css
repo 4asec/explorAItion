@@ -69,6 +69,17 @@ body {
   box-shadow: 0 10px 30px -10px rgba(0, 15, 45, 0.45), inset 0 1px 0 0 rgba(255, 255, 255, 0.25);
 }
 
+/* Editorial Serif Font Utility */
+.font-serif-editorial {
+  font-family: var(--font-serif-editorial), "Instrument Serif", "Playfair Display", Georgia, serif;
+}
+
+/* Y2K Tech Cyber Grid Pattern */
+.bg-tech-grid {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
 .surface-interactive {
   transition: background-color 200ms cubic-bezier(0.16, 1, 0.3, 1),
               border-color 200ms cubic-bezier(0.16, 1, 0.3, 1),
