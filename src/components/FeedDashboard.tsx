@@ -5,9 +5,15 @@ import {
   UserProfile,
   ScoredOpportunity,
   PersonalizedOpportunity,
-  OpportunityCategory,
+  Opportunity,
 } from "@/types/schema";
-import { fetchPersonalizedFeed, getUserBookmarks, toggleBookmark } from "@/lib/apiClient";
+import {
+  fetchPersonalizedFeed,
+  getUserBookmarks,
+  toggleBookmark,
+  fetchAllOpportunitiesForCurator,
+} from "@/lib/apiClient";
+import CuratorPanel from "@/components/CuratorPanel";
 import {
   LogOut,
   ShieldCheck,
@@ -17,15 +23,7 @@ import {
   ArrowUpRight,
   Bookmark,
   SlidersHorizontal,
-  Plus,
-  X,
-  CheckCircle2,
-  Clock,
   Calendar,
-  Building2,
-  ExternalLink,
-  Layers,
-  Sparkles,
 } from "lucide-react";
 
 export interface FeedDashboardProps {
@@ -36,33 +34,6 @@ export interface FeedDashboardProps {
 }
 
 type CategoryFilter = "Semua" | "Lomba" | "Beasiswa" | "Seminar" | "Tersimpan";
-
-// Antrean draf awal untuk demo Mode Kurator kepada juri
-const INITIAL_CURATOR_QUEUE: PersonalizedOpportunity[] = [
-  {
-    id: "draft-opp-101",
-    title: "National Cyber Defense Competition 2026",
-    category: "Lomba",
-    organizer: "Badan Siber dan Sandi Negara (BSSN)",
-    caption: "30 Desember 2026",
-    deadline: "30 Desember 2026",
-    description_roadmap:
-      "Kompetisi simulasi pertahanan jaringan komputer dan insiden keamanan siber berskala nasional untuk perguruan tinggi.",
-    description:
-      "Kompetisi simulasi pertahanan jaringan komputer dan insiden keamanan siber berskala nasional untuk perguruan tinggi.",
-    requirements: [
-      "Mahasiswa aktif program diploma atau sarjana",
-      "Memiliki tim beranggotakan 3 orang",
-      "Menguasai dasar jaringan dan analisis log sistem",
-    ],
-    required_skills: ["Cybersecurity", "Network Defense", "Linux", "Penetration Testing"],
-    registration_url: "https://bssn.go.id/kompetisi-siber",
-    image_url: "",
-    is_verified: false,
-    matchPercentage: 92,
-    recommendationReason: "Keahlian Cybersecurity Anda sangat selaras dengan kualifikasi lomba pertahanan siber ini.",
-  },
-];
 
 export default function FeedDashboard({
   userProfile,
@@ -77,19 +48,9 @@ export default function FeedDashboard({
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("Semua");
 
-  // State Mode Kurator (Demo Juri)
+  // State Panel Kurator (Admin Input Manual & Verifikator)
   const [isCuratorOpen, setIsCuratorOpen] = useState<boolean>(false);
-  const [curatorQueue, setCuratorQueue] = useState<PersonalizedOpportunity[]>(INITIAL_CURATOR_QUEUE);
-  const [curatorSuccessMsg, setCuratorSuccessMsg] = useState<string | null>(null);
-
-  // Form Input Kurator Baru
-  const [newTitle, setNewTitle] = useState("");
-  const [newOrganizer, setNewOrganizer] = useState("");
-  const [newCategory, setNewCategory] = useState<OpportunityCategory>("Lomba");
-  const [newCaption, setNewCaption] = useState("");
-  const [newImageUrl, setNewImageUrl] = useState("");
-  const [newDescription, setNewDescription] = useState("");
-  const [newRegUrl, setNewRegUrl] = useState("");
+  const [pendingCount, setPendingCount] = useState<number>(0);
 
   const loadFeed = async () => {
     setIsLoading(true);
@@ -120,9 +81,22 @@ export default function FeedDashboard({
     }
   };
 
+  const refreshCuratorCounts = async () => {
+    try {
+      const res = await fetchAllOpportunitiesForCurator();
+      if (res.data) {
+        const pending = res.data.filter((o) => !o.is_verified);
+        setPendingCount(pending.length);
+      }
+    } catch (e) {
+      console.warn("[Curator Count Error]", e);
+    }
+  };
+
   useEffect(() => {
     loadFeed();
     loadBookmarks();
+    refreshCuratorCounts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userProfile]);
 
@@ -143,56 +117,29 @@ export default function FeedDashboard({
     }
   };
 
-  // Handler: Tambah Peluang Manual oleh Kurator (Status: is_verified = false)
-  const handleAddManualOpportunity = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim() || !newOrganizer.trim()) return;
-
-    const newDraft: PersonalizedOpportunity = {
-      id: `manual-opp-${Date.now()}`,
-      title: newTitle.trim(),
-      organizer: newOrganizer.trim(),
-      category: newCategory,
-      caption: newCaption.trim() || "Segera",
-      deadline: newCaption.trim() || "Segera",
-      description_roadmap: newDescription.trim() || "Peluang terkurasi oleh tim kurator Angkasa.",
-      description: newDescription.trim() || "Peluang terkurasi oleh tim kurator Angkasa.",
-      registration_url: newRegUrl.trim() || "https://angkasa.id",
-      image_url: newImageUrl.trim() || undefined,
-      is_verified: false,
-      matchPercentage: 88,
-      recommendationReason: `Peluang kategori ${newCategory} ini sangat relevan untuk memperkuat portofolio Anda.`,
-    };
-
-    setCuratorQueue((prev) => [newDraft, ...prev]);
-    setCuratorSuccessMsg(`Draf "${newDraft.title}" berhasil ditambahkan ke antrean verifikasi.`);
-
-    // Reset Form
-    setNewTitle("");
-    setNewOrganizer("");
-    setNewCaption("");
-    setNewImageUrl("");
-    setNewDescription("");
-    setNewRegUrl("");
+  // Handler: Peluang Baru Diverifikasi oleh Kurator (is_verified: false -> true)
+  const handleOpportunityVerified = (verifiedOpp: Opportunity) => {
+    setOpportunities((prev) => {
+      const exists = prev.some((o) => o.id === verifiedOpp.id);
+      if (exists) {
+        return prev.map((o) =>
+          o.id === verifiedOpp.id ? { ...o, is_verified: true } : o
+        );
+      }
+      const newPersonalized: PersonalizedOpportunity = {
+        ...verifiedOpp,
+        is_verified: true,
+        matchPercentage: 92,
+        recommendationReason: `Peluang kategori ${verifiedOpp.category} ini telah diverifikasi kurator dan sangat selaras dengan kualifikasi profil Anda.`,
+      };
+      return [newPersonalized, ...prev];
+    });
+    setPendingCount((prev) => Math.max(0, prev - 1));
   };
 
-  // Handler: Kurator Memverifikasi & Menayangkan Peluang (is_verified: false -> true)
-  const handleVerifyAndPublish = (draftId: string) => {
-    const targetDraft = curatorQueue.find((item) => item.id === draftId);
-    if (!targetDraft) return;
-
-    const publishedOpportunity: PersonalizedOpportunity = {
-      ...targetDraft,
-      is_verified: true,
-    };
-
-    // 1. Masukkan ke feed publik
-    setOpportunities((prev) => [publishedOpportunity, ...prev]);
-
-    // 2. Hapus dari antrean verifikasi
-    setCuratorQueue((prev) => prev.filter((item) => item.id !== draftId));
-
-    setCuratorSuccessMsg(`Peluang "${publishedOpportunity.title}" telah diverifikasi dan resmi tayang di Feed publik.`);
+  // Handler: Peluang Baru Ditambahkan ke Antrean oleh Kurator
+  const handleOpportunityAdded = (_newOpp: Opportunity) => {
+    setPendingCount((prev) => prev + 1);
   };
 
   const filteredOpportunities = useMemo(() => {
@@ -230,9 +177,9 @@ export default function FeedDashboard({
             </div>
           </div>
 
-          {/* Actions: Mode Kurator Demo + Ubah Minat + Keluar */}
+          {/* Actions: Panel Kurator + Ubah Minat + Keluar */}
           <div className="flex items-center gap-2">
-            {/* Tombol Mode Kurator untuk Demo Juri */}
+            {/* Tombol Akses Panel Kurator & Verifikator */}
             <button
               type="button"
               onClick={() => setIsCuratorOpen(true)}
@@ -240,10 +187,10 @@ export default function FeedDashboard({
               title="Panel Kurator & Verifikator Manual"
             >
               <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="hidden sm:inline">Mode Kurator</span>
-              {curatorQueue.length > 0 && (
+              <span className="hidden sm:inline">Panel Kurator</span>
+              {pendingCount > 0 && (
                 <span className="px-1.5 py-0.2 rounded-full bg-emerald-500 text-slate-950 font-mono text-[10px] font-bold tabular-nums">
-                  {curatorQueue.length}
+                  {pendingCount}
                 </span>
               )}
             </button>
@@ -536,211 +483,14 @@ export default function FeedDashboard({
       </main>
 
       {/* ========================================================= */}
-      {/* MODAL / PANEL MODE KURATOR (DEMO JURI) */}
+      {/* PANEL KURATOR & VERIFIKATOR KOMPONEN (DEMO JURI) */}
       {/* ========================================================= */}
-      {isCuratorOpen && (
-        <div className="fixed inset-0 z-50 bg-[#050505]/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-          <div className="w-full max-w-2xl bg-[#0C0C0E] border border-white/[0.08] rounded-2xl shadow-2xl p-6 sm:p-7 space-y-6 animate-fade-slide-up relative my-8 max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex items-start justify-between pb-4 border-b border-white/[0.07]">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  <span className="text-[11px] font-mono uppercase tracking-wider text-emerald-400">
-                    PANEL KURATOR &amp; VERIFIKASI PELUANG
-                  </span>
-                </div>
-                <h2 className="text-lg font-semibold tracking-[-0.02em] text-[#FAFAFA] mt-1">
-                  Alur Input Manual &amp; Kurasi Internal
-                </h2>
-                <p className="text-xs text-[#888890]">
-                  Peluang baru berstatus <strong className="text-amber-400 font-normal">is_verified: false</strong> dan tidak akan tampil di feed sebelum disetujui kurator.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setIsCuratorOpen(false);
-                  setCuratorSuccessMsg(null);
-                }}
-                className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-[#888890] hover:text-[#FAFAFA] transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Notification Alert */}
-            {curatorSuccessMsg && (
-              <div className="p-3.5 rounded-xl bg-emerald-950/20 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>{curatorSuccessMsg}</span>
-              </div>
-            )}
-
-            {/* Section 1: Form Input Manual Peluang Baru */}
-            <div className="space-y-4">
-              <h3 className="text-xs font-mono uppercase text-[#888890] tracking-wider flex items-center gap-1.5">
-                <Plus className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Input Peluang Baru ke Antrean Kurasi</span>
-              </h3>
-
-              <form onSubmit={handleAddManualOpportunity} className="space-y-3.5 text-xs">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="block text-[#888890] font-mono">Judul Peluang *</label>
-                    <input
-                      type="text"
-                      placeholder="Contoh: Lomba Desain Web Nasional 2026"
-                      value={newTitle}
-                      onChange={(e) => setNewTitle(e.target.value)}
-                      required
-                      className="w-full px-3 py-2 rounded-xl bg-[#050505] border border-white/[0.07] focus:border-emerald-500 text-[#FAFAFA] placeholder:text-[#888890]/50 focus:outline-none transition"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-[#888890] font-mono">Penyelenggara *</label>
-                    <input
-                      type="text"
-                      placeholder="Contoh: Universitas Indonesia"
-                      value={newOrganizer}
-                      onChange={(e) => setNewOrganizer(e.target.value)}
-                      required
-                      className="w-full px-3 py-2 rounded-xl bg-[#050505] border border-white/[0.07] focus:border-emerald-500 text-[#FAFAFA] placeholder:text-[#888890]/50 focus:outline-none transition"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <label className="block text-[#888890] font-mono">Kategori *</label>
-                    <select
-                      value={newCategory}
-                      onChange={(e) => setNewCategory(e.target.value as OpportunityCategory)}
-                      className="w-full px-3 py-2 rounded-xl bg-[#050505] border border-white/[0.07] focus:border-emerald-500 text-[#FAFAFA] focus:outline-none transition"
-                    >
-                      <option value="Lomba">Lomba</option>
-                      <option value="Beasiswa">Beasiswa</option>
-                      <option value="Seminar">Seminar</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-[#888890] font-mono">Batas Waktu / Caption</label>
-                    <input
-                      type="text"
-                      placeholder="Contoh: 15 Januari 2027"
-                      value={newCaption}
-                      onChange={(e) => setNewCaption(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-[#050505] border border-white/[0.07] focus:border-emerald-500 text-[#FAFAFA] placeholder:text-[#888890]/50 focus:outline-none transition"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-[#888890] font-mono">URL Poster (Opsional)</label>
-                    <input
-                      type="text"
-                      placeholder="https://.../poster.jpg"
-                      value={newImageUrl}
-                      onChange={(e) => setNewImageUrl(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-[#050505] border border-white/[0.07] focus:border-emerald-500 text-[#FAFAFA] placeholder:text-[#888890]/50 focus:outline-none transition"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-[#888890] font-mono">Deskripsi Singkat &amp; Panduan</label>
-                  <textarea
-                    rows={2}
-                    placeholder="Ringkasan kriteria kompetisi atau beasiswa..."
-                    value={newDescription}
-                    onChange={(e) => setNewDescription(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-[#050505] border border-white/[0.07] focus:border-emerald-500 text-[#FAFAFA] placeholder:text-[#888890]/50 focus:outline-none transition resize-none"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-[#888890] font-mono">Tautan Pendaftaran Resmi</label>
-                  <input
-                    type="url"
-                    placeholder="https://penyelenggara.ac.id/daftar"
-                    value={newRegUrl}
-                    onChange={(e) => setNewRegUrl(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-[#050505] border border-white/[0.07] focus:border-emerald-500 text-[#FAFAFA] placeholder:text-[#888890]/50 focus:outline-none transition"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-2.5 px-4 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.12] text-[#FAFAFA] font-medium transition cursor-pointer active:scale-[0.98] flex items-center justify-center gap-1.5"
-                >
-                  <Plus className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Daftarkan ke Antrean (is_verified: false)</span>
-                </button>
-              </form>
-            </div>
-
-            {/* Section 2: Antrean Kurasi Menunggu Verifikasi */}
-            <div className="space-y-3 pt-4 border-t border-white/[0.07]">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-mono uppercase text-[#888890] tracking-wider flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Antrean Menunggu Verifikasi ({curatorQueue.length})</span>
-                </h3>
-
-                <span className="text-[11px] font-mono text-amber-400/80">
-                  Belum Tampil di Feed Publik
-                </span>
-              </div>
-
-              {curatorQueue.length === 0 ? (
-                <div className="p-6 rounded-xl bg-[#050505] border border-white/[0.06] text-center space-y-1">
-                  <p className="text-xs text-[#FAFAFA] font-medium">Antrean Verifikasi Kosong</p>
-                  <p className="text-[11px] text-[#888890]">
-                    Seluruh peluang yang diajukan telah diverifikasi dan tayang di feed.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2.5">
-                  {curatorQueue.map((draft) => (
-                    <div
-                      key={draft.id}
-                      className="p-4 rounded-xl bg-[#050505] border border-white/[0.07] flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                            Menunggu Verifikasi
-                          </span>
-                          <span className="text-[10px] font-mono text-[#888890]">
-                            {draft.category}
-                          </span>
-                        </div>
-                        <h4 className="text-xs sm:text-sm font-semibold text-[#FAFAFA]">
-                          {draft.title}
-                        </h4>
-                        <p className="text-[11px] text-[#888890]">
-                          Penyelenggara: {draft.organizer} &bull; Deadline: {draft.caption}
-                        </p>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => handleVerifyAndPublish(draft.id)}
-                        className="px-3.5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-semibold transition active:scale-[0.98] cursor-pointer flex items-center gap-1.5 shrink-0 self-end sm:self-center shadow-sm"
-                      >
-                        <ShieldCheck className="w-3.5 h-3.5 text-slate-950" />
-                        <span>Verifikasi &amp; Tayangkan</span>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <CuratorPanel
+        isOpen={isCuratorOpen}
+        onClose={() => setIsCuratorOpen(false)}
+        onOpportunityVerified={handleOpportunityVerified}
+        onOpportunityAdded={handleOpportunityAdded}
+      />
 
       {/* Editorial Clean Footer */}
       <footer className="text-center py-6 text-[11px] text-[#888890]/50 font-mono border-t border-white/[0.04] mt-10">

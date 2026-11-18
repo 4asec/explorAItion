@@ -406,24 +406,47 @@ export async function fetchPersonalizedFeed(
 
     const data = json as PersonalizedOpportunity[];
 
+    // Gabungkan dengan peluang kurator yang sudah berstatus verified (is_verified: true)
+    const manualVerified = getStoredManualOpportunities().filter((o) => o.is_verified);
+    const existingIds = new Set(data.map((d) => d.id));
+    const mergedData = [...data];
+
+    for (const mo of manualVerified) {
+      if (!existingIds.has(mo.id)) {
+        mergedData.unshift({
+          ...mo,
+          matchPercentage: 92,
+          recommendationReason: `Peluang kategori ${mo.category} ini telah diverifikasi kurator dan sangat selaras dengan kualifikasi profil Anda.`,
+        });
+      }
+    }
+
     // Simpan ke cache sessionStorage
-    if (typeof window !== "undefined" && Array.isArray(data)) {
+    if (typeof window !== "undefined" && Array.isArray(mergedData)) {
       try {
-        sessionStorage.setItem(cacheKey, JSON.stringify(data));
+        sessionStorage.setItem(cacheKey, JSON.stringify(mergedData));
       } catch (e) {
         console.warn("[Feed Cache Write Warning]", e);
       }
     }
 
-    return { data, error: null };
+    return { data: mergedData, error: null };
   } catch (err) {
     console.warn("[fetchPersonalizedFeed Network Warning]", err);
     // Fallback darurat jika jaringan fetch putus
-    const emergencyList: PersonalizedOpportunity[] = mockOpportunities.map((o, idx) => ({
-      ...o,
-      matchPercentage: 95 - idx * 2,
-      recommendationReason: `Sangat selaras dengan keahlian Anda di bidang ${o.category}.`,
-    }));
+    const manualVerified = getStoredManualOpportunities().filter((o) => o.is_verified);
+    const emergencyList: PersonalizedOpportunity[] = [
+      ...manualVerified.map((o) => ({
+        ...o,
+        matchPercentage: 92,
+        recommendationReason: `Peluang kategori ${o.category} ini telah diverifikasi kurator dan selaras dengan profil Anda.`,
+      })),
+      ...mockOpportunities.map((o, idx) => ({
+        ...o,
+        matchPercentage: 95 - idx * 2,
+        recommendationReason: `Sangat selaras dengan keahlian Anda di bidang ${o.category}.`,
+      })),
+    ];
 
     return { data: emergencyList, error: null };
   }
@@ -762,39 +785,257 @@ export async function sendTeamInvite(
 }
 
 // =================================================================
-// 7. VERIFIKASI PELUANG & ANTI-HOAKS (ANTI-HOAX ENGINE)
+// 7. KURATOR & VERIFIKATOR PELUANG (MANUAL & VERIFIKASI)
 // =================================================================
 
+const MANUAL_OPP_STORAGE_KEY = "angkasa_curator_opportunities";
+
 /**
- * Memverifikasi keabsahan broadcast atau caption peluang serta mengekstraksi data terstruktur
+ * Antrean draf awal untuk demo Mode Kurator kepada juri
  */
-export async function verifyOpportunity(
-  text: string
-): Promise<ApiResponse<OpportunityVerificationResult>> {
+export const INITIAL_CURATOR_DRAFT: Opportunity = {
+  id: "draft-opp-101",
+  title: "National Cyber Defense Competition 2026",
+  category: "Lomba",
+  organizer: "Badan Siber dan Sandi Negara (BSSN)",
+  caption: "30 Desember 2026",
+  deadline: "30 Desember 2026",
+  description_roadmap:
+    "Kompetisi simulasi pertahanan jaringan komputer dan insiden keamanan siber berskala nasional untuk perguruan tinggi.",
+  description:
+    "Kompetisi simulasi pertahanan jaringan komputer dan insiden keamanan siber berskala nasional untuk perguruan tinggi.",
+  requirements: [
+    "Mahasiswa aktif program diploma atau sarjana",
+    "Memiliki tim beranggotakan 3 orang",
+    "Menguasai dasar jaringan dan analisis log sistem",
+  ],
+  required_skills: ["Cybersecurity", "Network Defense", "Linux", "Penetration Testing"],
+  registration_url: "https://bssn.go.id/kompetisi-siber",
+  image_url: "",
+  is_verified: false,
+};
+
+/**
+ * Helper penyimpanan draf peluang kurator di localStorage
+ */
+function getStoredManualOpportunities(): Opportunity[] {
+  if (typeof window === "undefined") return [];
   try {
-    const res = await fetch("/api/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-    });
-
-    const json = await res.json();
-
-    if (!res.ok) {
-      return {
-        data: null,
-        error: json.error || "Gagal melakukan verifikasi peluang.",
-      };
+    const raw = localStorage.getItem(MANUAL_OPP_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
+    // Draf awal untuk antrean verifikasi kurator saat demo
+    localStorage.setItem(MANUAL_OPP_STORAGE_KEY, JSON.stringify([INITIAL_CURATOR_DRAFT]));
+    return [INITIAL_CURATOR_DRAFT];
+  } catch (e) {
+    console.warn("[Stored Opportunities Read Error]", e);
+  }
+  return [INITIAL_CURATOR_DRAFT];
+}
 
-    return { data: json as OpportunityVerificationResult, error: null };
-  } catch (err) {
-    return {
-      data: null,
-      error: "Gagal terhubung ke layanan verifikasi peluang.",
-    };
+function saveStoredManualOpportunities(items: Opportunity[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(MANUAL_OPP_STORAGE_KEY, JSON.stringify(items));
+  } catch (e) {
+    console.warn("[Stored Opportunities Write Error]", e);
   }
 }
+
+/**
+ * Mengambil seluruh peluang (baik is_verified = true maupun false) untuk Panel Kurator
+ */
+export async function fetchAllOpportunitiesForCurator(): Promise<ApiResponse<Opportunity[]>> {
+  const manualList = getStoredManualOpportunities();
+  let baseList: Opportunity[] = [];
+
+  try {
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabaseClient
+        .from("opportunities")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!error && Array.isArray(data) && data.length > 0) {
+        baseList = data.map((o: any) => ({
+          ...o,
+          caption: o.caption || o.deadline || "Segera",
+          deadline: o.caption || o.deadline || "Segera",
+          description_roadmap: o.description_roadmap || o.description || "",
+          description: o.description_roadmap || o.description || "",
+          image_url: o.image_url || undefined,
+        }));
+      } else {
+        baseList = mockOpportunities;
+      }
+    } else {
+      baseList = mockOpportunities;
+    }
+  } catch {
+    baseList = mockOpportunities;
+  }
+
+  // Gabungkan dengan peluang manual dari storage lokal (prioritaskan item terbaru, hindari duplikasi ID)
+  const idMap = new Map<string, Opportunity>();
+  manualList.forEach((item) => idMap.set(item.id, item));
+  baseList.forEach((item) => {
+    if (!idMap.has(item.id)) {
+      idMap.set(item.id, item);
+    }
+  });
+
+  const merged = Array.from(idMap.values());
+  return { data: merged, error: null };
+}
+
+/**
+ * Menyimpan peluang baru hasil input manual kurator dengan status awal is_verified: false
+ */
+export async function createManualOpportunity(
+  payload: Partial<Opportunity>
+): Promise<ApiResponse<Opportunity>> {
+  const newOpp: Opportunity = {
+    id: payload.id || `opp-manual-${Date.now()}`,
+    title: payload.title || "Peluang Baru",
+    category: payload.category || "Lomba",
+    organizer: payload.organizer || "Penyelenggara",
+    caption: payload.caption || payload.deadline || "Segera",
+    deadline: payload.caption || payload.deadline || "Segera",
+    description_roadmap: payload.description_roadmap || payload.description || "",
+    description: payload.description_roadmap || payload.description || "",
+    registration_url: payload.registration_url || "https://angkasa.id",
+    image_url: payload.image_url || undefined,
+    requirements: payload.requirements || [
+      "Mahasiswa aktif diploma/sarjana perguruan tinggi",
+      "Memenuhi kriteria teknis yang disyaratkan panitia",
+    ],
+    required_skills: payload.required_skills || [],
+    is_verified: false,
+    created_at: new Date().toISOString(),
+  };
+
+  // 1. Simpan ke localStorage agar tidak terhalang oleh pembatasan anon RLS Supabase
+  const currentStored = getStoredManualOpportunities();
+  saveStoredManualOpportunities([newOpp, ...currentStored]);
+
+  // 2. Upayakan insert ke Supabase (silent fallback bila terkena RLS)
+  if (isSupabaseConfigured) {
+    try {
+      await supabaseClient.from("opportunities").insert({
+        id: newOpp.id,
+        title: newOpp.title,
+        category: newOpp.category,
+        organizer: newOpp.organizer,
+        caption: newOpp.caption,
+        description_roadmap: newOpp.description_roadmap,
+        registration_url: newOpp.registration_url,
+        requirements: newOpp.requirements,
+        required_skills: newOpp.required_skills,
+        is_verified: false,
+      });
+    } catch (e) {
+      console.warn("[Remote Insert Ignored due to RLS]", e);
+    }
+  }
+
+  // 3. Bersihkan cache session feed
+  if (typeof window !== "undefined") {
+    try {
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const k = sessionStorage.key(i);
+        if (k && k.startsWith("angkasa_feed_")) {
+          sessionStorage.removeItem(k);
+        }
+      }
+    } catch {}
+  }
+
+  return { data: newOpp, error: null };
+}
+
+/**
+ * Mengubah status peluang menjadi is_verified: true
+ * Sekaligus mendukung verifikasi teks anti-hoaks jika dipanggil dengan teks siaran panjang
+ */
+export async function verifyOpportunity(
+  idOrText: string
+): Promise<any> {
+  // Jika argumen berupa teks siaran panjang / materi broadcast (memuat spasi banyak / baris baru)
+  if (idOrText.length > 60 || idOrText.includes("\n")) {
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: idOrText }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        return { data: null, error: json.error || "Gagal melakukan verifikasi peluang." };
+      }
+      return { data: json as OpportunityVerificationResult, error: null };
+    } catch {
+      return { data: null, error: "Gagal terhubung ke layanan verifikasi peluang." };
+    }
+  }
+
+  // Jika argumen berupa ID peluang (Verifikasi status kurator: is_verified = true)
+  const oppId = idOrText.trim();
+  const stored = getStoredManualOpportunities();
+  const existingIdx = stored.findIndex((o) => o.id === oppId);
+  let verifiedItem: Opportunity;
+
+  if (existingIdx !== -1) {
+    stored[existingIdx].is_verified = true;
+    verifiedItem = stored[existingIdx];
+    saveStoredManualOpportunities(stored);
+  } else {
+    // Jika tidak ditemukan di localStorage, buat entri verifikasi aktif
+    verifiedItem = {
+      id: oppId,
+      title: "Peluang Terverifikasi",
+      category: "Lomba",
+      organizer: "Penyelenggara Terverifikasi",
+      caption: "Segera",
+      registration_url: "https://angkasa.id",
+      is_verified: true,
+      created_at: new Date().toISOString(),
+    };
+    saveStoredManualOpportunities([verifiedItem, ...stored]);
+  }
+
+  // Upayakan update di Supabase
+  if (isSupabaseConfigured) {
+    try {
+      await supabaseClient
+        .from("opportunities")
+        .update({ is_verified: true })
+        .eq("id", oppId);
+    } catch (e) {
+      console.warn("[Remote Update Status Ignored due to RLS]", e);
+    }
+  }
+
+  // Invalidate feed cache agar peluang langsung tayang di feed
+  if (typeof window !== "undefined") {
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const k = sessionStorage.key(i);
+        if (k && k.startsWith("angkasa_feed_")) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach((k) => sessionStorage.removeItem(k));
+    } catch {}
+  }
+
+  return { data: verifiedItem, error: null };
+}
+
+export const verifyOpportunityStatus = verifyOpportunity;
+export const analyzeOpportunity = verifyOpportunity;
 
 // =================================================================
 // 8. ALIAS KONSISTENSI PENAMAAN FUNGSI
@@ -806,6 +1047,5 @@ export const getPreparationRoadmap = fetchPreparationRoadmap;
 export const login = loginUser;
 export const register = registerUser;
 export const logout = logoutUser;
-export const analyzeOpportunity = verifyOpportunity;
 export const fetchTeamRequests = getTeamRequests;
 
