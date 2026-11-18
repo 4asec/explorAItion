@@ -23,7 +23,7 @@ export default function DemoLoginButton({
         </div>
         <div>
           <p className="text-xs font-bold text-emerald-400">Pengujian Instan Juri</p>
-          <p className="text-[11px] text-slate-400">Masuk akun demo tanpa registrasi.</p>
+          <p className="text-[11px] text-slate-400">Masuk akun demo terverifikasi (dummy123@gmail.com).</p>
         </div>
       </div>
       <button

@@ -93,7 +93,11 @@ export async function loginUser(
     }
 
     // Fallback Mock Demo Mode jika Supabase tidak terkonfigurasi
-    if (email === "demo@angkasa.id" || email.includes("demo")) {
+    if (
+      email === "dummy123@gmail.com" ||
+      email === "demo@angkasa.id" ||
+      email.includes("demo")
+    ) {
       return {
         data: {
           user: { id: mockUserProfile.id, email: mockUserProfile.email },
@@ -212,14 +216,14 @@ export async function registerUser(
 }
 
 /**
- * 1-Klik Login Demo User (demo@angkasa.id / angkasa2026)
+ * 1-Klik Login Demo User (dummy123@gmail.com / dummy123)
  */
 export async function loginDemoUser(): Promise<ApiResponse<{ user: any; profile: UserProfile }>> {
   try {
     if (isSupabaseConfigured) {
       const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email: "demo@angkasa.id",
-        password: "angkasa2026",
+        email: "dummy123@gmail.com",
+        password: "dummy123",
       });
 
       if (!error && data.user) {

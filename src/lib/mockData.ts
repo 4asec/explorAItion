@@ -206,28 +206,21 @@ export const MOCK_OPPORTUNITIES = mockOpportunities;
  * Mock Profil Pengguna Default untuk Demo Mode
  */
 export const mockUserProfile: UserProfile = {
-  id: "user-demo-001",
-  full_name: "Ahmad Raffi Pratama",
-  email: "raffi.pratama@student.polinema.ac.id",
-  username: "raffipratama",
+  id: "a9559a6d-f025-47b0-8203-662f58418699",
+  full_name: "Raffa Danendra",
+  email: "dummy123@gmail.com",
+  username: "raffa_angkasa",
   institution: "Politeknik Negeri Malang",
-  birth_date: "2004-08-14",
+  birth_date: "2007-08-17",
   education_level: "D4 Teknik Informatika",
   province: "Jawa Timur",
-  city: "Kota Malang",
+  city: "Malang",
   profiling: [
-    "Next.js",
-    "TypeScript",
-    "Tailwind CSS",
-    "Supabase",
-    "Gemini API",
+    "Cybersecurity",
     "Python",
-    "Artificial Intelligence",
-    "Full-stack Web",
-    "Hackathons",
-    "EdTech",
-    "Problem Solving",
-    "System Architecture",
+    "Next.js",
+    "AI Engineering",
+    "Hackathon",
   ],
 };
 
