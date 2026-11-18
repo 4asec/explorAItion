@@ -12,6 +12,8 @@ import {
   getTeamRequests,
   createTeamRequest,
   sendTeamInvite,
+  getUserBookmarks,
+  toggleBookmark,
 } from "@/lib/apiClient";
 import {
   ArrowLeft,
@@ -29,6 +31,7 @@ import {
   Plus,
   Send,
   UserCheck,
+  Bookmark,
 } from "lucide-react";
 
 export interface OpportunityDetailProps {
@@ -52,6 +55,9 @@ export default function OpportunityDetail({
   const [isRoadmapLoading, setIsRoadmapLoading] = useState<boolean>(false);
   const [roadmapError, setRoadmapError] = useState<string | null>(null);
   const [checkedDocs, setCheckedDocs] = useState<Record<number, boolean>>({});
+
+  // State untuk P7 Bookmark
+  const [isBookmarked, setIsBookmarked] = useState<boolean>(false);
 
   // State untuk Tab 2: Team Finding Anti-Duplikasi
   const [teamRequests, setTeamRequests] = useState<TeamRequest[]>([]);
@@ -92,6 +98,31 @@ export default function OpportunityDetail({
       setRoadmapError("Gangguan koneksi saat menyusun roadmap persiapan AI.");
     } finally {
       setIsRoadmapLoading(false);
+    }
+  };
+
+  // Check initial bookmark status
+  useEffect(() => {
+    const checkBookmark = async () => {
+      try {
+        const res = await getUserBookmarks(userProfile.id);
+        if (res.data) {
+          setIsBookmarked(res.data.includes(opportunity.id));
+        }
+      } catch (e) {
+        console.warn("[Check Bookmark Error]", e);
+      }
+    };
+    checkBookmark();
+  }, [userProfile.id, opportunity.id]);
+
+  const handleToggleBookmark = async () => {
+    const next = !isBookmarked;
+    setIsBookmarked(next);
+    try {
+      await toggleBookmark(userProfile.id, opportunity.id);
+    } catch (err) {
+      console.warn("[Toggle Bookmark Error]", err);
     }
   };
 
@@ -213,21 +244,37 @@ export default function OpportunityDetail({
     <div className="min-h-screen bg-[#050505] text-[#FAFAFA] flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-300">
       {/* Top Header Navigation */}
       <header className="sticky top-0 z-30 bg-[#050505]/85 backdrop-blur-md border-b border-white/[0.07]">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0C0C0E] hover:bg-white/[0.06] border border-white/[0.07] hover:border-white/[0.14] text-xs font-medium text-[#FAFAFA] transition active:scale-[0.98]"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0C0C0E] hover:bg-white/[0.06] border border-white/[0.07] hover:border-white/[0.14] text-xs font-medium text-[#FAFAFA] transition active:scale-[0.98] cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5 text-[#888890]" />
             <span>Kembali ke Feed</span>
           </button>
 
-          <div className="flex items-center gap-2 font-mono text-xs">
-            <span className="text-[#888890]">Kesesuaian:</span>
-            <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 font-semibold tabular-nums">
-              {opportunity.matchPercentage}% Relevan
-            </span>
+          <div className="flex items-center gap-2.5">
+            {/* Tombol Bookmark P7 */}
+            <button
+              type="button"
+              onClick={handleToggleBookmark}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition active:scale-[0.98] cursor-pointer ${
+                isBookmarked
+                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                  : "bg-[#0C0C0E] border-white/[0.07] text-[#888890] hover:text-[#FAFAFA] hover:border-white/[0.14]"
+              }`}
+            >
+              <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? "fill-emerald-400" : ""}`} />
+              <span>{isBookmarked ? "Tersimpan" : "Simpan"}</span>
+            </button>
+
+            <div className="flex items-center gap-2 font-mono text-xs">
+              <span className="text-[#888890] hidden sm:inline">Kesesuaian:</span>
+              <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 font-semibold tabular-nums">
+                {opportunity.matchPercentage}% Relevan
+              </span>
+            </div>
           </div>
         </div>
       </header>
@@ -388,7 +435,7 @@ export default function OpportunityDetail({
                   type="button"
                   onClick={handleGenerateRoadmap}
                   disabled={isRoadmapLoading}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0C0C0E] hover:bg-white/[0.06] border border-white/[0.07] hover:border-white/[0.14] text-xs font-medium text-[#FAFAFA] transition active:scale-[0.98] disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0C0C0E] hover:bg-white/[0.06] border border-white/[0.07] hover:border-white/[0.14] text-xs font-medium text-[#FAFAFA] transition active:scale-[0.98] disabled:opacity-50 cursor-pointer"
                 >
                   {isRoadmapLoading ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin text-[#888890]" />
@@ -412,7 +459,7 @@ export default function OpportunityDetail({
                   <button
                     type="button"
                     onClick={handleGenerateRoadmap}
-                    className="px-3 py-1.5 rounded-lg bg-white/[0.06] text-xs text-[#FAFAFA]"
+                    className="px-3 py-1.5 rounded-lg bg-white/[0.06] text-xs text-[#FAFAFA] cursor-pointer"
                   >
                     Coba Lagi
                   </button>
@@ -653,7 +700,7 @@ export default function OpportunityDetail({
                   <button
                     type="button"
                     onClick={loadTeamRequests}
-                    className="text-[#888890] hover:text-[#FAFAFA] transition"
+                    className="text-[#888890] hover:text-[#FAFAFA] transition cursor-pointer"
                   >
                     Muat Ulang
                   </button>
@@ -730,7 +777,7 @@ export default function OpportunityDetail({
                                 className="w-full py-1.5 px-3 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] text-xs font-medium text-[#FAFAFA] transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98] disabled:opacity-50"
                               >
                                 {status?.loading ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                 ) : (
                                   <Send className="w-3 h-3" />
                                 )}

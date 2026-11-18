@@ -2,7 +2,13 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { NextResponse } from "next/server";
 import { Opportunity, RoadmapResponse, UserProfile } from "@/types/schema";
 
-const MODELS = ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.8-flash"];
+const MODELS = [
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-3.6-flash",
+  "gemini-3.8-flash",
+];
 
 /**
  * Normalisasi atribut peluang untuk keselarasan deadline/caption dan deskripsi
@@ -247,6 +253,7 @@ Bahasa: Bahasa Indonesia profesional, memotivasi, realistis, dan aplikatif bagi 
             model: modelName,
             contents: prompt,
             config: {
+              temperature: 0.2,
               responseMimeType: "application/json",
               responseSchema: {
                 type: Type.OBJECT,

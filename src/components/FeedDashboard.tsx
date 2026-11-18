@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { UserProfile, ScoredOpportunity, PersonalizedOpportunity } from "@/types/schema";
-import { fetchPersonalizedFeed } from "@/lib/apiClient";
+import { fetchPersonalizedFeed, getUserBookmarks, toggleBookmark } from "@/lib/apiClient";
 import {
   LogOut,
   ShieldCheck,
@@ -10,7 +10,7 @@ import {
   RefreshCw,
   Edit3,
   ArrowUpRight,
-  Sparkles,
+  Bookmark,
 } from "lucide-react";
 
 export interface FeedDashboardProps {
@@ -20,7 +20,7 @@ export interface FeedDashboardProps {
   onLogout: () => void;
 }
 
-type CategoryFilter = "Semua" | "Lomba" | "Beasiswa" | "Seminar";
+type CategoryFilter = "Semua" | "Lomba" | "Beasiswa" | "Seminar" | "Tersimpan";
 
 export default function FeedDashboard({
   userProfile,
@@ -29,6 +29,7 @@ export default function FeedDashboard({
   onLogout,
 }: FeedDashboardProps) {
   const [opportunities, setOpportunities] = useState<PersonalizedOpportunity[]>([]);
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -52,15 +53,48 @@ export default function FeedDashboard({
     }
   };
 
+  const loadBookmarks = async () => {
+    try {
+      const res = await getUserBookmarks(userProfile.id);
+      if (res.data) {
+        setBookmarkedIds(new Set(res.data));
+      }
+    } catch (e) {
+      console.warn("[Bookmarks Load Error]", e);
+    }
+  };
+
   useEffect(() => {
     loadFeed();
+    loadBookmarks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userProfile]);
+
+  const handleToggleBookmark = async (e: React.MouseEvent, oppId: string) => {
+    e.stopPropagation();
+    const nextSet = new Set(bookmarkedIds);
+    if (nextSet.has(oppId)) {
+      nextSet.delete(oppId);
+    } else {
+      nextSet.add(oppId);
+    }
+    setBookmarkedIds(nextSet);
+
+    try {
+      await toggleBookmark(userProfile.id, oppId);
+    } catch (err) {
+      console.warn("[Toggle Bookmark Error]", err);
+    }
+  };
 
   const filteredOpportunities = useMemo(() => {
     return opportunities.filter((item) => {
       const matchCat =
-        selectedCategory === "Semua" ? true : item.category === selectedCategory;
+        selectedCategory === "Semua"
+          ? true
+          : selectedCategory === "Tersimpan"
+          ? bookmarkedIds.has(item.id)
+          : item.category === selectedCategory;
       const q = searchQuery.toLowerCase().trim();
       const matchSearch =
         !q ||
@@ -69,7 +103,7 @@ export default function FeedDashboard({
         (item.caption || item.deadline || "").toLowerCase().includes(q);
       return matchCat && matchSearch;
     });
-  }, [opportunities, selectedCategory, searchQuery]);
+  }, [opportunities, selectedCategory, searchQuery, bookmarkedIds]);
 
   return (
     <div className="min-h-screen bg-[#050505] text-[#FAFAFA] flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-300">
@@ -93,7 +127,7 @@ export default function FeedDashboard({
             <button
               type="button"
               onClick={onEditProfile}
-              className="px-3 py-1.5 rounded-lg bg-[#0C0C0E] hover:bg-white/[0.06] border border-white/[0.07] hover:border-white/[0.14] text-xs font-medium text-[#FAFAFA] transition active:scale-[0.98] flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-lg bg-[#0C0C0E] hover:bg-white/[0.06] border border-white/[0.07] hover:border-white/[0.14] text-xs font-medium text-[#FAFAFA] transition active:scale-[0.98] flex items-center gap-1.5 cursor-pointer"
             >
               <Edit3 className="w-3 h-3 text-[#888890]" />
               <span>Minat ({userProfile.profiling?.length || 0})</span>
@@ -102,7 +136,7 @@ export default function FeedDashboard({
             <button
               type="button"
               onClick={onLogout}
-              className="px-3 py-1.5 rounded-lg bg-[#0C0C0E] hover:bg-rose-950/20 border border-white/[0.07] hover:border-rose-900/40 text-xs font-medium text-[#888890] hover:text-rose-300 transition active:scale-[0.98] flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-lg bg-[#0C0C0E] hover:bg-rose-950/20 border border-white/[0.07] hover:border-rose-900/40 text-xs font-medium text-[#888890] hover:text-rose-300 transition active:scale-[0.98] flex items-center gap-1.5 cursor-pointer"
             >
               <LogOut className="w-3 h-3" />
               <span className="hidden sm:inline">Keluar</span>
@@ -153,22 +187,33 @@ export default function FeedDashboard({
 
         {/* Controls: Segmented Filter & Search */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          {/* Segmented Tab Filter */}
-          <div className="inline-flex p-1 bg-[#0C0C0E] border border-white/[0.07] rounded-xl self-start">
-            {(["Semua", "Lomba", "Beasiswa", "Seminar"] as CategoryFilter[]).map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer active:scale-[0.98] ${
-                  selectedCategory === cat
-                    ? "bg-white/[0.08] text-[#FAFAFA] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]"
-                    : "text-[#888890] hover:text-[#FAFAFA]"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+          {/* Segmented Tab Filter (Termasuk P7 Tersimpan) */}
+          <div className="inline-flex p-1 bg-[#0C0C0E] border border-white/[0.07] rounded-xl self-start flex-wrap gap-0.5">
+            {(["Semua", "Lomba", "Beasiswa", "Seminar", "Tersimpan"] as CategoryFilter[]).map((cat) => {
+              const isSavedTab = cat === "Tersimpan";
+              const count = isSavedTab ? bookmarkedIds.size : null;
+
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer active:scale-[0.98] flex items-center gap-1.5 ${
+                    selectedCategory === cat
+                      ? "bg-white/[0.08] text-[#FAFAFA] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]"
+                      : "text-[#888890] hover:text-[#FAFAFA]"
+                  }`}
+                >
+                  {isSavedTab && <Bookmark className="w-3 h-3 text-emerald-400" />}
+                  <span>{cat}</span>
+                  {count !== null && count > 0 && (
+                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-500/15 text-emerald-400 tabular-nums">
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {/* Search Box */}
@@ -209,7 +254,7 @@ export default function FeedDashboard({
             <button
               type="button"
               onClick={loadFeed}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-xs text-[#FAFAFA] border border-white/[0.08] transition active:scale-[0.98]"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-xs text-[#FAFAFA] border border-white/[0.08] transition active:scale-[0.98] cursor-pointer"
             >
               <RefreshCw className="w-3 h-3" />
               Muat Ulang
@@ -219,10 +264,14 @@ export default function FeedDashboard({
           /* Empty State */
           <div className="p-12 rounded-2xl bg-[#0C0C0E] border border-white/[0.07] text-center space-y-2">
             <p className="text-sm font-medium text-[#FAFAFA]">
-              Tidak ada peluang yang cocok
+              {selectedCategory === "Tersimpan"
+                ? "Belum ada peluang yang disimpan"
+                : "Tidak ada peluang yang cocok"}
             </p>
             <p className="text-xs text-[#888890]">
-              {searchQuery
+              {selectedCategory === "Tersimpan"
+                ? "Klik ikon simpan pada kartu peluang untuk menyimpannya ke daftar pribadi Anda."
+                : searchQuery
                 ? `Tidak ditemukan hasil dengan kata kunci "${searchQuery}".`
                 : "Belum ada peluang terverifikasi pada kategori ini."}
             </p>
@@ -234,6 +283,7 @@ export default function FeedDashboard({
               const deadline = item.caption || item.deadline || "Segera";
               const matchScore = item.matchPercentage ?? 75;
               const isHighMatch = matchScore >= 80;
+              const isBookmarked = bookmarkedIds.has(item.id);
 
               return (
                 <article
@@ -242,7 +292,7 @@ export default function FeedDashboard({
                   style={{ animationDelay: `${index * 40}ms` }}
                   className="surface-panel surface-interactive group p-5 sm:p-6 rounded-2xl cursor-pointer space-y-3 relative animate-fade-slide-up"
                 >
-                  {/* Top Line: Category & Verified Badge + Match Score */}
+                  {/* Top Line: Category & Verified Badge + Match Score & Bookmark Toggle */}
                   <div className="flex items-center justify-between gap-3 text-xs">
                     <div className="flex items-center gap-2 font-mono">
                       <span className="text-[#888890] uppercase tracking-wider text-[11px]">
@@ -267,7 +317,28 @@ export default function FeedDashboard({
                         {matchScore}% Cocok
                       </span>
 
-                      <ArrowUpRight className="w-3.5 h-3.5 text-[#888890] group-hover:text-[#FAFAFA] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                      {/* Tombol Bookmark P7 */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleToggleBookmark(e, item.id)}
+                        className={`p-1.5 rounded-lg border transition active:scale-[0.95] cursor-pointer ${
+                          isBookmarked
+                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                            : "bg-white/[0.04] border-white/[0.07] text-[#888890] hover:text-[#FAFAFA] hover:border-white/[0.14]"
+                        }`}
+                        title={isBookmarked ? "Hapus dari Simpanan" : "Simpan Peluang"}
+                        aria-label="Bookmark"
+                      >
+                        <Bookmark
+                          className={`w-3.5 h-3.5 ${
+                            isBookmarked ? "fill-emerald-400" : ""
+                          }`}
+                        />
+                      </button>
+
+                      <div className="p-1.5 rounded-lg border border-white/[0.07] bg-white/[0.04] text-[#888890] group-hover:text-[#FAFAFA] group-hover:border-white/[0.14] transition">
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                      </div>
                     </div>
                   </div>
 

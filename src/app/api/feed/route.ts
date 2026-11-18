@@ -4,7 +4,13 @@ import { supabaseClient } from "@/lib/supabaseClient";
 import { mockOpportunities } from "@/lib/mockData";
 import { Opportunity, PersonalizedOpportunity, UserProfile } from "@/types/schema";
 
-const MODELS = ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.8-flash"];
+const MODELS = [
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-3.6-flash",
+  "gemini-3.8-flash",
+];
 
 /**
  * Normalisasi objek peluang agar selaras dengan skema database Supabase
@@ -71,31 +77,18 @@ function calculateLocalMatch(
 
   const finalScore = Math.min(Math.max(score, 65), 98);
 
-  // Sintesis narasi rekomendasi bergaya Career Mentor (tajam, spesifik, bernilai portofolio)
+  // Sintesis narasi rekomendasi bergaya Career Mentor (tepat 1 kalimat ringkas <= 15 kata)
   const primaryCompetency = matchedSkills[0] || userProfiling[0] || "keahlian Anda";
-  const secondaryInterest = matchedInterests[0] || userProfiling[1] || "pengembangan karir";
 
   let reason = "";
 
   if (opp.category === "Lomba") {
-    if (matchedSkills.length > 0) {
-      reason = `Penguasaan ${primaryCompetency} Anda merupakan amunisi krusial untuk mengeksekusi solusi kompetitif di ${opp.title} dan mendongkrak reputasi portofolio teknis Anda.`;
-    } else {
-      reason = `Ajang ${opp.title} ini memberikan ruang pembuktian strategis untuk menguji ketangkasan ${primaryCompetency} Anda langsung di hadapan dewan juri industri.`;
-    }
+    reason = `Keahlian ${primaryCompetency} Anda menjadi modal kompetitif utama untuk meraih juara.`;
   } else if (opp.category === "Beasiswa") {
-    if (matchedSkills.length > 0 || matchedInterests.length > 0) {
-      reason = `Fokus Anda pada bidang ${primaryCompetency} dan ${secondaryInterest} sangat selaras dengan visi kontribusi penerima beasiswa yang dicari oleh ${opp.organizer}.`;
-    } else {
-      reason = `Program beasiswa dari ${opp.organizer} ini akan mengakselerasi rekam jejak akademik sekaligus membuka pendanaan dan jejaring mentor bagi ${primaryCompetency} Anda.`;
-    }
+    reason = `Fokus ${primaryCompetency} Anda sangat selaras dengan kriteria penerima beasiswa ini.`;
   } else {
     // Seminar / Webinar / Workshop
-    if (matchedSkills.length > 0) {
-      reason = `Wawasan mendalam di sesi ${opp.title} ini tepat untuk mempertajam pemahaman praktis Anda seputar ${primaryCompetency} bersama pakar industri dari ${opp.organizer}.`;
-    } else {
-      reason = `Kesempatan emas untuk memperluas jejaring profesional dan menyelaraskan pemahaman Anda tentang ${secondaryInterest} dengan standar kebutuhan industri terkini.`;
-    }
+    reason = `Sangat strategis memperdalam pemahaman ${primaryCompetency} langsung bersama praktisi industri.`;
   }
 
   return { matchPercentage: finalScore, recommendationReason: reason };
@@ -175,24 +168,20 @@ export async function POST(req: Request) {
         description: o.description_roadmap || o.description,
       }));
 
-      const prompt = `Anda adalah Senior Career Mentor & Opportunity Strategist terkemuka untuk mahasiswa Indonesia di platform "Aplikasi Angkasa".
-Tugas Anda adalah mengevaluasi relevansi mendalam antara profil mahasiswa terhadap setiap peluang yang tersedia (Lomba, Beasiswa, Seminar).
+      const prompt = `Anda adalah Senior Career Mentor terkemuka untuk mahasiswa Indonesia di platform "Aplikasi Angkasa".
+Tugas Anda adalah mengevaluasi relevansi profil mahasiswa terhadap setiap peluang yang tersedia.
 
 PROFIL MAHASISWA:
 - Nama: ${userProfile.full_name || "Mahasiswa"}
-- Institusi: ${userProfile.institution || "Perguruan Tinggi"}
-- Jenjang: ${userProfile.education_level || "Diploma / Sarjana"}
-- Profiling Terpadu (Skills, Minat, dan Bakat): ${profilingList.join(", ")}
+- Jenjang: ${userProfile.education_level || "Perguruan Tinggi"}
+- Profiling Keahlian: ${profilingList.join(", ")}
 
-DAFTAR PELUANG UNTUK DINILAI:
+DAFTAR PELUANG:
 ${JSON.stringify(oppContext, null, 2)}
 
-ATURAN WAJIB PENILAIAN (KUALITAS TINGGI):
-1. Berikan matchPercentage berupa bilangan bulat integer realistis (0 - 100) berdasarkan seberapa relevan peluang tersebut dengan data profiling mahasiswa.
-2. Gaya Bahasa recommendationReason:
-   - DILARANG menggunakan kalimat generik/klise ("AI slop") seperti: "Peluang yang bagus untuk meningkatkan kemampuan Anda", "Sangat cocok untuk masa depan Anda", atau "Peluang ini menarik untuk dicoba".
-   - WAJIB 1–2 kalimat bernas dan tajam berbahasa Indonesia yang bersuara layaknya mentor karier berpengalaman.
-   - WAJIB menyebutkan secara spesifik keahlian, minat, atau bakat yang dimiliki mahasiswa (dari daftar profiling) dan bagaimana peluang ini mengonversinya menjadi keunggulan portofolio, kompetensi teknis, atau peluang menang/lolos.`;
+ATURAN WAJIB (P3 COMPLIANCE):
+1. matchPercentage: Bilangan bulat integer (0 - 100) berdasarkan relevansi profil.
+2. recommendationReason: WAJIB TEPAT 1 kalimat ringkas berbahasa Indonesia (maksimal 15 kata) yang langsung menyebutkan korelasi keahlian spesifik user terhadap peluang tanpa basa-basi atau kata klise.`;
 
       for (const modelName of MODELS) {
         try {
@@ -200,6 +189,7 @@ ATURAN WAJIB PENILAIAN (KUALITAS TINGGI):
             model: modelName,
             contents: prompt,
             config: {
+              temperature: 0.2,
               responseMimeType: "application/json",
               responseSchema: {
                 type: Type.ARRAY,
@@ -218,7 +208,7 @@ ATURAN WAJIB PENILAIAN (KUALITAS TINGGI):
                     recommendationReason: {
                       type: Type.STRING,
                       description:
-                        "1-2 kalimat tajam bernuansa mentor karier menyebut keahlian spesifik user dan nilai portofolionya",
+                        "Tepat 1 kalimat ringkas (maksimal 15 kata) alasan kecocokan keahlian",
                     },
                   },
                   required: ["opportunityId", "matchPercentage", "recommendationReason"],
