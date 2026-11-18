@@ -70,7 +70,7 @@ export default function LoginForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+    <form onSubmit={handleSubmit} className="space-y-5" noValidate>
       {/* Field Email */}
       <div className="space-y-1.5">
         <label className="block text-xs font-medium text-slate-300">
@@ -146,6 +146,7 @@ export default function LoginForm({
       </div>
 
       {/* Submit Button */}
+      <div className="pt-3">
       <button
         type="submit"
         disabled={isLoading}
@@ -158,11 +159,11 @@ export default function LoginForm({
           </>
         ) : (
           <>
-            <span>Masuk ke Akun</span>
-            <ArrowRight className="w-4 h-4" />
+            <span>Masuk</span>
           </>
         )}
       </button>
+      </div>
     </form>
   );
 }

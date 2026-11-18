@@ -15,8 +15,8 @@ interface Star {
 }
 
 /**
- * Komponen Kanvas Animasi Luar Angkasa (Space Canvas)
- * Menyediakan animasi reveal (fade-in & orbit expansion) dan animasi standby (twinkle, drift & constellation lines).
+ * Komponen Kanvas Animasi Luar Angkasa (Fullscreen Space Canvas Background)
+ * Menyediakan animasi reveal partikel dan standby ambient stars dengan garis rasi kosmik.
  */
 export default function SpaceCanvas() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -28,13 +28,13 @@ export default function SpaceCanvas() {
     if (!ctx) return;
 
     let animationFrameId: number;
-    let width = (canvas.width = canvas.parentElement?.clientWidth || 600);
-    let height = (canvas.height = canvas.parentElement?.clientHeight || 800);
+    let width = (canvas.width = canvas.parentElement?.clientWidth || window.innerWidth);
+    let height = (canvas.height = canvas.parentElement?.clientHeight || window.innerHeight);
 
-    const starCount = 85;
+    const starCount = 110;
     const stars: Star[] = [];
     const colors = [
-      "rgba(52, 211, 153, ", // emerald-400
+      "rgba(52, 211, 153, ",  // emerald-400
       "rgba(110, 231, 183, ", // emerald-300
       "rgba(148, 163, 184, ", // slate-400
       "rgba(241, 245, 249, ", // slate-100
@@ -48,7 +48,7 @@ export default function SpaceCanvas() {
         y: Math.random() * height,
         size: Math.random() * 2 + 0.6,
         baseAlpha,
-        alpha: 0, // Starts at 0 for reveal animation
+        alpha: 0,
         twinkleSpeed: Math.random() * 0.02 + 0.005,
         vx: (Math.random() - 0.5) * 0.3,
         vy: (Math.random() - 0.5) * 0.3,
@@ -60,9 +60,9 @@ export default function SpaceCanvas() {
     let startTime: number | null = null;
 
     const handleResize = () => {
-      if (!canvas || !canvas.parentElement) return;
-      width = canvas.width = canvas.parentElement.clientWidth;
-      height = canvas.height = canvas.parentElement.clientHeight;
+      if (!canvas) return;
+      width = canvas.width = canvas.parentElement?.clientWidth || window.innerWidth;
+      height = canvas.height = canvas.parentElement?.clientHeight || window.innerHeight;
     };
 
     window.addEventListener("resize", handleResize);
@@ -71,7 +71,7 @@ export default function SpaceCanvas() {
       if (!startTime) startTime = time;
       const elapsed = (time - startTime) / 1000;
       if (revealProgress < 1) {
-        revealProgress = Math.min(1, elapsed / 1.5); // 1.5s smooth reveal
+        revealProgress = Math.min(1, elapsed / 1.5);
       }
 
       ctx.clearRect(0, 0, width, height);
@@ -83,8 +83,8 @@ export default function SpaceCanvas() {
           const dy = stars[i].y - stars[j].y;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
-          if (dist < 90) {
-            const lineAlpha = (1 - dist / 90) * 0.15 * revealProgress;
+          if (dist < 95) {
+            const lineAlpha = (1 - dist / 95) * 0.14 * revealProgress;
             ctx.beginPath();
             ctx.strokeStyle = `rgba(52, 211, 153, ${lineAlpha})`;
             ctx.lineWidth = 0.6;
