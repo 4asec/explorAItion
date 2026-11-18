@@ -6,12 +6,13 @@ import AuthView from "@/components/AuthView";
 import ProfilingView from "@/components/ProfilingView";
 import FeedDashboard from "@/components/FeedDashboard";
 import OpportunityDetail from "@/components/OpportunityDetail";
+import ProfileView from "@/components/ProfileView";
 import { UserProfile, ScoredOpportunity } from "@/types/schema";
 import { logoutUser, loginDemoUser } from "@/lib/apiClient";
 import { supabaseClient, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { ArrowLeft } from "lucide-react";
 
-type ActiveView = "landing" | "auth" | "profiling" | "feed" | "detail";
+type ActiveView = "landing" | "auth" | "profiling" | "feed" | "detail" | "profile";
 
 const ACTIVE_SESSION_STORAGE_KEY = "angkasa_active_session";
 
@@ -302,6 +303,35 @@ export default function Home() {
   }
 
   // ==========================================================
+  // VIEW 5: USER PROFILE VIEW (Identitas, Kelola Minat, dsb)
+  // ==========================================================
+  if (currentView === "profile" && currentProfile) {
+    return (
+      <ProfileView
+        userProfile={currentProfile}
+        onBack={() => setCurrentView("feed")}
+        onUpdateProfile={(updated) => {
+          setCurrentProfile(updated);
+          try {
+            const stored = localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY);
+            const parsed = stored ? JSON.parse(stored) : {};
+            localStorage.setItem(
+              ACTIVE_SESSION_STORAGE_KEY,
+              JSON.stringify({
+                user: parsed.user || currentUser || { id: updated.id, email: updated.email },
+                profile: updated,
+              })
+            );
+          } catch (e) {
+            console.warn("[Session Profile Update Error]", e);
+          }
+        }}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  // ==========================================================
   // VIEW 3: AI PERSONALIZED FEED (P3: Feed Peluang Utama)
   // ==========================================================
   return (
@@ -309,6 +339,7 @@ export default function Home() {
       userProfile={currentProfile}
       onSelectOpportunity={handleSelectOpportunity}
       onEditProfile={() => setCurrentView("profiling")}
+      onOpenProfile={() => setCurrentView("profile")}
       onLogout={handleLogout}
     />
   );

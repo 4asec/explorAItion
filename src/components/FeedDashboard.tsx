@@ -20,17 +20,20 @@ import {
   ShieldCheck,
   Search,
   RefreshCw,
-  Edit3,
   ArrowUpRight,
   Bookmark,
-  SlidersHorizontal,
   Calendar,
+  Bell,
+  X,
+  Sparkles,
+  ChevronRight,
 } from "lucide-react";
 
 export interface FeedDashboardProps {
   userProfile: UserProfile;
   onSelectOpportunity: (opp: ScoredOpportunity) => void;
-  onEditProfile: () => void;
+  onEditProfile?: () => void;
+  onOpenProfile: () => void;
   onLogout: () => void;
 }
 
@@ -40,6 +43,7 @@ export default function FeedDashboard({
   userProfile,
   onSelectOpportunity,
   onEditProfile,
+  onOpenProfile,
   onLogout,
 }: FeedDashboardProps) {
   const [opportunities, setOpportunities] = useState<PersonalizedOpportunity[]>([]);
@@ -49,6 +53,9 @@ export default function FeedDashboard({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("Semua");
+
+  // State Sidebar Notifikasi Peluang Relevan
+  const [isNotificationOpen, setIsNotificationOpen] = useState<boolean>(false);
 
   // State Panel Kurator (Admin Input Manual & Verifikator)
   const [isCuratorOpen, setIsCuratorOpen] = useState<boolean>(false);
@@ -161,77 +168,77 @@ export default function FeedDashboard({
     });
   }, [opportunities, selectedCategory, searchQuery, bookmarkedIds, isBookmarkedOnly]);
 
+  // Postingan terbaru yang paling relevan untuk Sidebar Notifikasi
+  const relevantNotifications = useMemo(() => {
+    return opportunities
+      .filter((item) => (item.matchPercentage ?? 0) >= 70 || item.is_verified)
+      .sort((a, b) => (b.matchPercentage ?? 0) - (a.matchPercentage ?? 0))
+      .slice(0, 8);
+  }, [opportunities]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#004aad] via-[#003d91] to-[#002b66] text-white flex flex-col font-sans selection:bg-amber-400/30 selection:text-amber-200">
       {/* Top Header — Minimalist Royal Glass Navigation */}
-      <header className="sticky top-0 z-30 bg-[#004aad]/80 backdrop-blur-md border-b border-white/20">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
-          {/* Brand & User Breadcrumb */}
-          <div className="flex items-center gap-3">
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            <div className="flex items-center gap-2 text-xs font-mono">
-              <span className="font-semibold text-white tracking-tight">ANGKASA</span>
-              <span className="text-white/50">&bull;</span>
-              <span className="text-white/80 truncate max-w-[180px] sm:max-w-xs">
-                {userProfile.full_name}
+      <header className="sticky top-0 z-30 bg-[#004aad]/85 backdrop-blur-md border-b border-white/20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+          {/* Bagian Navbar Sisi Kiri: Foto/Lingkaran Profil User + Username (Klik menuju Profile Page) */}
+          <button
+            type="button"
+            onClick={onOpenProfile}
+            className="group flex items-center gap-3 p-1.5 -ml-1.5 rounded-2xl hover:bg-white/10 border border-transparent hover:border-white/20 transition-all cursor-pointer text-left active:scale-[0.98]"
+            title="Buka Halaman Profil Pengguna"
+            aria-label="Profil Pengguna"
+          >
+            <div className="relative shrink-0">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-400 via-amber-300 to-amber-100 text-[#004aad] font-bold text-sm flex items-center justify-center shadow-md ring-2 ring-white/40 group-hover:ring-amber-300 transition">
+                {userProfile.full_name?.charAt(0).toUpperCase() || "A"}
+              </div>
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#004aad]" />
+            </div>
+
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs sm:text-sm font-semibold text-white truncate max-w-[140px] sm:max-w-[200px] group-hover:text-amber-200 transition">
+                  {userProfile.full_name}
+                </span>
+                <span className="hidden sm:inline-block px-1.5 py-0.2 rounded-full bg-white/15 text-[10px] font-mono text-white/80">
+                  {userProfile.education_level || "Mahasiswa"}
+                </span>
+              </div>
+              <span className="text-[11px] font-mono text-white/70 truncate max-w-[120px] sm:max-w-[180px]">
+                @{userProfile.username || userProfile.email?.split("@")[0] || "angkasa"}
               </span>
             </div>
-          </div>
+          </button>
 
-          {/* Actions: Panel Kurator + Ubah Minat + Keluar */}
-          <div className="flex items-center gap-2">
-            {/* Tombol Akses Panel Kurator & Verifikator */}
+          {/* Bagian Navbar Sisi Kanan: Ikon Notifikasi Postingan Terbaru yang Relevan + Keluar */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Tombol Ikon Notifikasi Postingan Terbaru yang Relevan */}
             <button
               type="button"
-              onClick={() => setIsCuratorOpen(true)}
-              className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/25 text-xs font-medium text-white transition active:scale-[0.98] flex items-center gap-1.5 cursor-pointer backdrop-blur-md shadow-sm"
-              title="Panel Kurator & Verifikator Manual"
+              onClick={() => setIsNotificationOpen(true)}
+              className="relative p-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/40 text-white transition active:scale-[0.96] cursor-pointer backdrop-blur-md shadow-sm group"
+              title="Notifikasi Postingan Terbaru yang Relevan"
+              aria-label="Buka Notifikasi Peluang Relevan"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-amber-300" />
-              <span className="hidden sm:inline">Panel Kurator</span>
-              {pendingCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-[#004aad] font-mono text-[10px] font-bold tabular-nums">
-                  {pendingCount}
+              <Bell className="w-4 h-4 text-white group-hover:text-amber-300 transition" />
+              {relevantNotifications.length > 0 && (
+                <span className="absolute -top-1 -right-1 px-1.5 py-0.2 min-w-[18px] text-center rounded-full bg-amber-400 text-[#004aad] font-mono text-[10px] font-bold tabular-nums shadow-md">
+                  {relevantNotifications.length}
                 </span>
               )}
             </button>
 
-            <button
-              type="button"
-              onClick={onEditProfile}
-              className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition active:scale-[0.98] flex items-center gap-1.5 cursor-pointer backdrop-blur-md shadow-sm"
-            >
-              <Edit3 className="w-3 h-3 text-white/70" />
-              <span>Minat ({userProfile.profiling?.length || 0})</span>
-            </button>
-
+            {/* Quick Logout Button */}
             <button
               type="button"
               onClick={onLogout}
-              className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-white/10 hover:bg-rose-500/20 border border-white/20 hover:border-rose-400/40 text-xs font-medium text-white/80 hover:text-rose-200 transition active:scale-[0.98] flex items-center gap-1.5 cursor-pointer backdrop-blur-md"
+              className="p-2.5 rounded-xl bg-white/10 hover:bg-rose-500/20 border border-white/20 hover:border-rose-400/40 text-white/80 hover:text-rose-200 transition active:scale-[0.96] flex items-center gap-1.5 cursor-pointer backdrop-blur-md"
+              title="Keluar dari Akun"
+              aria-label="Keluar"
             >
-              <LogOut className="w-3 h-3" />
-              <span className="hidden sm:inline">Keluar</span>
+              <LogOut className="w-4 h-4" />
             </button>
-          </div>
-        </div>
-
-        {/* Minimalist Profile Pills Strip */}
-        <div className="border-t border-white/10 bg-white/[0.06] backdrop-blur-sm">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar">
-            <span className="text-[10px] font-mono uppercase text-white/70 tracking-wider shrink-0">
-              Profil:
-            </span>
-            <div className="flex items-center gap-1.5 shrink-0">
-              {(userProfile.profiling || []).map((tag) => (
-                <span
-                  key={tag}
-                  className="px-2 py-0.5 rounded-md bg-white/10 border border-white/20 text-[11px] text-white/90 font-mono whitespace-nowrap"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
           </div>
         </div>
       </header>
@@ -493,6 +500,120 @@ export default function FeedDashboard({
           </div>
         )}
       </main>
+
+      {/* ========================================================= */}
+      {/* SIDEBAR NOTIFIKASI INFORMASI POSTINGAN TERBARU RELEVAN */}
+      {/* ========================================================= */}
+      {isNotificationOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsNotificationOpen(false)}
+          />
+
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+            <div className="w-screen max-w-md bg-[#002b66]/95 border-l border-white/20 backdrop-blur-2xl shadow-2xl flex flex-col justify-between animate-fade-slide-up">
+              {/* Header Sidebar */}
+              <div className="p-5 border-b border-white/15 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-amber-400/20 border border-amber-300/30 text-amber-300">
+                    <Bell className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-semibold text-white tracking-tight">
+                      Notifikasi Postingan Relevan
+                    </h2>
+                    <p className="text-[11px] text-white/70">
+                      Rekomendasi disesuaikan dengan minat profil Anda
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsNotificationOpen(false)}
+                  className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white transition active:scale-95 cursor-pointer"
+                  aria-label="Tutup Notifikasi"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* List Peluang Relevan */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {relevantNotifications.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-white/70 border border-dashed border-white/20 rounded-2xl">
+                    Belum ada rekomendasi baru yang memenuhi ambang batas relevansi.
+                  </div>
+                ) : (
+                  relevantNotifications.map((opp) => (
+                    <div
+                      key={opp.id}
+                      onClick={() => {
+                        onSelectOpportunity(opp);
+                        setIsNotificationOpen(false);
+                      }}
+                      className="group p-4 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border border-white/15 hover:border-amber-300/40 transition cursor-pointer flex flex-col gap-2.5 active:scale-[0.99]"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="px-2 py-0.5 rounded-md bg-white/15 border border-white/25 text-[10px] font-mono text-white uppercase tracking-wider">
+                          {opp.category}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full bg-amber-400 text-[#004aad] text-[10px] font-bold font-mono tabular-nums">
+                          {opp.matchPercentage ?? 85}% Cocok
+                        </span>
+                      </div>
+
+                      <div>
+                        <h3 className="text-xs sm:text-sm font-semibold text-white group-hover:text-amber-200 transition line-clamp-2">
+                          {opp.title}
+                        </h3>
+                        <p className="text-[11px] text-white/70 truncate mt-0.5">
+                          {opp.organizer}
+                        </p>
+                      </div>
+
+                      {opp.recommendationReason && (
+                        <p className="text-[11px] text-white/80 leading-relaxed bg-white/[0.05] p-2 rounded-lg border border-white/10 line-clamp-2">
+                          <span className="text-amber-300 mr-1 font-bold">&bull;</span>
+                          {opp.recommendationReason}
+                        </p>
+                      )}
+
+                      <div className="flex items-center justify-between pt-1 border-t border-white/10 text-[10px] font-mono text-white/60">
+                        <span className="flex items-center gap-1 text-white/70">
+                          <Calendar className="w-3 h-3" />
+                          <span>{opp.deadline || "Mendatang"}</span>
+                        </span>
+                        <span className="text-amber-300 group-hover:translate-x-0.5 transition flex items-center gap-0.5 font-sans font-medium">
+                          Lihat Detail &rarr;
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Footer Sidebar: Link ke Profile Page */}
+              <div className="p-4 border-t border-white/15 bg-white/[0.04]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsNotificationOpen(false);
+                    onOpenProfile();
+                  }}
+                  className="w-full py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/25 text-xs font-medium text-white transition flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Sesuaikan Topik Minat di Profil</span>
+                  <ChevronRight className="w-3.5 h-3.5 ml-auto text-white/60" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================= */}
       {/* PANEL KURATOR & VERIFIKATOR KOMPONEN (DEMO JURI) */}
