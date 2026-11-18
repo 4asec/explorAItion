@@ -8,6 +8,7 @@ import {
   RoadmapResponse,
   TeamRequest,
   CreateTeamPayload,
+  OpportunityVerificationResult,
 } from "@/types/schema";
 
 /**
@@ -622,7 +623,42 @@ export async function sendTeamInvite(
 }
 
 // =================================================================
-// 7. ALIAS KONSISTENSI PENAMAAN FUNGSI
+// 7. VERIFIKASI PELUANG & ANTI-HOAKS (ANTI-HOAX ENGINE)
+// =================================================================
+
+/**
+ * Memverifikasi keabsahan broadcast atau caption peluang serta mengekstraksi data terstruktur
+ */
+export async function verifyOpportunity(
+  text: string
+): Promise<ApiResponse<OpportunityVerificationResult>> {
+  try {
+    const res = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      return {
+        data: null,
+        error: json.error || "Gagal melakukan verifikasi peluang.",
+      };
+    }
+
+    return { data: json as OpportunityVerificationResult, error: null };
+  } catch (err) {
+    return {
+      data: null,
+      error: "Gagal terhubung ke layanan verifikasi peluang.",
+    };
+  }
+}
+
+// =================================================================
+// 8. ALIAS KONSISTENSI PENAMAAN FUNGSI
 // =================================================================
 export const loginWithDemo = loginDemoUser;
 export const updateProfile = updateUserProfile;
@@ -631,4 +667,5 @@ export const getPreparationRoadmap = fetchPreparationRoadmap;
 export const login = loginUser;
 export const register = registerUser;
 export const logout = logoutUser;
+export const analyzeOpportunity = verifyOpportunity;
 
