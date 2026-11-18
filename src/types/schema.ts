@@ -42,6 +42,7 @@ export interface Opportunity {
   requirements?: string[];
   required_skills?: string[];
   registration_url: string;
+  image_url?: string;
   is_verified: boolean;
   created_at?: string;
 }
