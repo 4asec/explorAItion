@@ -69,6 +69,9 @@ export default function ProfileView({
   // State Akses Panel Kurator dari Halaman Profil
   const [isCuratorOpen, setIsCuratorOpen] = useState<boolean>(false);
 
+  // State Modal Konfirmasi 2 Langkah Keluar / Logout
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState<boolean>(false);
+
   const toggleTag = (tag: string) => {
     const trimmed = tag.trim();
     if (!trimmed) return;
@@ -149,8 +152,9 @@ export default function ProfileView({
 
           <button
             type="button"
-            onClick={onLogout}
+            onClick={() => setIsLogoutModalOpen(true)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-rose-500/20 border border-white/20 hover:border-rose-400/40 text-xs font-medium text-white/90 hover:text-rose-200 transition active:scale-[0.98] cursor-pointer backdrop-blur-md"
+            title="Keluar dari Akun"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Keluar</span>
@@ -387,6 +391,50 @@ export default function ProfileView({
           </button>
         </section>
       </main>
+
+      {/* Modal Dialog Konfirmasi 2 Langkah Logout */}
+      {isLogoutModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md bg-[#002b66]/90 border border-white/20 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md space-y-5 animate-fade-slide-up">
+            {/* Header Modal */}
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-400/30 text-rose-300 shrink-0">
+                <LogOut className="w-5 h-5 text-rose-300" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-white tracking-tight">
+                  Konfirmasi Keluar Akun
+                </h3>
+                <p className="text-xs text-white/80 leading-relaxed">
+                  Apakah Anda yakin ingin keluar dari sesi Angkasa? Anda perlu masuk kembali untuk mengakses rekomendasi personal.
+                </p>
+              </div>
+            </div>
+
+            {/* Tombol Aksi */}
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setIsLogoutModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-semibold text-white transition active:scale-[0.98] cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLogoutModalOpen(false);
+                  onLogout();
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 border border-rose-400/40 text-xs font-bold text-white transition active:scale-[0.98] cursor-pointer shadow-lg shadow-rose-950/40 flex items-center gap-1.5"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Ya, Keluar Sekarang</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Kurator */}
       <CuratorPanel
