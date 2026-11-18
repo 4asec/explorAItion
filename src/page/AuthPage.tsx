@@ -59,13 +59,15 @@ export default function AuthPage({
   };
 
   return (
-    <div className="w-full min-h-screen bg-slate-950 text-slate-100 flex overflow-x-hidden">
+    <div className="w-full min-h-screen bg-slate-950 text-slate-100 flex flex-col lg:flex-row overflow-x-hidden">
       {/* Section Kiri: Gambaran Visual Angkasa dengan Partikel Animasi Reveal & Standby (Fullscreen Left) */}
-      <SpaceShowcase />
+      <div className="w-full lg:w-5/12 lg:min-h-screen shrink-0 border-b lg:border-b-0 lg:border-r border-slate-800/80 flex flex-col">
+        <SpaceShowcase />
+      </div>
 
-      {/* Section Kanan: Form Biasa (Fullscreen Right) */}
-      <div className="min-h-screen min-w-[50vw] p-14 flex justify-center items-center bg-slate-950 relative z-10">
-        <div className="h-full flex flex-col content-between">
+      {/* Section Kanan: Form (Fullscreen Right with Safe Scroll & Spacing) */}
+      <div className="flex-1 min-h-screen p-6 sm:p-10 lg:p-12 flex flex-col justify-between items-center bg-slate-950 relative z-10 overflow-y-auto">
+        <div className="w-full max-w-md my-auto space-y-6 py-4">
           {/* Header Form & Tab Switcher */}
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -81,24 +83,26 @@ export default function AuthPage({
               </div>
 
               {/* Tab Pindah Mode */}
-              <div className="inline-flex p-1 bg-slate-900 border border-slate-800 rounded-xl self-start sm:self-auto">
+              <div className="inline-flex p-1 bg-slate-900 border border-slate-800 rounded-xl self-start sm:self-auto shrink-0">
                 <button
                   type="button"
                   onClick={() => switchMode("login")}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 cursor-pointer ${mode === "login"
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
+                    mode === "login"
                       ? "bg-slate-800 text-emerald-400 shadow-sm"
                       : "text-slate-400 hover:text-slate-200"
-                    }`}
+                  }`}
                 >
                   Masuk
                 </button>
                 <button
                   type="button"
                   onClick={() => switchMode("register")}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 cursor-pointer ${mode === "register"
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
+                    mode === "register"
                       ? "bg-slate-800 text-emerald-400 shadow-sm"
                       : "text-slate-400 hover:text-slate-200"
-                    }`}
+                  }`}
                 >
                   Daftar
                 </button>
@@ -145,7 +149,7 @@ export default function AuthPage({
           )}
 
           {/* Footer Form Note */}
-          <div className="text-center pt-2">
+          <div className="text-center pt-4">
             <p className="text-[11px] text-slate-500">
               Terhubung dengan Kontrak Skema Database Supabase &bull; Zero Crash Fallback
             </p>

@@ -383,12 +383,24 @@ export async function fetchPersonalizedFeed(
 
 /**
  * Menghasilkan roadmap persiapan berstruktur via POST /api/roadmap
+ * Mendukung pemanggilan fleksibel (userProfile, opportunity) maupun (opportunity, userProfile)
  */
 export async function fetchPreparationRoadmap(
-  userProfile: UserProfile,
-  opportunity: Opportunity
+  arg1: UserProfile | Opportunity,
+  arg2: Opportunity | UserProfile
 ): Promise<ApiResponse<RoadmapResponse>> {
   try {
+    let userProfile: UserProfile;
+    let opportunity: Opportunity;
+
+    if ("profiling" in arg1 || "email" in arg1) {
+      userProfile = arg1 as UserProfile;
+      opportunity = arg2 as Opportunity;
+    } else {
+      opportunity = arg1 as Opportunity;
+      userProfile = arg2 as UserProfile;
+    }
+
     const res = await fetch("/api/roadmap", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -668,4 +680,5 @@ export const login = loginUser;
 export const register = registerUser;
 export const logout = logoutUser;
 export const analyzeOpportunity = verifyOpportunity;
+export const fetchTeamRequests = getTeamRequests;
 

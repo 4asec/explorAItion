@@ -51,6 +51,8 @@ export interface PersonalizedOpportunity extends Opportunity {
   recommendationReason: string; // 1–2 kalimat tajam bergaya mentor karier
 }
 
+export type ScoredOpportunity = PersonalizedOpportunity;
+
 export interface DocumentChecklistItem {
   item: string;
   tip: string;
