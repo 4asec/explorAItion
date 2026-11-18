@@ -5,50 +5,83 @@ import { Opportunity, RoadmapResponse, UserProfile } from "@/types/schema";
 const MODELS = ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.8-flash"];
 
 /**
- * Fallback cerdas berdasarkan kategori peluang jika Gemini AI offline / limit
+ * Normalisasi atribut peluang untuk keselarasan deadline/caption dan deskripsi
+ */
+function normalizeOpportunityFields(opp: any) {
+  const deadline = opp.caption || opp.deadline || "Segera";
+  const description = opp.description_roadmap || opp.description || "";
+  return {
+    ...opp,
+    caption: deadline,
+    deadline: deadline,
+    description_roadmap: description,
+    description: description,
+    requirements: Array.isArray(opp.requirements) ? opp.requirements : [],
+    required_skills: Array.isArray(opp.required_skills) ? opp.required_skills : [],
+  };
+}
+
+/**
+ * Fallback deterministik cerdas berbasis kategori & data peluang nyata
+ * jika Gemini AI limit/offline, menjamin zero crash dan kualitas konten tinggi.
  */
 function getCategoryFallbackRoadmap(
   user: UserProfile,
-  opp: Opportunity
+  rawOpp: Opportunity
 ): RoadmapResponse {
-  const deadlineText = opp.deadline || "Jelang Penutupan";
+  const opp = normalizeOpportunityFields(rawOpp);
+  const deadlineText = opp.deadline || "Batas Waktu Pendaftaran";
   const userProfilingList = Array.isArray(user.profiling) ? user.profiling : [];
-  const topCompetencies = userProfilingList.slice(0, 3).join(", ") || "keahlian utama";
+  const topCompetencies = userProfilingList.slice(0, 3).join(", ") || "kompetensi unggulan Anda";
+  const userInstitution = user.institution || "kampus/institusi Anda";
 
   if (opp.category === "Beasiswa") {
     return {
       document_checklist: [
         {
-          item: "Esai Motivasi / Personal Statement",
-          tip: "Tuliskan narasi autentik mengenai kontribusi nyata Anda bagi masyarakat dan hubungkan dengan visi penyelenggara.",
+          item: "Esai Motivasi & Rencana Studi (Personal Statement)",
+          tip: `Tekankan korelasi antara keahlian Anda (${topCompetencies}) dengan visi kebermanfaatan sosial yang diusung oleh ${opp.organizer}.`,
         },
         {
-          item: "Transkrip Nilai Akademik & Surat Rekomendasi",
-          tip: "Mintalah surat rekomendasi dari dosen pembimbing atau dekan minimal 2 minggu sebelum batas waktu pengumpulan.",
+          item: "Surat Rekomendasi Akademik & Karakter",
+          tip: `Mintalah surat rekomendasi dari dosen pembimbing di ${userInstitution} minimal 14 hari sebelum deadline, sertakan draf CV Anda.`,
         },
         {
-          item: "Curriculum Vitae (CV) ATS-Friendly & Portofolio Prestasi",
-          tip: `Soroti kompetensi relevan Anda seperti ${topCompetencies} dan pengalaman kepemimpinan.`,
+          item: "Curriculum Vitae (CV) Standar ATS & Portofolio Pengabdian",
+          tip: "Kuantifikasikan setiap pencapaian (misal: 'Mengoordinasi 50+ peserta') dan soroti rekam jejak kepemimpinan.",
+        },
+        {
+          item: "Transkrip Nilai Legalisir & Dokumen Identitas Resmi",
+          tip: "Pindai dokumen asli beresolusi tinggi (format PDF, ukuran < 2MB) agar terbaca jelas oleh sistem seleksi.",
         },
       ],
       winning_strategy: [
-        "Bangun keterhubungan yang kuat antara studi Anda saat ini dengan rencana karir pasca-lulus yang terukur.",
-        "Jelaskan daya juang (grit) dan solusi yang pernah Anda tempuh saat menghadapi rintangan akademis atau finansial.",
-        "Lakukan proofreading esai bersama minimal dua rekan atau awardee terdahulu untuk memastikan kejelasan argumen.",
+        `Tunjukkan keterhubungan kuat antara latar belakang studi di ${userInstitution} dengan target karier 5 tahun ke depan pasca-beasiswa.`,
+        "Jelaskan daya juang (grit) dan solusi konkret yang pernah Anda ambil saat mengatasi tantangan akademik atau finansial terberat.",
+        "Lakukan peer-review esai bersama minimal dua mentor atau awardee beasiswa serupa sebelum melakukan submisi final.",
       ],
       timeline: [
         {
-          phase: "Minggu 1: Riset & Administrasi",
-          action: "Pelajari kriteria penerima beasiswa dan lengkapi surat pengantar dari institusi " + (user.institution || "kampus") + ".",
+          phase: "Minggu 1: Pemetaan Kriteria & Pengurusan Berkas",
+          action: `Pelajari buku panduan resmi dari ${opp.organizer}, mintalah surat pengantar resmi dari ${userInstitution}, dan hubungi pemberi rekomendasi.`,
         },
         {
-          phase: "Minggu 2-3: Penulisan Esai & Review",
-          action: "Tulis draf esai motivasi, integrasikan keahlian Anda, dan minta umpan balik dari mentor.",
+          phase: "Minggu 2: Penulisan Draf Esai Berbobot",
+          action: `Tulis esai motivasi yang menonjolkan fokus ${topCompetencies}, pastikan struktur pembuka-inti-penutup terjalin logis tanpa retorika klise.`,
         },
         {
-          phase: `Finalisasi (Sebelum ${deadlineText})`,
-          action: "Unggah seluruh berkas terverifikasi minimal 3 hari sebelum deadline untuk mengantisipasi server padat.",
+          phase: "Minggu 3: Proofreading & Uji Keterbacaan",
+          action: "Lakukan revisi tata bahasa berdasarkan feedback mentor dan uji format CV pada pemindai ATS daring.",
         },
+        {
+          phase: `Finalisasi Submisi (Sebelum ${deadlineText})`,
+          action: `Unggah seluruh dokumen lengkap ke portal resmi (${opp.registration_url || "portal penyelenggara"}) minimal 3 hari sebelum tenggat waktu.`,
+        },
+      ],
+      recommended_tools: ["Grammarly / TypoOnline", "Overleaf (LaTeX CV)", "Google Docs (Review Mode)", "CamScanner HD"],
+      curation_tips: [
+        "Reviewer beasiswa memprioritaskan konsistensi integritas dan keaslian cerita pribadi dibanding daftar prestasi tanpa konteks.",
+        "Hindari jawaban pasif; gunakan kata kerja aktif yang menunjukkan inisiatif kepemimpinan.",
       ],
     };
   }
@@ -57,76 +90,91 @@ function getCategoryFallbackRoadmap(
     return {
       document_checklist: [
         {
-          item: "Bukti Pendaftaran & Identitas Mahasiswa",
-          tip: "Simpan QR code atau tiket digital di smartphone untuk kemudahan check-in di hari pelaksanaan.",
+          item: "Tiket Registrasi / E-Badge Resmi",
+          tip: `Simpan berkas konfirmasi pendaftaran dari ${opp.organizer} di smartphone dan kalender Google Anda.`,
         },
         {
-          item: "Daftar Pertanyaan & Topik Diskusi",
-          tip: "Siapkan 2-3 pertanyaan mendalam terkait tren " +
-            (opp.required_skills?.slice(0, 2).join(" & ") || "industri") +
-            " untuk diajukan ke narasumber.",
+          item: "Curriculum Vitae Digital & Profil LinkedIn Terkini",
+          tip: `Perbarui headline LinkedIn Anda dengan fokus keahlian (${topCompetencies}) dan siapkan link portofolio ringkas.`,
         },
         {
-          item: "Profil LinkedIn & Portofolio Digital",
-          tip: "Perbarui tautan proyek portofolio Anda agar siap dibagikan saat sesi networking dengan praktisi.",
+          item: "Daftar Pertanyaan Kritis Terkurasi",
+          tip: `Siapkan 2-3 pertanyaan mendalam terkait studi kasus atau masa depan topik '${opp.title}' untuk diajukan ke narasumber utama.`,
         },
       ],
       winning_strategy: [
-        "Manfaatkan sesi tanya jawab interaktif untuk membangun reputasi personal di hadapan pembicara industri.",
-        "Bangun koneksi langsung dengan minimal 3 peserta lain yang memiliki minat di bidang yang serupa.",
-        "Publikasikan intisari insight dan dokumentasi acara di LinkedIn dalam waktu 24 jam setelah sesi berakhir.",
+        "Lakukan riset latar belakang para narasumber dan publikasi terbaru mereka untuk membangun diskusi berbobot saat sesi Q&A.",
+        "Aktiflah berjejaring dengan peserta lain di sesi breakout atau grup komunitas untuk membuka peluang kolaborasi proyek baru.",
+        "Rangkum intisari wawasan utama dalam bentuk tulisan reflektif di LinkedIn dalam waktu 24 jam setelah sesi berakhir untuk memperluas jangkauan personal branding.",
       ],
       timeline: [
         {
-          phase: "Pra-Acara",
-          action: "Pelajari profil pembicara, ringkasan materi, dan siapkan perangkat lunak yang disyaratkan.",
+          phase: "H-7 s.d. H-3: Pra-Acara & Riset Pembicara",
+          action: `Pelajari silabus topik '${opp.title}', identifikasi narasumber dari ${opp.organizer}, dan formulasikan pertanyaan strategis.`,
         },
         {
-          phase: "Hari Acara",
-          action: "Hadiri sesi tepat waktu, catat poin-poin terobosan, dan aktif dalam diskusi ruang tanya-jawab.",
+          phase: `Hari-H: Partisipasi Aktif & Networking (${deadlineText})`,
+          action: "Hadir 15 menit lebih awal, catat insight metodologis, ajukan pertanyaan di sesi interaktif, dan bertukar kontak profesional.",
         },
         {
-          phase: "Pasca-Acara",
-          action: "Tindak lanjuti koneksi baru di platform profesional dan aplikasikan wawasan yang diperoleh pada proyek nyata.",
+          phase: "H+1 s.d. H+3: Pasca-Acara & Tindak Lanjut Kolaborasi",
+          action: "Kirim pesan apresiasi kepada narasumber di LinkedIn, terhubung dengan rekan baru, dan dokumentasikan hasil belajar ke tim Anda.",
         },
+      ],
+      recommended_tools: ["Notion (Catatan Sesi)", "LinkedIn App", "Miro / Whimsical (Mindmapping Insight)"],
+      curation_tips: [
+        "Penyelenggara dan narasumber sangat menghargai peserta yang mengajukan pertanyaan solutif daripada sekadar menanyakan hal administratif.",
       ],
     };
   }
 
-  // Default untuk Kategori 'Lomba'
+  // Default Kategori 'Lomba' / Kompetisi / Hackathon
   return {
     document_checklist: [
       {
-        item: "Proposal Solusi / Pitch Deck Komprehensif",
-        tip: "Fokus pada validasi masalah nyata, keunikan solusi inovatif, dan arsitektur teknologi yang realistis.",
+        item: "Proposal Solusi Inovatif / Pitch Deck Standar Industri",
+        tip: "Strukturkan dengan framework Problem-Solution-Market-Tech Stack-Roadmap. Batasi teks naratif dan tonjolkan visualisasi diagram arsitektur.",
       },
       {
-        item: "Prototipe MVP Fungsional & Repositori Git",
-        tip: "Pastikan alur pengguna utama (happy path) berjalan mulus tanpa bug fatal saat demonstrasi juri.",
+        item: "Prototipe MVP Fungsional & Repositori Git Aktif",
+        tip: "Pastikan alur pengguna utama (happy path) berfungsi tanpa kendala teknis dan sertakan dokumentasi README yang jelas.",
       },
       {
         item: "Video Demonstrasi Produk (Durasi 2-3 Menit)",
-        tip: "Gunakan narasi problem-solution yang padat dengan tampilan antarmuka interaktif yang profesional.",
+        tip: "Fokus 30 detik pertama pada urgensi masalah nyata di lapangan, lalu tunjukkan demonstrasi produk langsung secara interaktif.",
+      },
+      {
+        item: "Surat Keterangan Mahasiswa Aktif & Pernyataan Orisinalitas",
+        tip: `Mintalah tanda tangan pengesahan dari pihak dekanat/program studi ${userInstitution} sejak awal masa kompetisi.`,
       },
     ],
     winning_strategy: [
-      "Fokus pada penyelesaian akar masalah nyata (problem-solution fit) bukan sekadar menumpuk fitur teknologi canggih.",
-      `Optimalkan keunggulan profil profiling anggota tim (${topCompetencies}) dengan pembagian tugas yang terukur.`,
-      "Latih skenario tanya-jawab juri khususnya pada aspek skalabilitas, keamanan sistem, dan model keberlanjutan.",
+      `Fokus pada pembuktian validasi masalah nyata (Problem-Solution Fit) daripada menumpuk fitur rumit yang tidak menjawab esensi tantangan ${opp.title}.`,
+      `Manfaatkan perpaduan kompetensi tim (${topCompetencies}) untuk membagi peran eksekusi secara disiplin: 1 Hacker (arsitektur), 1 Hipster (UX/UI), dan 1 Hustler (pitching & value proposition).`,
+      "Simulasikan sesi tanya-jawab juri dengan fokus pada metrik skalabilitas sistem, keamanan data, dan dampak ekonomi atau sosial bagi masyarakat.",
     ],
     timeline: [
       {
-        phase: "Fase 1: Riset Masalah & Desain Solusi",
-        action: "Validasi kebutuhan pengguna sasaran dan buat wireframe prototipe serta rancangan sistem awal.",
+        phase: "Fase 1: Riset Masalah, Validasi Ide & Wireframing",
+        action: `Analisis petunjuk teknis (juknis) dari ${opp.organizer}, buat survei singkat kebutuhan pengguna, dan susun kerangka arsitektur solusi awal.`,
       },
       {
-        phase: "Fase 2: Eksekusi MVP & Penulisan Proposal",
-        action: "Bangun fitur inti yang berfungsi penuh dan susun bab metodologi serta kebaruan teknologi pada proposal.",
+        phase: "Fase 2: Pengembangan MVP & Penyusunan Proposal",
+        action: `Bangun prototipe fitur inti yang stabil, uji alur data utama, dan tulis proposal dengan penekanan pada kebaruan solusi tim.`,
       },
       {
-        phase: `Fase 3: Simulasi Pitching & Submisi (${deadlineText})`,
-        action: "Rekam video demonstrasi produk, lakukan uji coba kelayakan akhir, dan kirim berkas pendaftaran sebelum deadline.",
+        phase: `Fase 3: Pengujian Usabilitas & Finalisasi Pitching Deck`,
+        action: "Lakukan pengujian antarmuka dengan 5 pengguna potensial, sempurnakan slide presentasi, dan rekam video demonstrasi yang memikat.",
       },
+      {
+        phase: `Fase 4: Submisi Akhir & Simulasi Tanya-Jawab (${deadlineText})`,
+        action: `Submit berkas lengkap minimal 24 jam sebelum batas waktu di portal resmi (${opp.registration_url || "portal pendaftaran"}) untuk menghindari antrean server.`,
+      },
+    ],
+    recommended_tools: ["Figma / FigJam", "GitHub / GitLab", "Vercel / Supabase", "Loom (Video Demo)", "Pitch.com"],
+    curation_tips: [
+      "Dewan juri hackathon menilai 4 pilar utama: Keaslian Inovasi (30%), Kelayakan Teknis (30%), Dampak Nyata (25%), dan Kualitas Penyampaian Presentasi (15%).",
+      "Jangan biarkan prototipe hanya berupa gambar statis; juri ingin melihat interaksi data yang responsif.",
     ],
   };
 }
@@ -154,38 +202,44 @@ export async function POST(req: Request) {
       );
     }
 
-    const profilingList = Array.isArray(userProfile.profiling) ? userProfile.profiling : [];
+    const normOpp = normalizeOpportunityFields(opportunity);
+    const profilingList = Array.isArray(userProfile.profiling)
+      ? userProfile.profiling.filter((item: any) => typeof item === "string" && item.trim().length > 0)
+      : [];
 
-    // 2. Upaya Pembuatan Roadmap via Gemini AI
+    // 2. Pembuatan Roadmap Personal via Gemini AI
     const apiKey = process.env.GEMINI_API_KEY;
     let roadmapResult: RoadmapResponse | null = null;
 
     if (apiKey) {
       const ai = new GoogleGenAI({ apiKey });
 
-      const prompt = `Anda adalah konsultan strategi karir dan kompetisi tingkat nasional untuk mahasiswa Indonesia (Aplikasi Angkasa).
-Tugas Anda adalah menyusun "AI Preparation Roadmap" yang sangat spesifik, terstruktur, dan aplikatif untuk membantu mahasiswa ini lolos atau memenangkan peluang target.
+      const prompt = `Anda adalah Konsultan Strategi Kompetisi, Beasiswa, dan Karir Tingkat Nasional untuk mahasiswa Indonesia di platform "Aplikasi Angkasa".
+Tugas Anda adalah menyusun "AI Preparation Roadmap" yang sangat spesifik, taktis, dan terstruktur langkah demi langkah untuk membantu mahasiswa ini lolos atau memenangkan peluang target.
 
 PROFIL MAHASISWA:
 - Nama: ${userProfile.full_name || "Mahasiswa"}
 - Institusi: ${userProfile.institution || "Perguruan Tinggi"}
-- Jenjang: ${userProfile.education_level || "Diploma/Sarjana"}
-- Profiling (Keahlian, Minat & Bakat): ${profilingList.join(", ") || "Mahasiswa Berbakat"}
+- Jenjang: ${userProfile.education_level || "Diploma / Sarjana"}
+- Profiling Terpadu (Keahlian, Minat & Bakat): ${profilingList.join(", ") || "Mahasiswa Berprestasi"}
 
 DETAIL PELUANG TARGET:
-- Judul: ${opportunity.title}
-- Kategori: ${opportunity.category}
-- Penyelenggara: ${opportunity.organizer}
-- Batas Waktu (Deadline): ${opportunity.deadline}
-- Deskripsi: ${opportunity.description}
-- Persyaratan: ${(opportunity.requirements || []).join(" | ")}
-- Keahlian Dibutuhkan: ${(opportunity.required_skills || []).join(", ")}
+- Judul Peluang: ${normOpp.title}
+- Kategori: ${normOpp.category}
+- Penyelenggara: ${normOpp.organizer}
+- Batas Waktu / Tenggat: ${normOpp.caption || normOpp.deadline}
+- Deskripsi: ${normOpp.description_roadmap || normOpp.description}
+- Persyaratan Resmi: ${(normOpp.requirements || []).join(" | ") || "Sesuai petunjuk teknis panitia"}
+- Kualifikasi Skill: ${(normOpp.required_skills || []).join(", ") || "Terbuka umum"}
 
-INSTRUKSI PENYUSUNAN ROADMAP:
-1. "document_checklist": Berisi daftar berkas/dokumen wajib dengan tip taktis penyiapannya.
-2. "winning_strategy": Tepat 3 poin strategi pemenangan/kelolosan yang tajam, berbasis pengalaman praktis.
-3. "timeline": Tahapan persiapan bertahap hingga tanggal deadline (${opportunity.deadline}), masing-masing memuat nama fase dan aksi konkret yang harus dilakukan.
-Gunakan Bahasa Indonesia baku, bernada suportif, profesional, dan realistis untuk mahasiswa.`;
+PANDUAN PENYUSUNAN ROADMAP BERKUALITAS TINGGI:
+1. "document_checklist": Berikan 3–4 berkas wajib spesifik untuk peluang ini dengan tips taktis penyiapannya.
+2. "winning_strategy": Berikan TEPAT 3 poin strategi kelolosan/kemenangan yang tajam, realistis, dan relevan dengan profil mahasiswa.
+3. "timeline": Rancang 3–4 tahapan fase waktu berjenjang dari persiapan awal hingga tenggat waktu (${normOpp.caption || normOpp.deadline}), memuat nama fase dan aksi nyata yang harus dilakukan.
+4. "recommended_tools": Berikan 3–5 perangkat lunak / tools industri yang relevan untuk mengeksekusi persiapan peluang ini (misal: Figma, Overleaf, Postman, Vercel, Grammarly).
+5. "curation_tips": Berikan 2 tips eksklusif mengenai hal-hal krusial yang paling dinilai oleh dewan juri / tim reviewer penilai program ini.
+
+Bahasa: Bahasa Indonesia profesional, memotivasi, realistis, dan aplikatif bagi mahasiswa.`;
 
       for (const modelName of MODELS) {
         try {
@@ -199,7 +253,7 @@ Gunakan Bahasa Indonesia baku, bernada suportif, profesional, dan realistis untu
                 properties: {
                   document_checklist: {
                     type: Type.ARRAY,
-                    description: "Daftar berkas atau dokumen yang perlu disiapkan beserta tips",
+                    description: "Daftar berkas atau dokumen yang perlu disiapkan beserta tips taktisnya",
                     items: {
                       type: Type.OBJECT,
                       properties: {
@@ -224,20 +278,34 @@ Gunakan Bahasa Indonesia baku, bernada suportif, profesional, dan realistis untu
                   },
                   timeline: {
                     type: Type.ARRAY,
-                    description: "Tahapan waktu persiapan berjenjang hingga deadline",
+                    description: "Tahapan waktu persiapan berjenjang hingga batas waktu",
                     items: {
                       type: Type.OBJECT,
                       properties: {
                         phase: {
                           type: Type.STRING,
-                          description: "Nama fase atau rentang waktu",
+                          description: "Nama fase atau rentang waktu tahapan",
                         },
                         action: {
                           type: Type.STRING,
-                          description: "Aksi nyata yang harus diselesaikan pada fase ini",
+                          description: "Aksi konkret dan terukur yang harus diselesaikan pada fase ini",
                         },
                       },
                       required: ["phase", "action"],
+                    },
+                  },
+                  recommended_tools: {
+                    type: Type.ARRAY,
+                    description: "Daftar perangkat lunak atau tools penunjang persiapan",
+                    items: {
+                      type: Type.STRING,
+                    },
+                  },
+                  curation_tips: {
+                    type: Type.ARRAY,
+                    description: "Tips khusus kriteria penilaian dewan juri atau reviewer",
+                    items: {
+                      type: Type.STRING,
                     },
                   },
                 },
@@ -252,7 +320,13 @@ Gunakan Bahasa Indonesia baku, bernada suportif, profesional, dan realistis untu
             Array.isArray(parsed.winning_strategy) &&
             Array.isArray(parsed.timeline)
           ) {
-            roadmapResult = parsed as RoadmapResponse;
+            roadmapResult = {
+              document_checklist: parsed.document_checklist,
+              winning_strategy: parsed.winning_strategy,
+              timeline: parsed.timeline,
+              recommended_tools: Array.isArray(parsed.recommended_tools) ? parsed.recommended_tools : undefined,
+              curation_tips: Array.isArray(parsed.curation_tips) ? parsed.curation_tips : undefined,
+            };
             break;
           }
         } catch (err: any) {
@@ -261,9 +335,9 @@ Gunakan Bahasa Indonesia baku, bernada suportif, profesional, dan realistis untu
       }
     }
 
-    // 3. Fallback Statis Kaya Konteks jika AI Tidak Tersedia
+    // 3. Fallback Statis Cerdas jika AI Tidak Tersedia
     if (!roadmapResult) {
-      roadmapResult = getCategoryFallbackRoadmap(userProfile, opportunity);
+      roadmapResult = getCategoryFallbackRoadmap(userProfile, normOpp);
     }
 
     return NextResponse.json(roadmapResult);
