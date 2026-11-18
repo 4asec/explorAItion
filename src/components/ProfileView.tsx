@@ -31,6 +31,7 @@ export interface ProfileViewProps {
   onLogout: () => void;
   onOpportunityVerified?: (opportunity: Opportunity) => void;
   onOpportunityAdded?: (opportunity: Opportunity) => void;
+  initialFocusInsight?: boolean;
 }
 
 const POPULAR_SUGGESTIONS = [
@@ -58,6 +59,7 @@ export default function ProfileView({
   onLogout,
   onOpportunityVerified,
   onOpportunityAdded,
+  initialFocusInsight = false,
 }: ProfileViewProps) {
   const initialTags = Array.isArray(userProfile.profiling) ? userProfile.profiling : [];
   const [selectedTags, setSelectedTags] = useState<string[]>(initialTags);
@@ -69,6 +71,25 @@ export default function ProfileView({
 
   // State Modal Konfirmasi 2 Langkah Keluar / Logout
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState<boolean>(false);
+
+  // State Modal Popup Panduan AI Career & Skill Insight
+  const [showInsightGuidePopup, setShowInsightGuidePopup] = useState<boolean>(
+    Boolean(initialFocusInsight)
+  );
+
+  // Auto-scroll ke container AI Career & Skill Insight jika user baru mendaftar
+  React.useEffect(() => {
+    if (initialFocusInsight) {
+      setShowInsightGuidePopup(true);
+      const timer = setTimeout(() => {
+        const targetElement = document.getElementById("ai-career-skill-insight");
+        if (targetElement) {
+          targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [initialFocusInsight]);
 
   // State Fitur AI Career & Skill Insight (Dimulai null pada sesi baru, hanya muncul setelah user menganalisis)
   const [userStory, setUserStory] = useState<string>("");
@@ -278,7 +299,7 @@ export default function ProfileView({
         {/* ========================================================= */}
         {/* FITUR UTAMA: AI CAREER & SKILL INSIGHT (CERITAKAN DIRIMU) */}
         {/* ========================================================= */}
-        <section className="surface-panel p-6 sm:p-8 rounded-2xl space-y-6">
+        <section id="ai-career-skill-insight" className="surface-panel p-6 sm:p-8 rounded-2xl space-y-6 scroll-mt-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/15 pb-4">
             <div className="space-y-1">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-400/20 border border-amber-300/30 text-amber-300 text-[11px] font-mono font-semibold">
@@ -618,6 +639,49 @@ export default function ProfileView({
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span>Ya, Keluar Sekarang</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL POPUP PANDUAN PENGISIAN AI CAREER & SKILL INSIGHT   */}
+      {/* ========================================================= */}
+      {showInsightGuidePopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="relative w-full max-w-md bg-[#002b66]/95 border border-white/20 rounded-2xl p-6 shadow-2xl text-white space-y-3">
+            {/* Tombol X di Kanan Atas */}
+            <button
+              type="button"
+              onClick={() => setShowInsightGuidePopup(false)}
+              className="absolute top-4 right-4 text-white/60 hover:text-white p-1 rounded-lg hover:bg-white/10 transition cursor-pointer"
+              aria-label="Tutup panduan"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Format Teks Arahan Pengisian */}
+            <div className="space-y-2 pr-6">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 border border-amber-300/30 text-amber-300 text-xs font-medium">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Panduan AI</span>
+              </div>
+              <h3 className="text-base font-medium text-white tracking-tight">
+                Langkah Terakhir: Isi AI Career &amp; Skill Insight
+              </h3>
+              <p className="text-xs text-white/80 leading-relaxed font-normal">
+                Selamat datang di Angkasa! Silakan ceritakan latar belakang, minat teknologi, atau pengalaman proyek Anda pada kolom <strong>AI Career &amp; Skill Insight</strong> di bawah ini. AI kami akan menganalisis peran kompetisi yang ideal dan mengekstrak keahlian utama Anda secara otomatis.
+              </p>
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setShowInsightGuidePopup(false)}
+                className="w-full bg-white text-[#004aad] font-semibold rounded-xl px-4 py-2 hover:bg-white/90 transition text-xs shadow-sm cursor-pointer"
+              >
+                Mulai Mengisi
               </button>
             </div>
           </div>

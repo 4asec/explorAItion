@@ -22,6 +22,7 @@ export default function Home() {
   const [currentView, setCurrentView] = useState<ActiveView>("landing");
   const [selectedOpportunity, setSelectedOpportunity] = useState<ScoredOpportunity | null>(null);
   const [isRestoringSession, setIsRestoringSession] = useState<boolean>(true);
+  const [focusInsightOnProfile, setFocusInsightOnProfile] = useState<boolean>(false);
 
   // ==========================================================
   // SESSION PERSISTENCE: Pulihkan Sesi Login Otomatis saat Refresh
@@ -134,7 +135,11 @@ export default function Home() {
   }, []);
 
   // Handler Sukses Login / Register (P1)
-  const handleAuthSuccess = (user: any, profile: UserProfile) => {
+  const handleAuthSuccess = (
+    user: any,
+    profile: UserProfile,
+    authMode?: "login" | "register"
+  ) => {
     setCurrentUser(user);
     setCurrentProfile(profile);
 
@@ -148,7 +153,15 @@ export default function Home() {
       console.warn("[Session Save Error]", e);
     }
 
-    // Aturan Alur P2 vs P3:
+    // Jika user baru saja mendaftar (Register), arahkan langsung ke halaman Profile
+    // dan beri sinyal untuk auto-scroll serta popup arahan AI Career & Skill Insight
+    if (authMode === "register") {
+      setFocusInsightOnProfile(true);
+      setCurrentView("profile");
+      return;
+    }
+
+    // Aturan Alur Login biasa:
     // Jika data profiling kosong, arahkan ke tahap input minat & bakat (P2)
     const hasProfiling =
       Array.isArray(profile.profiling) && profile.profiling.length > 0;
@@ -309,7 +322,11 @@ export default function Home() {
     return (
       <ProfileView
         userProfile={currentProfile}
-        onBack={() => setCurrentView("feed")}
+        initialFocusInsight={focusInsightOnProfile}
+        onBack={() => {
+          setFocusInsightOnProfile(false);
+          setCurrentView("feed");
+        }}
         onUpdateProfile={(updated) => {
           setCurrentProfile(updated);
           try {
