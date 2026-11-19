@@ -6,6 +6,7 @@ import {
   UserProfile,
   RoadmapResponse,
   TeamRequest,
+  TeamInvite,
 } from "@/types/schema";
 import {
   fetchPreparationRoadmap,
@@ -14,6 +15,8 @@ import {
   sendTeamInvite,
   getUserBookmarks,
   toggleBookmark,
+  getTeamInvitesForOpportunity,
+  updateTeamInviteStatus,
 } from "@/lib/apiClient";
 import BackgroundOrnaments from "@/components/BackgroundOrnaments";
 import {
@@ -66,6 +69,7 @@ export default function OpportunityDetail({
 
   // State untuk Tab 2: Team Finding Anti-Duplikasi
   const [teamRequests, setTeamRequests] = useState<TeamRequest[]>([]);
+  const [opportunityInvites, setOpportunityInvites] = useState<TeamInvite[]>([]);
   const [isTeamLoading, setIsTeamLoading] = useState<boolean>(false);
   const [teamError, setTeamError] = useState<string | null>(null);
 
@@ -147,21 +151,45 @@ export default function OpportunityDetail({
     }
   };
 
-  // Fetch team requests when switching to tab team
+  // Fetch team requests dan permohonan tim (invites) when switching to tab team
   const loadTeamRequests = async () => {
     setIsTeamLoading(true);
     setTeamError(null);
     try {
-      const res = await getTeamRequests(opportunity.id);
+      const [res, invites] = await Promise.all([
+        getTeamRequests(opportunity.id),
+        getTeamInvitesForOpportunity(opportunity.id),
+      ]);
       if (res.error || !res.data) {
         setTeamError(res.error || "Gagal memuat daftar tim.");
       } else {
         setTeamRequests(res.data);
       }
+      setOpportunityInvites(invites);
     } catch {
       setTeamError("Gagal mengambil data tim kolaborasi.");
     } finally {
       setIsTeamLoading(false);
+    }
+  };
+
+  // Handler Persetujuan Permintaan Bergabung Masuk (Terima)
+  const handleAcceptInvite = async (inviteId: string) => {
+    const res = await updateTeamInviteStatus(inviteId, "accepted");
+    if (res.success && res.data) {
+      setOpportunityInvites((prev) =>
+        prev.map((inv) => (inv.id === inviteId ? res.data! : inv))
+      );
+    }
+  };
+
+  // Handler Penolakan Permintaan Bergabung Masuk (Tolak)
+  const handleRejectInvite = async (inviteId: string) => {
+    const res = await updateTeamInviteStatus(inviteId, "rejected");
+    if (res.success && res.data) {
+      setOpportunityInvites((prev) =>
+        prev.map((inv) => (inv.id === inviteId ? res.data! : inv))
+      );
     }
   };
 
@@ -199,9 +227,13 @@ export default function OpportunityDetail({
     setTeamError(null);
 
     try {
-      const res = await getTeamRequests(opportunity.id);
+      const [res, invites] = await Promise.all([
+        getTeamRequests(opportunity.id),
+        getTeamInvitesForOpportunity(opportunity.id),
+      ]);
       const teams = res.data || [];
       setTeamRequests(teams);
+      setOpportunityInvites(invites);
 
       if (teams.length === 0) {
         // Jika tidak ada tim: banner info jika belum buat tim, tetap di mode list
@@ -260,6 +292,8 @@ export default function OpportunityDetail({
         setCreateTeamMessage("Tim berhasil didaftarkan ke bursa kolaborasi.");
         setTeamNoticeBanner(null);
         setTeamRequests((prev) => [res.data as TeamRequest, ...prev]);
+        const invites = await getTeamInvitesForOpportunity(opportunity.id);
+        setOpportunityInvites(invites);
         setTeamViewMode("list");
       }
     } catch {
@@ -277,10 +311,13 @@ export default function OpportunityDetail({
     }));
 
     try {
+      const targetTeam = teamRequests.find((t) => t.id === teamId);
       const res = await sendTeamInvite(opportunity.id, teamId, userProfile.id, {
         applicant_name: userProfile.full_name,
         role_applied: userProfile.profiling?.[0] || "Anggota Tim",
         message: `Halo, saya tertarik bergabung dengan tim Anda untuk ajang ${opportunity.title}.`,
+        opportunity_title: opportunity.title,
+        team_name: targetTeam?.team_name,
       });
 
       if (res.success) {
@@ -288,6 +325,8 @@ export default function OpportunityDetail({
           ...prev,
           [teamId]: { loading: false, success: true, error: null },
         }));
+        const updatedInvites = await getTeamInvitesForOpportunity(opportunity.id);
+        setOpportunityInvites(updatedInvites);
         if (typeof window !== "undefined") {
           try {
             sessionStorage.setItem(`angkasa_sent_invite_${userProfile.id}_${opportunity.id}`, "true");
@@ -880,12 +919,17 @@ export default function OpportunityDetail({
                         const status = inviteStatus[team.id];
                         const isRequested = team.hasRequested || status?.success;
 
+                        // Data Permohonan & Anggota Kelompok untuk tim ini
+                        const teamInvites = opportunityInvites.filter((inv) => inv.team_request_id === team.id);
+                        const acceptedMembers = teamInvites.filter((inv) => inv.status === "accepted");
+                        const pendingInvites = teamInvites.filter((inv) => inv.status === "pending");
+
                         return (
                           <div
                             key={team.id}
                             className="surface-panel p-5 rounded-2xl space-y-3.5 flex flex-col justify-between"
                           >
-                            <div className="space-y-2.5">
+                            <div className="space-y-3">
                               <div className="flex items-start justify-between gap-2">
                                 <div className="space-y-0.5">
                                   <h4 className="text-sm font-semibold text-white">
@@ -915,6 +959,99 @@ export default function OpportunityDetail({
                                   <p className="text-white line-clamp-3">
                                     {team.role_needed}
                                   </p>
+                                </div>
+                              )}
+
+                              {/* Bagian Anggota Kelompok (Inisiator + Anggota Diterima) */}
+                              <div className="space-y-1.5 pt-1">
+                                <span className="text-[10px] font-mono uppercase text-white/70 tracking-wider flex items-center gap-1.5">
+                                  <Users className="w-3 h-3 text-amber-300" />
+                                  <span>Anggota Kelompok ({acceptedMembers.length + 1}):</span>
+                                </span>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {/* Badge Inisiator / Ketua Tim */}
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-400/20 border border-amber-300/30 text-amber-300 text-xs font-semibold shadow-sm">
+                                    <ShieldCheck className="w-3 h-3 text-amber-300" />
+                                    <span>{team.creator_name}</span>
+                                    <span className="text-[10px] font-mono text-amber-300/80 font-normal">(Ketua Tim)</span>
+                                  </span>
+
+                                  {/* Daftar Anggota yang Accepted */}
+                                  {acceptedMembers.map((member) => (
+                                    <span
+                                      key={member.id || member.applicant_id}
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/10 border border-white/20 text-white text-xs font-medium shadow-sm backdrop-blur-sm"
+                                    >
+                                      <UserCheck className="w-3 h-3 text-emerald-400" />
+                                      <span>{member.applicant_name}</span>
+                                      {member.role_applied && (
+                                        <span className="text-[10px] font-mono text-white/60">({member.role_applied})</span>
+                                      )}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Sub-panel Permintaan Bergabung Masuk (Khusus Tim Milik Pengguna Saat Ini) */}
+                              {isCreator && (
+                                <div className="space-y-2 pt-2.5 border-t border-white/10">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-mono uppercase text-amber-300 tracking-wider flex items-center gap-1.5 font-semibold">
+                                      <UserPlus className="w-3.5 h-3.5 text-amber-300" />
+                                      <span>Permintaan Bergabung Masuk ({pendingInvites.length})</span>
+                                    </span>
+                                    {pendingInvites.length === 0 && (
+                                      <span className="text-[10px] font-mono text-white/50">Belum ada antrean</span>
+                                    )}
+                                  </div>
+
+                                  {pendingInvites.length > 0 && (
+                                    <div className="space-y-2">
+                                      {pendingInvites.map((invite) => (
+                                        <div
+                                          key={invite.id}
+                                          className="p-3 rounded-xl bg-white/[0.07] border border-amber-300/30 space-y-2 text-xs backdrop-blur-sm"
+                                        >
+                                          <div className="flex items-start justify-between gap-2">
+                                            <div>
+                                              <p className="font-semibold text-white">{invite.applicant_name}</p>
+                                              {invite.role_applied && (
+                                                <p className="text-[10px] font-mono text-amber-300/90">{invite.role_applied}</p>
+                                              )}
+                                            </div>
+                                            <span className="px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-mono font-medium border border-amber-300/30">
+                                              Menunggu
+                                            </span>
+                                          </div>
+
+                                          {invite.message && (
+                                            <p className="text-[11px] text-white/80 italic leading-relaxed bg-black/20 p-2 rounded-lg border border-white/10">
+                                              &ldquo;{invite.message}&rdquo;
+                                            </p>
+                                          )}
+
+                                          <div className="flex items-center gap-2 pt-1">
+                                            <button
+                                              type="button"
+                                              onClick={() => handleAcceptInvite(invite.id!)}
+                                              className="flex-1 py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/40 text-white font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-sm"
+                                            >
+                                              <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                                              <span>Terima</span>
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleRejectInvite(invite.id!)}
+                                              className="flex-1 py-1.5 px-3 rounded-xl bg-white/10 hover:bg-rose-500/30 border border-white/20 hover:border-rose-400/40 text-white/90 hover:text-rose-200 text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                                            >
+                                              <X className="w-3.5 h-3.5" />
+                                              <span>Tolak</span>
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -969,8 +1106,8 @@ export default function OpportunityDetail({
       {/* MODAL / POP-UP KONFIRMASI AKSI KOLABORASI TIM (ROYAL GLASS) */}
       {/* ========================================================= */}
       {showTeamActionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
-          <div className="relative w-[92vw] max-w-md p-5 sm:p-6 rounded-2xl bg-[#003175]/95 border border-white/25 shadow-2xl space-y-5 animate-scale-up text-white backdrop-blur-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#001d4a]/45 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-[92vw] max-w-md p-5 sm:p-6 rounded-2xl bg-[#004aad]/95 backdrop-blur-md border border-white/25 text-white shadow-[0_20px_50px_rgba(0,15,45,0.5)] space-y-5 animate-scale-up">
             {/* Header Modal & Tombol Close */}
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">

@@ -6,6 +6,7 @@ import {
   ScoredOpportunity,
   PersonalizedOpportunity,
   Opportunity,
+  TeamInvite,
 } from "@/types/schema";
 import {
   fetchPersonalizedFeed,
@@ -14,6 +15,7 @@ import {
   fetchAllOpportunitiesForCurator,
   DEFAULT_POSTER_URL,
   invalidateFeedCache,
+  getPendingTeamInvitesForCreator,
 } from "@/lib/apiClient";
 import CuratorPanel from "@/components/CuratorPanel";
 import BackgroundOrnaments from "@/components/BackgroundOrnaments";
@@ -31,6 +33,8 @@ import {
   Compass,
   Menu,
   User,
+  UserPlus,
+  Users,
 } from "lucide-react";
 
 export interface FeedDashboardProps {
@@ -117,9 +121,21 @@ export default function FeedDashboard({
   // State Drawer Menu & Pengaturan Cepat
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
 
+  // State Permintaan Tim Masuk (Khusus Tim Milik User)
+  const [pendingTeamInvites, setPendingTeamInvites] = useState<TeamInvite[]>([]);
+
   // State Panel Kurator (Admin Input Manual & Verifikator)
   const [isCuratorOpen, setIsCuratorOpen] = useState<boolean>(false);
   const [pendingCount, setPendingCount] = useState<number>(0);
+
+  const loadTeamNotifications = async () => {
+    try {
+      const invites = await getPendingTeamInvitesForCreator(userProfile.id);
+      setPendingTeamInvites(invites);
+    } catch (err) {
+      console.warn("[Load Team Notifications Error]", err);
+    }
+  };
 
   const loadFeed = async () => {
     setIsLoading(true);
@@ -166,8 +182,16 @@ export default function FeedDashboard({
     loadFeed();
     loadBookmarks();
     refreshCuratorCounts();
+    loadTeamNotifications();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userProfile]);
+
+  useEffect(() => {
+    if (isNotificationOpen) {
+      loadTeamNotifications();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNotificationOpen]);
 
   const handleToggleBookmark = async (e: React.MouseEvent, oppId: string) => {
     e.stopPropagation();
@@ -236,6 +260,9 @@ export default function FeedDashboard({
       .slice(0, 8);
   }, [opportunities]);
 
+  // Gabungkan jumlah notifikasi peluang relevan dan permintaan tim masuk
+  const totalNotificationCount = relevantNotifications.length + pendingTeamInvites.length;
+
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-[#004aad] via-[#003d91] to-[#002b66] text-white flex flex-col font-sans selection:bg-amber-400/30 selection:text-amber-200">
       {/* Ornamen Background Y2K Tech-Cyber */}
@@ -287,18 +314,18 @@ export default function FeedDashboard({
               <Menu className="w-4 h-4 text-white group-hover:text-amber-300 transition" />
             </button>
 
-            {/* Tombol Ikon Notifikasi Postingan Terbaru yang Relevan */}
+            {/* Tombol Ikon Notifikasi Postingan Terbaru yang Relevan & Permintaan Tim */}
             <button
               type="button"
               onClick={() => setIsNotificationOpen(true)}
               className="relative p-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/40 text-white transition-all duration-300 ease-out active:scale-[0.96] cursor-pointer backdrop-blur-md shadow-sm group"
-              title="Notifikasi Postingan Terbaru yang Relevan"
-              aria-label="Buka Notifikasi Peluang Relevan"
+              title="Notifikasi Postingan Terbaru & Permintaan Tim Masuk"
+              aria-label="Buka Notifikasi Peluang Relevan dan Permintaan Tim"
             >
               <Bell className="w-4 h-4 text-white group-hover:text-amber-300 transition" />
-              {relevantNotifications.length > 0 && (
+              {totalNotificationCount > 0 && (
                 <span className="absolute -top-1 -right-1 px-1.5 py-0.2 min-w-[18px] text-center rounded-full bg-amber-400 text-[#004aad] font-mono text-[10px] font-bold tabular-nums shadow-md">
-                  {relevantNotifications.length}
+                  {totalNotificationCount}
                 </span>
               )}
             </button>
@@ -597,59 +624,125 @@ export default function FeedDashboard({
                 </button>
               </div>
 
-              {/* List Peluang Relevan */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {relevantNotifications.length === 0 ? (
-                  <div className="p-8 text-center text-xs text-white/70 border border-dashed border-white/20 rounded-2xl">
-                    Belum ada rekomendasi baru yang memenuhi ambang batas relevansi.
-                  </div>
-                ) : (
-                  relevantNotifications.map((opp) => (
-                    <div
-                      key={opp.id}
-                      onClick={() => {
-                        onSelectOpportunity(opp);
-                        setIsNotificationOpen(false);
-                      }}
-                      className="group p-4 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border border-white/15 hover:border-amber-300/40 transition cursor-pointer flex flex-col gap-2.5 active:scale-[0.99]"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="px-2 py-0.5 rounded-md bg-white/15 border border-white/25 text-[10px] font-mono text-white uppercase tracking-wider">
-                          {opp.category}
-                        </span>
-                        <span className="px-2 py-0.5 rounded-full bg-amber-400 text-[#004aad] text-[10px] font-bold font-mono tabular-nums">
-                          {opp.matchPercentage ?? 85}% Cocok
-                        </span>
-                      </div>
-
-                      <div>
-                        <h3 className="text-xs sm:text-sm font-semibold text-white group-hover:text-amber-200 transition line-clamp-2">
-                          {opp.title}
-                        </h3>
-                        <p className="text-[11px] text-white/70 truncate mt-0.5">
-                          {opp.organizer}
-                        </p>
-                      </div>
-
-                      {opp.recommendationReason && (
-                        <p className="text-[11px] text-white/80 leading-relaxed bg-white/[0.05] p-2 rounded-lg border border-white/10 line-clamp-2">
-                          <span className="text-amber-300 mr-1 font-bold">&bull;</span>
-                          {opp.recommendationReason}
-                        </p>
-                      )}
-
-                      <div className="flex items-center justify-between pt-1 border-t border-white/10 text-[10px] font-mono text-white/60">
-                        <span className="flex items-center gap-1 text-white/70">
-                          <Calendar className="w-3 h-3" />
-                          <span>{opp.deadline || "Mendatang"}</span>
-                        </span>
-                        <span className="text-amber-300 group-hover:translate-x-0.5 transition flex items-center gap-0.5 font-sans font-medium">
-                          Lihat Detail &rarr;
-                        </span>
-                      </div>
+              {/* List Notifikasi: Permintaan Tim Masuk & Peluang Relevan */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {/* Bagian 1: Permintaan Tim Masuk (Khusus Ketua Tim) */}
+                {pendingTeamInvites.length > 0 && (
+                  <div className="space-y-2.5 pb-4 border-b border-white/15">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-mono font-semibold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <UserPlus className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Permintaan Tim Masuk ({pendingTeamInvites.length})</span>
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-400 text-[#004aad] font-bold shadow-sm">
+                        Perlu Ditinjau
+                      </span>
                     </div>
-                  ))
+
+                    <div className="space-y-2">
+                      {pendingTeamInvites.map((invite) => {
+                        const targetOpp = opportunities.find((o) => o.id === invite.opportunity_id);
+
+                        return (
+                          <div
+                            key={invite.id}
+                            onClick={() => {
+                              if (targetOpp) {
+                                onSelectOpportunity(targetOpp);
+                                setIsNotificationOpen(false);
+                              }
+                            }}
+                            className="p-3.5 rounded-xl bg-amber-400/15 hover:bg-amber-400/25 border border-amber-300/35 hover:border-amber-300 text-xs space-y-1.5 transition cursor-pointer active:scale-[0.99] group backdrop-blur-sm shadow-sm"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-bold text-white group-hover:text-amber-200 transition">
+                                {invite.applicant_name}
+                              </span>
+                              <span className="text-[10px] font-mono text-white/60">
+                                {new Date(invite.created_at || Date.now()).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            </div>
+
+                            <p className="text-[11px] text-white/80 line-clamp-1 leading-relaxed">
+                              Melamar posisi <strong className="text-amber-300 font-semibold">{invite.role_applied || "Anggota Tim"}</strong> pada tim <strong className="text-white font-medium">{invite.team_name || "Tim Anda"}</strong>
+                            </p>
+
+                            {invite.opportunity_title && (
+                              <p className="text-[10px] text-white/60 font-mono truncate">
+                                Ajang: {invite.opportunity_title}
+                              </p>
+                            )}
+
+                            <div className="pt-1 flex items-center justify-between text-[10px] font-mono text-amber-300 group-hover:translate-x-0.5 transition">
+                              <span>Tinjau di detail peluang &rarr;</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
+
+                {/* Bagian 2: Rekomendasi Peluang Relevan */}
+                <div className="space-y-2.5">
+                  <span className="text-[10px] font-mono uppercase text-white/70 tracking-wider block">
+                    Peluang Relevan Terbaru
+                  </span>
+                  {relevantNotifications.length === 0 ? (
+                    <div className="p-8 text-center text-xs text-white/70 border border-dashed border-white/20 rounded-2xl">
+                      Belum ada rekomendasi baru yang memenuhi ambang batas relevansi.
+                    </div>
+                  ) : (
+                    relevantNotifications.map((opp) => (
+                      <div
+                        key={opp.id}
+                        onClick={() => {
+                          onSelectOpportunity(opp);
+                          setIsNotificationOpen(false);
+                        }}
+                        className="group p-4 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border border-white/15 hover:border-amber-300/40 transition cursor-pointer flex flex-col gap-2.5 active:scale-[0.99]"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="px-2 py-0.5 rounded-md bg-white/15 border border-white/25 text-[10px] font-mono text-white uppercase tracking-wider">
+                            {opp.category}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full bg-amber-400 text-[#004aad] text-[10px] font-bold font-mono tabular-nums">
+                            {opp.matchPercentage ?? 85}% Cocok
+                          </span>
+                        </div>
+
+                        <div>
+                          <h3 className="text-xs sm:text-sm font-semibold text-white group-hover:text-amber-200 transition line-clamp-2">
+                            {opp.title}
+                          </h3>
+                          <p className="text-[11px] text-white/70 truncate mt-0.5">
+                            {opp.organizer}
+                          </p>
+                        </div>
+
+                        {opp.recommendationReason && (
+                          <p className="text-[11px] text-white/80 leading-relaxed bg-white/[0.05] p-2 rounded-lg border border-white/10 line-clamp-2">
+                            <span className="text-amber-300 mr-1 font-bold">&bull;</span>
+                            {opp.recommendationReason}
+                          </p>
+                        )}
+
+                        <div className="flex items-center justify-between pt-1 border-t border-white/10 text-[10px] font-mono text-white/60">
+                          <span className="flex items-center gap-1 text-white/70">
+                            <Calendar className="w-3 h-3" />
+                            <span>{opp.deadline || "Mendatang"}</span>
+                          </span>
+                          <span className="text-amber-300 group-hover:translate-x-0.5 transition flex items-center gap-0.5 font-sans font-medium">
+                            Lihat Detail &rarr;
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
 
               {/* Footer Sidebar: Link ke Profile Page */}

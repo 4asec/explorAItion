@@ -8,6 +8,7 @@ import {
   RoadmapResponse,
   TeamRequest,
   CreateTeamPayload,
+  TeamInvite,
   OpportunityVerificationResult,
   ProfileInsightResult,
 } from "@/types/schema";
@@ -757,6 +758,170 @@ export async function createTeamRequest(
   }
 }
 
+// =================================================================
+// 6.5. TEAM INVITES & MEMBERS (PERSETUJUAN & NOTIFIKASI)
+// =================================================================
+
+const TEAM_INVITES_STORAGE_KEY = "angkasa_team_invites";
+
+const INITIAL_TEAM_INVITES: TeamInvite[] = [
+  {
+    id: "inv-demo-001",
+    team_request_id: "team-req-001",
+    opportunity_id: "opp-002",
+    opportunity_title: "National Business Plan & Fintech Challenge 2026",
+    team_name: "Garuda ExplorAI",
+    applicant_id: "user-revaldo-003",
+    applicant_name: "Revaldo Putra",
+    role_applied: "Pitch Lead & Business Strategist",
+    message: "Tertarik berkolaborasi untuk finalisasi business case dan pitching.",
+    status: "accepted",
+    created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
+  },
+  {
+    id: "inv-demo-002",
+    team_request_id: "team-req-002",
+    opportunity_id: "opp-001",
+    opportunity_title: "Gemini AI Innovation Hackathon 2026",
+    team_name: "Nusantara Innovate",
+    applicant_id: "user-demo-001",
+    applicant_name: "Raffa Danendra",
+    role_applied: "AI Engineer & Full-Stack",
+    message: "Tertarik bergabung untuk mengerjakan integrasi Gemini API & backend.",
+    status: "accepted",
+    created_at: new Date(Date.now() - 3600000 * 12).toISOString(),
+  },
+  {
+    id: "inv-demo-003",
+    team_request_id: "team-req-003",
+    opportunity_id: "opp-001",
+    opportunity_title: "Gemini AI Innovation Hackathon 2026",
+    team_name: "CyberAI Guardians",
+    applicant_id: "user-fadhil-005",
+    applicant_name: "Ahmad Fadhil",
+    role_applied: "Security Researcher & ML Analyst",
+    message: "Halo, saya berpengalaman dalam machine learning & deteksi ancaman. Ingin bergabung di tim ini!",
+    status: "pending",
+    created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
+  },
+  {
+    id: "inv-demo-004",
+    team_request_id: "team-req-003",
+    opportunity_id: "opp-001",
+    opportunity_title: "Gemini AI Innovation Hackathon 2026",
+    team_name: "CyberAI Guardians",
+    applicant_id: "user-sarah-006",
+    applicant_name: "Sarah Alifah",
+    role_applied: "UI/UX & Product Design",
+    message: "Saya mahasiswi desain grafis, siap bantu wireframe dan prototype interaktif.",
+    status: "accepted",
+    created_at: new Date(Date.now() - 3600000 * 18).toISOString(),
+  },
+];
+
+/**
+ * Mengambil seluruh data team invites dari localStorage (dengan seed awal)
+ */
+export function getStoredTeamInvites(): TeamInvite[] {
+  if (typeof window === "undefined") return INITIAL_TEAM_INVITES;
+  try {
+    const raw = localStorage.getItem(TEAM_INVITES_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+    localStorage.setItem(TEAM_INVITES_STORAGE_KEY, JSON.stringify(INITIAL_TEAM_INVITES));
+    return INITIAL_TEAM_INVITES;
+  } catch (e) {
+    console.warn("[Stored Team Invites Read Error]", e);
+    return INITIAL_TEAM_INVITES;
+  }
+}
+
+/**
+ * Menyimpan daftar team invites ke localStorage
+ */
+export function saveStoredTeamInvites(invites: TeamInvite[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(TEAM_INVITES_STORAGE_KEY, JSON.stringify(invites));
+  } catch (e) {
+    console.warn("[Stored Team Invites Write Error]", e);
+  }
+}
+
+/**
+ * Mengambil daftar invite untuk kompetisi tertentu
+ */
+export async function getTeamInvitesForOpportunity(opportunityId: string): Promise<TeamInvite[]> {
+  const allInvites = getStoredTeamInvites();
+  return allInvites.filter((inv) => inv.opportunity_id === opportunityId);
+}
+
+/**
+ * Memperbarui status permintaan kolaborasi ('accepted' atau 'rejected')
+ */
+export async function updateTeamInviteStatus(
+  inviteId: string,
+  newStatus: "accepted" | "rejected"
+): Promise<{ success: boolean; data?: TeamInvite; error?: string }> {
+  try {
+    const allInvites = getStoredTeamInvites();
+    const targetIdx = allInvites.findIndex((inv) => inv.id === inviteId);
+
+    if (targetIdx === -1) {
+      return { success: false, error: "Permintaan kolaborasi tidak ditemukan." };
+    }
+
+    const updated = { ...allInvites[targetIdx], status: newStatus };
+    allInvites[targetIdx] = updated;
+    saveStoredTeamInvites(allInvites);
+
+    // Sinkronisasi Supabase jika aktif
+    if (isSupabaseConfigured) {
+      try {
+        await supabaseClient
+          .from("team_invites")
+          .update({ status: newStatus })
+          .eq("id", inviteId);
+      } catch (err) {
+        console.warn("[Update Team Invite Supabase Warning]", err);
+      }
+    }
+
+    return { success: true, data: updated };
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Gagal memperbarui status permintaan tim." };
+  }
+}
+
+/**
+ * Mengambil seluruh permintaan tim masuk berstatus 'pending' yang ditujukan kepada tim milik user
+ */
+export async function getPendingTeamInvitesForCreator(
+  creatorId: string,
+  knownTeamIds?: string[]
+): Promise<TeamInvite[]> {
+  try {
+    const allInvites = getStoredTeamInvites();
+    
+    // Kumpulkan seluruh team ID milik creator ini
+    let creatorTeamIds = knownTeamIds || [];
+    if (!creatorTeamIds.length) {
+      const allTeams = mockTeamRequests.filter((t) => t.creator_id === creatorId);
+      creatorTeamIds = allTeams.map((t) => t.id);
+    }
+
+    // Filter invites yang berstatus pending dan mengarah ke tim milik user
+    return allInvites.filter((inv) => {
+      if (inv.status !== "pending") return false;
+      return creatorTeamIds.includes(inv.team_request_id);
+    });
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Mengirim permintaan kolaborasi/ajakan tim dengan proteksi anti-duplikasi (Error 409)
  */
@@ -768,6 +933,8 @@ export async function sendTeamInvite(
     applicant_name?: string;
     role_applied?: string;
     message?: string;
+    opportunity_title?: string;
+    team_name?: string;
   }
 ): Promise<{ success: boolean; message: string; error: string | null }> {
   try {
@@ -804,6 +971,23 @@ export async function sendTeamInvite(
         error: json.error || "Gagal mengirimkan permintaan kolaborasi.",
       };
     }
+
+    // Catat ke storage lokal agar langsung sinkron dengan daftar anggota & notifikasi
+    const currentInvites = getStoredTeamInvites();
+    const newInvite: TeamInvite = {
+      id: json?.data?.id || `inv-${Date.now()}`,
+      team_request_id: teamRequestId,
+      opportunity_id: opportunityId,
+      opportunity_title: options?.opportunity_title,
+      team_name: options?.team_name,
+      applicant_id: senderId,
+      applicant_name: options?.applicant_name || "Pemohon Kolaborasi",
+      role_applied: options?.role_applied || "Anggota Tim",
+      message: options?.message || "",
+      status: "pending",
+      created_at: new Date().toISOString(),
+    };
+    saveStoredTeamInvites([newInvite, ...currentInvites]);
 
     return {
       success: true,

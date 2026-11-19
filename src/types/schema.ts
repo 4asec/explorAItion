@@ -97,6 +97,8 @@ export interface TeamInvite {
   id?: string;
   team_request_id: string;
   opportunity_id?: string;
+  opportunity_title?: string;
+  team_name?: string;
   applicant_id: string;
   applicant_name: string;
   role_applied?: string;

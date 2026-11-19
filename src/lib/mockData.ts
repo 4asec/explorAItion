@@ -246,4 +246,13 @@ export const mockTeamRequests: TeamRequest[] = [
     role_needed: "UI/UX Designer & Researcher",
     hasRequested: true,
   },
+  {
+    id: "team-req-003",
+    opportunity_id: "opp-001",
+    creator_id: "a9559a6d-f025-47b0-8203-662f58418699",
+    creator_name: "Raffa Danendra",
+    team_name: "CyberAI Guardians",
+    role_needed: "Security Researcher & Data Analyst",
+    hasRequested: false,
+  },
 ];
