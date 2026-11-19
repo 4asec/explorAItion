@@ -88,6 +88,15 @@ export default function OpportunityDetail({
     Record<string, { loading: boolean; success: boolean; error: string | null }>
   >({});
 
+  // Cek apakah user sudah mengirim ajakan kolaborasi / memiliki tim pada peluang ini (Anti-Duplikasi Celah)
+  const userHasTeam = teamRequests.some((t) => t.creator_id === userProfile.id);
+  const hasSentInvite =
+    teamRequests.some((t) => t.hasRequested) ||
+    Object.values(inviteStatus).some((status) => status.success) ||
+    (typeof window !== "undefined" &&
+      sessionStorage.getItem(`angkasa_sent_invite_${userProfile.id}_${opportunity.id}`) === "true");
+  const isUserLocked = userHasTeam || hasSentInvite;
+
   // Normalisasi data peluang
   const deadline = opportunity.caption || opportunity.deadline || "Segera";
   const description =
@@ -174,6 +183,7 @@ export default function OpportunityDetail({
 
   // Handler Modal: Pilihan 1 - "Buat Tim Baru"
   const handleSelectCreateTeam = () => {
+    if (isUserLocked) return;
     setShowTeamActionModal(false);
     setTeamNoticeBanner(null);
     setTeamViewMode("create");
@@ -194,19 +204,20 @@ export default function OpportunityDetail({
       setTeamRequests(teams);
 
       if (teams.length === 0) {
-        // Jika tidak ada tim: banner info jelas + arahkan ke formulir tim baru
-        setTeamNoticeBanner("Tidak ada tim, silahkan buat tim");
-        setTeamViewMode("create");
-        setTimeout(() => {
-          teamNameInputRef.current?.focus();
-        }, 150);
+        // Jika tidak ada tim: banner info jika belum buat tim, tetap di mode list
+        if (!isUserLocked) {
+          setTeamNoticeBanner("Tidak ada tim, silahkan buat tim");
+        } else {
+          setTeamNoticeBanner(null);
+        }
+        setTeamViewMode("list");
       } else {
         setTeamNoticeBanner(null);
         setTeamViewMode("list");
       }
     } catch {
-      setTeamNoticeBanner("Tidak ada tim, silahkan buat tim");
-      setTeamViewMode("create");
+      setTeamNoticeBanner(null);
+      setTeamViewMode("list");
     } finally {
       setIsTeamLoading(false);
     }
@@ -277,6 +288,13 @@ export default function OpportunityDetail({
           ...prev,
           [teamId]: { loading: false, success: true, error: null },
         }));
+        if (typeof window !== "undefined") {
+          try {
+            sessionStorage.setItem(`angkasa_sent_invite_${userProfile.id}_${opportunity.id}`, "true");
+          } catch (e) {
+            console.warn("[Invite Storage Error]", e);
+          }
+        }
       } else {
         setInviteStatus((prev) => ({
           ...prev,
@@ -813,27 +831,13 @@ export default function OpportunityDetail({
                     <span className="font-mono uppercase text-white/80">
                       Bursa Tim Terdaftar (<span className="tabular-nums text-white font-semibold">{teamRequests.length}</span>)
                     </span>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTeamNoticeBanner(null);
-                          setTeamViewMode("create");
-                          setTimeout(() => teamNameInputRef.current?.focus(), 100);
-                        }}
-                        className="text-xs font-semibold text-amber-300 hover:text-amber-200 transition cursor-pointer flex items-center gap-1"
-                      >
-                        <Plus className="w-3 h-3" />
-                        <span>Inisiasi Tim Baru</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={loadTeamRequests}
-                        className="text-white/80 hover:text-white transition cursor-pointer"
-                      >
-                        Muat Ulang
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={loadTeamRequests}
+                      className="text-white/80 hover:text-white transition cursor-pointer text-xs font-mono"
+                    >
+                      Muat Ulang
+                    </button>
                   </div>
 
                   {isTeamLoading ? (
@@ -855,20 +859,18 @@ export default function OpportunityDetail({
                           Belum ada tim terdaftar
                         </p>
                         <p className="text-xs text-white/80 max-w-sm mx-auto">
-                          Jadilah inisiator pertama dengan mendaftarkan tim Anda untuk ajang ini.
+                          {isUserLocked
+                            ? "Belum ada tim lain terdaftar pada ajang ini."
+                            : "Belum ada tim terdaftar pada ajang ini."}
                         </p>
                       </div>
                       <button
                         type="button"
-                        onClick={() => {
-                          setTeamNoticeBanner(null);
-                          setTeamViewMode("create");
-                          setTimeout(() => teamNameInputRef.current?.focus(), 100);
-                        }}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white hover:bg-white/90 text-[#004aad] text-xs font-bold transition active:scale-[0.98] cursor-pointer shadow-md"
+                        onClick={() => setShowTeamActionModal(true)}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition active:scale-[0.98] cursor-pointer shadow-sm backdrop-blur-md"
                       >
-                        <Plus className="w-3.5 h-3.5 text-[#004aad]" />
-                        <span>Inisiasi Tim Pertama</span>
+                        <Users className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Kembali ke Opsi Kolaborasi</span>
                       </button>
                     </div>
                   ) : (
@@ -876,6 +878,7 @@ export default function OpportunityDetail({
                       {teamRequests.map((team) => {
                         const isCreator = team.creator_id === userProfile.id;
                         const status = inviteStatus[team.id];
+                        const isRequested = team.hasRequested || status?.success;
 
                         return (
                           <div
@@ -929,7 +932,7 @@ export default function OpportunityDetail({
                                   <UserCheck className="w-3.5 h-3.5 text-amber-300" />
                                   <span>Anda adalah inisiator tim ini</span>
                                 </div>
-                              ) : status?.success ? (
+                              ) : isRequested ? (
                                 <div className="inline-flex items-center gap-1.5 text-xs text-amber-300 font-semibold py-1">
                                   <CheckCircle2 className="w-3.5 h-3.5" />
                                   <span>Permintaan Terkirim</span>
@@ -938,7 +941,7 @@ export default function OpportunityDetail({
                                 <button
                                   type="button"
                                   onClick={() => handleSendInvite(team.id)}
-                                  disabled={status?.loading}
+                                  disabled={status?.loading || isUserLocked}
                                   className="w-full py-2 px-3 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-xs font-semibold text-white transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98] disabled:opacity-50 shadow-sm"
                                 >
                                   {status?.loading ? (
@@ -1017,17 +1020,38 @@ export default function OpportunityDetail({
               <button
                 type="button"
                 onClick={handleSelectCreateTeam}
-                className="p-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 hover:border-amber-300/40 text-left transition-all duration-300 ease-out group cursor-pointer space-y-1.5 backdrop-blur-md shadow-sm active:scale-[0.98]"
+                disabled={isUserLocked}
+                className={`p-4 rounded-xl border text-left transition-all duration-300 ease-out space-y-1.5 backdrop-blur-md shadow-sm ${
+                  isUserLocked
+                    ? "bg-white/[0.04] border-white/10 opacity-60 cursor-not-allowed"
+                    : "bg-white/10 hover:bg-white/20 border-white/20 hover:border-amber-300/40 group cursor-pointer active:scale-[0.98]"
+                }`}
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-white group-hover:text-amber-300 transition-colors">
-                    <PlusCircle className="w-4 h-4 text-amber-300" />
+                  <div
+                    className={`flex items-center gap-2 text-sm font-semibold transition-colors ${
+                      isUserLocked ? "text-white/60" : "text-white group-hover:text-amber-300"
+                    }`}
+                  >
+                    <PlusCircle className={`w-4 h-4 ${isUserLocked ? "text-white/40" : "text-amber-300"}`} />
                     <span>Buat Tim Baru</span>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-white/70 group-hover:text-amber-300 transition-transform group-hover:translate-x-0.5" />
+                  {isUserLocked ? (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/10 text-amber-300/80 border border-amber-300/20">
+                      Terkunci
+                    </span>
+                  ) : (
+                    <ArrowRight className="w-4 h-4 text-white/70 group-hover:text-amber-300 transition-transform group-hover:translate-x-0.5" />
+                  )}
                 </div>
-                <p className="text-xs text-white/80 leading-relaxed">
-                  Inisiasi kelompok kerja baru dan publikasikan kriteria rekan tim yang Anda cari.
+                <p
+                  className={`text-xs leading-relaxed ${
+                    isUserLocked ? "text-amber-300/90 font-medium" : "text-white/80"
+                  }`}
+                >
+                  {isUserLocked
+                    ? "Anda sudah terhubung/mengajukan kolaborasi pada peluang ini."
+                    : "Inisiasi kelompok kerja baru dan publikasikan kriteria rekan tim yang Anda cari."}
                 </p>
               </button>
             </div>
