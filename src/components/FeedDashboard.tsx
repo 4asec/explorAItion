@@ -303,16 +303,7 @@ export default function FeedDashboard({
 
           {/* Bagian Navbar Sisi Kanan: Menu Navigasi & Pengaturan Cepat + Ikon Notifikasi */}
           <div className="flex items-center gap-2">
-            {/* Tombol Menu Navigasi & Pengaturan Cepat (Garis Tiga) */}
-            <button
-              type="button"
-              onClick={() => setIsMenuOpen(true)}
-              className="relative p-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/40 text-white transition-all duration-300 ease-out active:scale-[0.96] cursor-pointer backdrop-blur-md shadow-sm group"
-              title="Menu Navigasi & Pengaturan Cepat"
-              aria-label="Buka Menu Navigasi & Pengaturan Cepat"
-            >
-              <Menu className="w-4 h-4 text-white group-hover:text-amber-300 transition" />
-            </button>
+            
 
             {/* Tombol Ikon Notifikasi Postingan Terbaru yang Relevan & Permintaan Tim */}
             <button
@@ -328,6 +319,17 @@ export default function FeedDashboard({
                   {totalNotificationCount}
                 </span>
               )}
+
+              {/* Tombol Menu Navigasi & Pengaturan Cepat (Garis Tiga) */}
+              <button
+                type="button"
+                onClick={() => setIsMenuOpen(true)}
+                className="relative p-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/40 text-white transition-all duration-300 ease-out active:scale-[0.96] cursor-pointer backdrop-blur-md shadow-sm group"
+                title="Menu Navigasi & Pengaturan Cepat"
+                aria-label="Buka Menu Navigasi & Pengaturan Cepat"
+              > 
+                <Menu className="w-4 h-4 text-white group-hover:text-amber-300 transition" />
+              </button>
             </button>
           </div>
         </div>
