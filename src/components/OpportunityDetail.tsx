@@ -132,27 +132,56 @@ export default function OpportunityDetail({
   >({});
 
   // Isolasi Status Kolaborasi per Lomba:
-  // 1. Cek apakah user telah membuat tim pada peluang ini
-  const userHasTeam = teamRequests.some(
-    (t) => t.creator_id === userProfile.id && (t.opportunity_id === opportunity.id || !t.opportunity_id)
-  );
+  // Status keterlibatan user HANYA dihitung dari daftar teamRequests yang sedang dirender pada peluang (opportunity.id) saat ini.
+  // Jika teamRequests.length === 0, isUserLockedInOpportunity PASTI false sehingga tombol "Buat Tim Baru" selalu aktif.
+  const isUserLockedInOpportunity =
+    teamRequests.length > 0 &&
+    teamRequests.some((team) => {
+      // a. Cek apakah user adalah pembuat tim ini
+      if (team.creator_id === userProfile.id) return true;
 
-  // 2. Cari undangan pending milik user pada peluang ini
-  const userPendingInvite = opportunityInvites.find(
-    (inv) =>
-      (inv.applicant_id === userProfile.id || inv.sender_id === userProfile.id) &&
-      inv.status === "pending"
-  );
+      // b. Cek apakah user memiliki undangan (pending atau accepted) pada tim ini
+      const invites =
+        (team as any).invites ??
+        opportunityInvites.filter((inv) => inv.team_request_id === team.id);
 
-  // 3. Cari status keanggotaan accepted milik user pada peluang ini
-  const userAcceptedInvite = opportunityInvites.find(
-    (inv) =>
-      (inv.applicant_id === userProfile.id || inv.sender_id === userProfile.id) &&
-      inv.status === "accepted"
-  );
+      return invites.some(
+        (inv: any) =>
+          (inv.sender_id === userProfile.id || inv.applicant_id === userProfile.id) &&
+          (inv.status === "pending" || inv.status === "accepted")
+      );
+    });
+
+  const isUserLocked = isUserLockedInOpportunity;
+
+  // Cek apakah user memiliki tim yang dibuat sendiri pada peluang ini
+  const userHasTeam =
+    teamRequests.length > 0 &&
+    teamRequests.some((t) => t.creator_id === userProfile.id);
+
+  // Cari undangan pending milik user pada tim yang ada di peluang ini
+  const userPendingInvite =
+    teamRequests.length > 0
+      ? opportunityInvites.find(
+          (inv) =>
+            teamRequests.some((t) => t.id === inv.team_request_id) &&
+            (inv.applicant_id === userProfile.id || inv.sender_id === userProfile.id) &&
+            inv.status === "pending"
+        )
+      : null;
+
+  // Cari status keanggotaan accepted milik user pada tim yang ada di peluang ini
+  const userAcceptedInvite =
+    teamRequests.length > 0
+      ? opportunityInvites.find(
+          (inv) =>
+            teamRequests.some((t) => t.id === inv.team_request_id) &&
+            (inv.applicant_id === userProfile.id || inv.sender_id === userProfile.id) &&
+            inv.status === "accepted"
+        )
+      : null;
 
   const hasSentInvite = Boolean(userPendingInvite);
-  const isUserLocked = userHasTeam || hasSentInvite || Boolean(userAcceptedInvite);
 
   // Normalisasi data peluang
   const deadline = opportunity.caption || opportunity.deadline || "Segera";
@@ -308,6 +337,7 @@ export default function OpportunityDetail({
 
   useEffect(() => {
     handleGenerateRoadmap();
+    loadTeamRequests();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opportunity.id]);
 
@@ -324,7 +354,7 @@ export default function OpportunityDetail({
 
   // Handler Modal: Pilihan 1 - "Buat Tim Baru"
   const handleSelectCreateTeam = () => {
-    if (isUserLocked) return;
+    if (isUserLockedInOpportunity) return;
     setShowTeamActionModal(false);
     setTeamNoticeBanner(null);
     setTeamViewMode("create");
@@ -350,7 +380,7 @@ export default function OpportunityDetail({
 
       if (teams.length === 0) {
         // Jika tidak ada tim: banner info jika belum buat tim, tetap di mode list
-        if (!isUserLocked) {
+        if (!isUserLockedInOpportunity) {
           setTeamNoticeBanner("Tidak ada tim, silahkan buat tim");
         } else {
           setTeamNoticeBanner(null);
@@ -1032,7 +1062,7 @@ export default function OpportunityDetail({
                           Belum ada tim terdaftar
                         </p>
                         <p className="text-xs text-white/80 max-w-sm mx-auto">
-                          {isUserLocked
+                          {isUserLockedInOpportunity
                             ? "Belum ada tim lain terdaftar pada ajang ini."
                             : "Belum ada tim terdaftar pada ajang ini."}
                         </p>
@@ -1279,7 +1309,7 @@ export default function OpportunityDetail({
                                 <button
                                   type="button"
                                   onClick={() => handleSendInvite(team.id)}
-                                  disabled={status?.loading || isUserLocked}
+                                  disabled={status?.loading || isUserLockedInOpportunity}
                                   className="w-full py-2 px-3 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-xs font-semibold text-white transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98] disabled:opacity-50 shadow-sm"
                                 >
                                   {status?.loading ? (
@@ -1358,9 +1388,9 @@ export default function OpportunityDetail({
               <button
                 type="button"
                 onClick={handleSelectCreateTeam}
-                disabled={isUserLocked}
+                disabled={isUserLockedInOpportunity}
                 className={`p-4 rounded-xl border text-left transition-all duration-300 ease-out space-y-1.5 backdrop-blur-md shadow-sm ${
-                  isUserLocked
+                  isUserLockedInOpportunity
                     ? "bg-white/[0.04] border-white/10 opacity-60 cursor-not-allowed"
                     : "bg-white/10 hover:bg-white/20 border-white/20 hover:border-amber-300/40 group cursor-pointer active:scale-[0.98]"
                 }`}
@@ -1368,13 +1398,13 @@ export default function OpportunityDetail({
                 <div className="flex items-center justify-between">
                   <div
                     className={`flex items-center gap-2 text-sm font-semibold transition-colors ${
-                      isUserLocked ? "text-white/60" : "text-white group-hover:text-amber-300"
+                      isUserLockedInOpportunity ? "text-white/60" : "text-white group-hover:text-amber-300"
                     }`}
                   >
-                    <PlusCircle className={`w-4 h-4 ${isUserLocked ? "text-white/40" : "text-amber-300"}`} />
+                    <PlusCircle className={`w-4 h-4 ${isUserLockedInOpportunity ? "text-white/40" : "text-amber-300"}`} />
                     <span>Buat Tim Baru</span>
                   </div>
-                  {isUserLocked ? (
+                  {isUserLockedInOpportunity ? (
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/10 text-amber-300/80 border border-amber-300/20">
                       Terkunci
                     </span>
@@ -1384,10 +1414,10 @@ export default function OpportunityDetail({
                 </div>
                 <p
                   className={`text-xs leading-relaxed ${
-                    isUserLocked ? "text-amber-300/90 font-medium" : "text-white/80"
+                    isUserLockedInOpportunity ? "text-amber-300/90 font-medium" : "text-white/80"
                   }`}
                 >
-                  {isUserLocked
+                  {isUserLockedInOpportunity
                     ? "Anda sudah terhubung/mengajukan kolaborasi pada peluang ini."
                     : "Inisiasi kelompok kerja baru dan publikasikan kriteria rekan tim yang Anda cari."}
                 </p>
