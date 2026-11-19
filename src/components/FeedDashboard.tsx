@@ -17,6 +17,7 @@ import {
   invalidateFeedCache,
   getPendingTeamInvitesForCreator,
 } from "@/lib/apiClient";
+import { mockOpportunities } from "@/lib/mockData";
 import CuratorPanel from "@/components/CuratorPanel";
 import BackgroundOrnaments from "@/components/BackgroundOrnaments";
 import {
@@ -633,24 +634,42 @@ export default function FeedDashboard({
 
                     <div className="space-y-2">
                       {pendingTeamInvites.map((invite) => {
-                        const targetOpp = opportunities.find((o) => o.id === invite.opportunity_id);
+                        const targetOpp =
+                          opportunities.find((o) => o.id === invite.opportunity_id) ||
+                          mockOpportunities.find((o) => o.id === invite.opportunity_id);
 
                         return (
                           <div
                             key={invite.id}
                             onClick={() => {
-                              if (targetOpp) {
-                                onSelectOpportunity(targetOpp);
-                                setIsNotificationOpen(false);
-                              }
+                              const oppToOpen: ScoredOpportunity = targetOpp
+                                ? {
+                                    ...targetOpp,
+                                    matchPercentage: (targetOpp as any).matchPercentage ?? 95,
+                                    recommendationReason:
+                                      (targetOpp as any).recommendationReason ??
+                                      "Peluang kolaborasi tim yang Anda inisiasi.",
+                                  }
+                                : {
+                                    id: invite.opportunity_id || "opp-001",
+                                    title: invite.opportunity_title || "Peluang Kolaborasi",
+                                    category: "Lomba",
+                                    organizer: "Penyelenggara Resmi",
+                                    registration_url: "#",
+                                    is_verified: true,
+                                    matchPercentage: 95,
+                                    recommendationReason: "Peluang kolaborasi tim yang Anda inisiasi.",
+                                  };
+                              onSelectOpportunity(oppToOpen);
+                              setIsNotificationOpen(false);
                             }}
                             className="p-3.5 rounded-xl bg-amber-400/15 hover:bg-amber-400/25 border border-amber-300/35 hover:border-amber-300 text-xs space-y-1.5 transition cursor-pointer active:scale-[0.99] group backdrop-blur-sm shadow-sm"
                           >
                             <div className="flex items-center justify-between gap-2">
                               <span className="font-bold text-white group-hover:text-amber-200 transition">
-                                {invite.applicant_name}
+                                Permintaan Gabung Tim dari {invite.applicant_name}
                               </span>
-                              <span className="text-[10px] font-mono text-white/60">
+                              <span className="text-[10px] font-mono text-white/60 shrink-0">
                                 {new Date(invite.created_at || Date.now()).toLocaleTimeString([], {
                                   hour: "2-digit",
                                   minute: "2-digit",

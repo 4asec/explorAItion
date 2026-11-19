@@ -699,6 +699,34 @@ export async function toggleBookmark(
 // 6. TEAM FINDING ANTI-DUPLIKASI (P6)
 // =================================================================
 
+const CUSTOM_TEAMS_STORAGE_KEY = "angkasa_custom_team_requests";
+
+/**
+ * Helper penyimpanan tim lokal kustom
+ */
+export function getStoredCustomTeamRequests(): TeamRequest[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(CUSTOM_TEAMS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {
+    console.warn("[Stored Custom Teams Read Error]", e);
+  }
+  return [];
+}
+
+export function saveStoredCustomTeamRequests(teams: TeamRequest[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(CUSTOM_TEAMS_STORAGE_KEY, JSON.stringify(teams));
+  } catch (e) {
+    console.warn("[Stored Custom Teams Write Error]", e);
+  }
+}
+
 /**
  * Mengambil daftar lowongan tim kolaborasi pada kompetisi tertentu
  */
@@ -706,22 +734,44 @@ export async function getTeamRequests(
   opportunityId: string
 ): Promise<ApiResponse<TeamRequest[]>> {
   try {
-    const res = await fetch(`/api/team?opportunityId=${encodeURIComponent(opportunityId)}`);
-    const json = await res.json();
+    const customTeams = getStoredCustomTeamRequests().filter(
+      (t) => t.opportunity_id === opportunityId
+    );
+    const mockTeams = mockTeamRequests.filter((t) => t.opportunity_id === opportunityId);
 
-    if (!res.ok) {
-      return {
-        data: null,
-        error: json.error || "Gagal mengambil daftar tim kolaborasi.",
-      };
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabaseClient
+        .from("team_requests")
+        .select("*")
+        .eq("opportunity_id", opportunityId);
+
+      if (!error && Array.isArray(data)) {
+        const teamMap = new Map<string, TeamRequest>();
+        // Masukkan data Supabase
+        data.forEach((t: any) => teamMap.set(t.id, t));
+        // Masukkan tim buatan lokal
+        customTeams.forEach((t) => teamMap.set(t.id, t));
+        // Masukkan mock jika belum ada
+        mockTeams.forEach((t) => {
+          if (!teamMap.has(t.id)) teamMap.set(t.id, t);
+        });
+        return { data: Array.from(teamMap.values()), error: null };
+      }
     }
 
-    return { data: json as TeamRequest[], error: null };
+    // Fallback: Gabungkan custom teams dan mock
+    const teamMap = new Map<string, TeamRequest>();
+    mockTeams.forEach((t) => teamMap.set(t.id, t));
+    customTeams.forEach((t) => teamMap.set(t.id, t));
+
+    return { data: Array.from(teamMap.values()), error: null };
   } catch (err) {
     const fallbackList = mockTeamRequests.filter((t) => t.opportunity_id === opportunityId);
     return { data: fallbackList, error: null };
   }
 }
+
+export const fetchTeamRequestsByOpportunity = getTeamRequests;
 
 /**
  * Membuat pendaftaran tim baru untuk kompetisi tertentu
@@ -730,31 +780,102 @@ export async function createTeamRequest(
   payload: CreateTeamPayload
 ): Promise<ApiResponse<TeamRequest>> {
   try {
-    const res = await fetch("/api/team", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "create",
-        ...payload,
-      }),
-    });
+    const newTeam: TeamRequest = {
+      id: `team-${Date.now()}`,
+      opportunity_id: payload.opportunity_id,
+      creator_id: payload.creator_id,
+      creator_name: payload.creator_name,
+      team_name: payload.team_name,
+      role_needed: payload.role_needed,
+      hasRequested: false,
+      created_at: new Date().toISOString(),
+    };
 
-    const json = await res.json();
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabaseClient
+        .from("team_requests")
+        .insert(newTeam)
+        .select()
+        .single();
 
-    if (!res.ok) {
-      return {
-        data: null,
-        error: json.error || "Gagal membuat tim baru.",
-      };
+      if (error) {
+        if (
+          error.code === "23505" ||
+          error.message?.toLowerCase().includes("unique") ||
+          error.message?.toLowerCase().includes("duplicate")
+        ) {
+          return {
+            data: null,
+            error: "Anda sudah membuat tim dengan nama atau kriteria yang sama pada kompetisi ini.",
+          };
+        }
+        console.warn("[createTeamRequest Supabase Warning]", error.message);
+      } else if (data) {
+        newTeam.id = data.id;
+      }
     }
 
+    // Simpan ke storage lokal
+    const existingCustom = getStoredCustomTeamRequests();
+    saveStoredCustomTeamRequests([newTeam, ...existingCustom]);
+
+    // Kirim juga ke API route
+    try {
+      await fetch("/api/team", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create",
+          ...newTeam,
+        }),
+      });
+    } catch {}
+
     return {
-      data: json.data as TeamRequest,
-      message: json.message || "Tim berhasil dibuat.",
+      data: newTeam,
+      message: "Tim berhasil dibuat.",
       error: null,
     };
-  } catch (err) {
-    return { data: null, error: "Terjadi kesalahan koneksi saat membuat tim baru." };
+  } catch (err: any) {
+    return { data: null, error: err?.message || "Terjadi kesalahan koneksi saat membuat tim baru." };
+  }
+}
+
+/**
+ * Menghapus pendaftaran tim beserta seluruh permohonan tim terkait (Delete Group)
+ */
+export async function deleteTeamRequest(
+  teamRequestId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // 1. Hapus dari Supabase jika aktif
+    if (isSupabaseConfigured) {
+      try {
+        await supabaseClient
+          .from("team_invites")
+          .delete()
+          .eq("team_request_id", teamRequestId);
+
+        await supabaseClient
+          .from("team_requests")
+          .delete()
+          .eq("id", teamRequestId);
+      } catch (err) {
+        console.warn("[deleteTeamRequest Supabase Warning]", err);
+      }
+    }
+
+    // 2. Hapus dari storage lokal tim
+    const customTeams = getStoredCustomTeamRequests().filter((t) => t.id !== teamRequestId);
+    saveStoredCustomTeamRequests(customTeams);
+
+    // 3. Hapus seluruh invites terkait tim ini dari storage lokal
+    const allInvites = getStoredTeamInvites().filter((inv) => inv.team_request_id !== teamRequestId);
+    saveStoredTeamInvites(allInvites);
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Gagal menghapus tim." };
   }
 }
 
@@ -859,30 +980,80 @@ export function saveStoredTeamInvites(invites: TeamInvite[]): void {
 }
 
 /**
- * Mengambil daftar invite untuk kompetisi tertentu
+ * Mengambil daftar invite untuk kompetisi tertentu dengan pemetaan nama profil pengirim
  */
 export async function getTeamInvitesForOpportunity(opportunityId: string): Promise<TeamInvite[]> {
   const localInvites = getStoredTeamInvites().filter((inv) => inv.opportunity_id === opportunityId);
 
   if (isSupabaseConfigured) {
     try {
-      const { data, error } = await supabaseClient
-        .from("team_invites")
-        .select("*")
+      // 1. Ambil seluruh team_id pada opportunity ini
+      const { data: teamList } = await supabaseClient
+        .from("team_requests")
+        .select("id")
         .eq("opportunity_id", opportunityId);
 
-      if (!error && Array.isArray(data)) {
+      const teamIds = (teamList || []).map((t: any) => t.id);
+
+      // 2. Query team_invites yang opportunity_id-nya cocok ATAU team_request_id-nya ada di daftar tim lomba ini
+      let query = supabaseClient.from("team_invites").select("*");
+      if (teamIds.length > 0) {
+        query = query.or(`opportunity_id.eq.${opportunityId},team_request_id.in.(${teamIds.join(",")})`);
+      } else {
+        query = query.eq("opportunity_id", opportunityId);
+      }
+
+      const { data: inviteData, error } = await query;
+
+      if (!error && Array.isArray(inviteData)) {
+        // 3. Kumpulkan sender_id yang unik untuk lookup nama ke tabel profiles
+        const senderIds = Array.from(
+          new Set(
+            inviteData
+              .map((inv: any) => inv.sender_id || inv.applicant_id)
+              .filter(Boolean)
+          )
+        );
+
+        const profileMap = new Map<string, { full_name: string; username: string }>();
+        if (senderIds.length > 0) {
+          try {
+            const { data: profileList } = await supabaseClient
+              .from("profiles")
+              .select("id, full_name, username")
+              .in("id", senderIds);
+
+            if (profileList) {
+              profileList.forEach((p: any) => {
+                profileMap.set(p.id, { full_name: p.full_name, username: p.username });
+              });
+            }
+          } catch (profErr) {
+            console.warn("[Profiles Fetch Warning]", profErr);
+          }
+        }
+
+        // 4. Petakan sender_name / applicant_name manual di JavaScript
         const map = new Map<string, TeamInvite>();
-        data.forEach((item: any) => {
+        inviteData.forEach((item: any) => {
+          const sId = item.sender_id || item.applicant_id;
+          const prof = profileMap.get(sId);
+          const mappedName =
+            prof?.full_name || item.applicant_name || item.sender_name || "Pemohon Kolaborasi";
+
           map.set(item.id, {
             ...item,
-            sender_id: item.sender_id || item.applicant_id,
-            applicant_id: item.applicant_id || item.sender_id,
+            sender_id: sId,
+            applicant_id: sId,
+            applicant_name: mappedName,
           });
         });
+
+        // Gabungkan juga dengan localInvites
         localInvites.forEach((item) => {
           if (item.id) map.set(item.id, item);
         });
+
         return Array.from(map.values());
       }
     } catch (err) {
@@ -894,9 +1065,9 @@ export async function getTeamInvitesForOpportunity(opportunityId: string): Promi
 }
 
 /**
- * Memperbarui status permintaan kolaborasi ('accepted' atau 'rejected')
+ * Merespons permintaan kolaborasi ('accepted' atau 'rejected')
  */
-export async function updateTeamInviteStatus(
+export async function respondToTeamInvite(
   inviteId: string,
   newStatus: "accepted" | "rejected"
 ): Promise<{ success: boolean; data?: TeamInvite; error?: string }> {
@@ -904,29 +1075,98 @@ export async function updateTeamInviteStatus(
     const allInvites = getStoredTeamInvites();
     const targetIdx = allInvites.findIndex((inv) => inv.id === inviteId);
 
-    if (targetIdx === -1) {
-      return { success: false, error: "Permintaan kolaborasi tidak ditemukan." };
+    let updated: TeamInvite | undefined;
+    if (targetIdx !== -1) {
+      updated = { ...allInvites[targetIdx], status: newStatus };
+      allInvites[targetIdx] = updated;
+      saveStoredTeamInvites(allInvites);
     }
-
-    const updated = { ...allInvites[targetIdx], status: newStatus };
-    allInvites[targetIdx] = updated;
-    saveStoredTeamInvites(allInvites);
 
     // Sinkronisasi Supabase jika aktif
     if (isSupabaseConfigured) {
       try {
-        await supabaseClient
+        const { data } = await supabaseClient
           .from("team_invites")
           .update({ status: newStatus })
-          .eq("id", inviteId);
+          .eq("id", inviteId)
+          .select()
+          .single();
+
+        if (data && !updated) {
+          updated = data as TeamInvite;
+        }
       } catch (err) {
-        console.warn("[Update Team Invite Supabase Warning]", err);
+        console.warn("[respondToTeamInvite Supabase Warning]", err);
       }
+    }
+
+    if (!updated) {
+      return { success: false, error: "Permintaan kolaborasi tidak ditemukan." };
     }
 
     return { success: true, data: updated };
   } catch (err: any) {
     return { success: false, error: err?.message || "Gagal memperbarui status permintaan tim." };
+  }
+}
+
+export const updateTeamInviteStatus = respondToTeamInvite;
+
+/**
+ * Membatalkan permintaan kolaborasi bagi pelamar (Cancel Request)
+ */
+export async function cancelTeamInvite(
+  inviteId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // 1. Hapus dari Supabase jika aktif
+    if (isSupabaseConfigured) {
+      try {
+        await supabaseClient
+          .from("team_invites")
+          .delete()
+          .eq("id", inviteId);
+      } catch (err) {
+        console.warn("[cancelTeamInvite Supabase Warning]", err);
+      }
+    }
+
+    // 2. Hapus dari storage lokal
+    const allInvites = getStoredTeamInvites().filter((inv) => inv.id !== inviteId);
+    saveStoredTeamInvites(allInvites);
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Gagal membatalkan permohonan tim." };
+  }
+}
+
+/**
+ * Mengeluarkan anggota tim (Kick Member)
+ */
+export async function kickTeamMember(
+  inviteId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // 1. Hapus dari Supabase jika aktif
+    if (isSupabaseConfigured) {
+      try {
+        await supabaseClient
+          .from("team_invites")
+          .delete()
+          .eq("id", inviteId);
+      } catch (err) {
+        console.warn("[kickTeamMember Supabase Warning]", err);
+      }
+    }
+
+    // 2. Hapus dari storage lokal
+    const allInvites = getStoredTeamInvites().filter((inv) => inv.id !== inviteId);
+    saveStoredTeamInvites(allInvites);
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Gagal mengeluarkan anggota tim." };
   }
 }
 
@@ -939,43 +1179,110 @@ export async function getPendingTeamInvitesForCreator(
 ): Promise<TeamInvite[]> {
   try {
     const localInvites = getStoredTeamInvites();
-    
+    const customTeams = getStoredCustomTeamRequests().filter((t) => t.creator_id === creatorId);
+
     // Kumpulkan seluruh team ID milik creator ini
-    let creatorTeamIds = knownTeamIds || [];
+    let creatorTeamIds = knownTeamIds ? [...knownTeamIds] : [];
     if (!creatorTeamIds.length) {
-      const allTeams = mockTeamRequests.filter((t) => t.creator_id === creatorId);
-      creatorTeamIds = allTeams.map((t) => t.id);
+      const allMock = mockTeamRequests.filter((t) => t.creator_id === creatorId);
+      creatorTeamIds = [
+        ...allMock.map((t) => t.id),
+        ...customTeams.map((t) => t.id),
+      ];
     }
 
-    let allInvites: TeamInvite[] = [...localInvites];
     if (isSupabaseConfigured) {
       try {
-        const { data, error } = await supabaseClient
+        // Ambil juga tim milik creator dari Supabase jika ada
+        const { data: supTeams } = await supabaseClient
+          .from("team_requests")
+          .select("id")
+          .eq("creator_id", creatorId);
+
+        if (supTeams) {
+          supTeams.forEach((st: any) => {
+            if (!creatorTeamIds.includes(st.id)) creatorTeamIds.push(st.id);
+          });
+        }
+
+        // Query invites pending yang receiver_id = creatorId ATAU team_request_id ada di tim creator
+        let invQuery = supabaseClient
           .from("team_invites")
           .select("*")
           .eq("status", "pending");
 
-        if (!error && Array.isArray(data)) {
+        if (creatorTeamIds.length > 0) {
+          invQuery = invQuery.or(
+            `receiver_id.eq.${creatorId},team_request_id.in.(${creatorTeamIds.join(",")})`
+          );
+        } else {
+          invQuery = invQuery.eq("receiver_id", creatorId);
+        }
+
+        const { data: supInvites } = await invQuery;
+
+        if (supInvites && Array.isArray(supInvites)) {
+          // Ambil profil pengirim
+          const senderIds = Array.from(
+            new Set(
+              supInvites
+                .map((inv: any) => inv.sender_id || inv.applicant_id)
+                .filter(Boolean)
+            )
+          );
+
+          const profileMap = new Map<string, { full_name: string; username: string }>();
+          if (senderIds.length > 0) {
+            try {
+              const { data: profileList } = await supabaseClient
+                .from("profiles")
+                .select("id, full_name, username")
+                .in("id", senderIds);
+
+              if (profileList) {
+                profileList.forEach((p: any) => {
+                  profileMap.set(p.id, { full_name: p.full_name, username: p.username });
+                });
+              }
+            } catch (profErr) {
+              console.warn("[Profiles Fetch Warning]", profErr);
+            }
+          }
+
           const map = new Map<string, TeamInvite>();
-          data.forEach((item: any) => {
+          supInvites.forEach((item: any) => {
+            const sId = item.sender_id || item.applicant_id;
+            const prof = profileMap.get(sId);
+            const mappedName =
+              prof?.full_name || item.applicant_name || item.sender_name || "Pemohon Kolaborasi";
+
             map.set(item.id, {
               ...item,
-              sender_id: item.sender_id || item.applicant_id,
-              applicant_id: item.applicant_id || item.sender_id,
+              sender_id: sId,
+              applicant_id: sId,
+              applicant_name: mappedName,
             });
           });
+
+          // Overlay local invites yang cocok
           localInvites.forEach((item) => {
-            if (item.id) map.set(item.id, item);
+            if (
+              item.status === "pending" &&
+              (item.receiver_id === creatorId || creatorTeamIds.includes(item.team_request_id))
+            ) {
+              if (item.id) map.set(item.id, item);
+            }
           });
-          allInvites = Array.from(map.values());
+
+          return Array.from(map.values());
         }
       } catch (err) {
         console.warn("[getPendingTeamInvitesForCreator Supabase Warning]", err);
       }
     }
 
-    // Filter invites yang berstatus pending dan mengarah ke tim milik user
-    return allInvites.filter((inv) => {
+    // Fallback lokal
+    return localInvites.filter((inv) => {
       if (inv.status !== "pending") return false;
       if (inv.receiver_id && inv.receiver_id === creatorId) return true;
       return creatorTeamIds.includes(inv.team_request_id);
@@ -985,8 +1292,10 @@ export async function getPendingTeamInvitesForCreator(
   }
 }
 
+export const fetchIncomingTeamInvites = getPendingTeamInvitesForCreator;
+
 /**
- * Mengirim permintaan kolaborasi/ajakan tim dengan proteksi anti-duplikasi (Error 409)
+ * Mengirim permintaan kolaborasi/ajakan tim dengan proteksi anti-duplikasi eksplisit
  */
 export async function sendTeamInvite(
   opportunityId: string,
@@ -1002,46 +1311,9 @@ export async function sendTeamInvite(
   }
 ): Promise<{ success: boolean; message: string; error: string | null }> {
   try {
-    const res = await fetch("/api/team", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "invite",
-        opportunity_id: opportunityId,
-        team_request_id: teamRequestId,
-        applicant_id: senderId,
-        sender_id: senderId,
-        receiver_id: options?.receiver_id,
-        applicant_name: options?.applicant_name || "Pemohon Kolaborasi",
-        role_applied: options?.role_applied || "Anggota Tim",
-        message: options?.message || "",
-      }),
-    });
-
-    const json = await res.json();
-
-    if (res.status === 409) {
-      return {
-        success: false,
-        message: "",
-        error:
-          json.error ||
-          "Anda sudah mengirimkan permintaan kolaborasi ke tim ini pada kompetisi yang sama.",
-      };
-    }
-
-    if (!res.ok) {
-      return {
-        success: false,
-        message: "",
-        error: json.error || "Gagal mengirimkan permintaan kolaborasi.",
-      };
-    }
-
-    // Catat ke storage lokal agar langsung sinkron dengan daftar anggota & notifikasi
-    const currentInvites = getStoredTeamInvites();
+    const inviteId = `inv-${Date.now()}`;
     const newInvite: TeamInvite = {
-      id: json?.data?.id || `inv-${Date.now()}`,
+      id: inviteId,
       team_request_id: teamRequestId,
       opportunity_id: opportunityId,
       opportunity_title: options?.opportunity_title,
@@ -1055,18 +1327,101 @@ export async function sendTeamInvite(
       status: "pending",
       created_at: new Date().toISOString(),
     };
+
+    // 1. Cek duplikasi di penyimpanan lokal (per opportunity & team)
+    const currentInvites = getStoredTeamInvites();
+    const hasDuplicate = currentInvites.some(
+      (inv) =>
+        inv.team_request_id === teamRequestId &&
+        (inv.sender_id === senderId || inv.applicant_id === senderId) &&
+        inv.status === "pending"
+    );
+
+    if (hasDuplicate) {
+      return {
+        success: false,
+        message: "",
+        error: "Anda sudah mengirimkan permintaan kolaborasi ke tim ini pada kompetisi yang sama.",
+      };
+    }
+
+    // 2. Insert ke Supabase jika aktif (tampilkan error asli tanpa ditelan diam-diam)
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabaseClient
+        .from("team_invites")
+        .insert({
+          id: inviteId,
+          team_request_id: teamRequestId,
+          opportunity_id: opportunityId,
+          sender_id: senderId,
+          applicant_id: senderId,
+          receiver_id: options?.receiver_id,
+          applicant_name: options?.applicant_name || "Pemohon Kolaborasi",
+          role_applied: options?.role_applied || "Anggota Tim",
+          message: options?.message || "",
+          status: "pending",
+          created_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        if (
+          error.code === "23505" ||
+          error.message?.toLowerCase().includes("unique") ||
+          error.message?.toLowerCase().includes("duplicate")
+        ) {
+          return {
+            success: false,
+            message: "",
+            error: "Anda sudah mengirimkan permintaan kolaborasi ke tim ini pada kompetisi yang sama.",
+          };
+        }
+        return {
+          success: false,
+          message: "",
+          error: `Gagal mengirimkan permohonan ke database: ${error.message}`,
+        };
+      }
+
+      if (data?.id) {
+        newInvite.id = data.id;
+      }
+    }
+
+    // 3. Simpan ke localStorage agar langsung sinkron di UI
     saveStoredTeamInvites([newInvite, ...currentInvites]);
+
+    // Tandai juga ke API route jika sedang berjalan
+    try {
+      await fetch("/api/team", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "invite",
+          id: newInvite.id,
+          opportunity_id: opportunityId,
+          team_request_id: teamRequestId,
+          applicant_id: senderId,
+          sender_id: senderId,
+          receiver_id: options?.receiver_id,
+          applicant_name: options?.applicant_name || "Pemohon Kolaborasi",
+          role_applied: options?.role_applied || "Anggota Tim",
+          message: options?.message || "",
+        }),
+      });
+    } catch {}
 
     return {
       success: true,
-      message: json.message || "Permintaan kolaborasi berhasil dikirimkan.",
+      message: "Permintaan kolaborasi berhasil dikirimkan.",
       error: null,
     };
-  } catch (err) {
+  } catch (err: any) {
     return {
       success: false,
       message: "",
-      error: "Terjadi gangguan koneksi saat mengirim permintaan kolaborasi.",
+      error: err?.message || "Terjadi gangguan koneksi saat mengirim permintaan kolaborasi.",
     };
   }
 }

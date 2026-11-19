@@ -12,10 +12,14 @@ import {
   fetchPreparationRoadmap,
   getTeamRequests,
   createTeamRequest,
+  deleteTeamRequest,
   sendTeamInvite,
+  cancelTeamInvite,
+  kickTeamMember,
   getUserBookmarks,
   toggleBookmark,
   getTeamInvitesForOpportunity,
+  respondToTeamInvite,
   updateTeamInviteStatus,
 } from "@/lib/apiClient";
 import BackgroundOrnaments from "@/components/BackgroundOrnaments";
@@ -41,6 +45,8 @@ import {
   PlusCircle,
   ArrowRight,
   X,
+  Trash2,
+  UserMinus,
 } from "lucide-react";
 
 export interface OpportunityDetailProps {
@@ -113,19 +119,40 @@ export default function OpportunityDetail({
 
   const teamNameInputRef = React.useRef<HTMLInputElement | null>(null);
 
+  // State Modal Konfirmasi Hapus Tim & Keluarkan Anggota
+  const [teamToDelete, setTeamToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [isDeletingTeam, setIsDeletingTeam] = useState<boolean>(false);
+  const [memberToKick, setMemberToKick] = useState<{ id: string; name: string } | null>(null);
+  const [isKickingMember, setIsKickingMember] = useState<boolean>(false);
+  const [isCancellingInvite, setIsCancellingInvite] = useState<boolean>(false);
+
   // Invite Status Tracking per TeamRequest ID
   const [inviteStatus, setInviteStatus] = useState<
     Record<string, { loading: boolean; success: boolean; error: string | null }>
   >({});
 
-  // Cek apakah user sudah mengirim ajakan kolaborasi / memiliki tim pada peluang ini (Anti-Duplikasi Celah)
-  const userHasTeam = teamRequests.some((t) => t.creator_id === userProfile.id);
-  const hasSentInvite =
-    teamRequests.some((t) => t.hasRequested) ||
-    Object.values(inviteStatus).some((status) => status.success) ||
-    (typeof window !== "undefined" &&
-      sessionStorage.getItem(`angkasa_sent_invite_${userProfile.id}_${opportunity.id}`) === "true");
-  const isUserLocked = userHasTeam || hasSentInvite;
+  // Isolasi Status Kolaborasi per Lomba:
+  // 1. Cek apakah user telah membuat tim pada peluang ini
+  const userHasTeam = teamRequests.some(
+    (t) => t.creator_id === userProfile.id && (t.opportunity_id === opportunity.id || !t.opportunity_id)
+  );
+
+  // 2. Cari undangan pending milik user pada peluang ini
+  const userPendingInvite = opportunityInvites.find(
+    (inv) =>
+      (inv.applicant_id === userProfile.id || inv.sender_id === userProfile.id) &&
+      inv.status === "pending"
+  );
+
+  // 3. Cari status keanggotaan accepted milik user pada peluang ini
+  const userAcceptedInvite = opportunityInvites.find(
+    (inv) =>
+      (inv.applicant_id === userProfile.id || inv.sender_id === userProfile.id) &&
+      inv.status === "accepted"
+  );
+
+  const hasSentInvite = Boolean(userPendingInvite);
+  const isUserLocked = userHasTeam || hasSentInvite || Boolean(userAcceptedInvite);
 
   // Normalisasi data peluang
   const deadline = opportunity.caption || opportunity.deadline || "Segera";
@@ -201,21 +228,81 @@ export default function OpportunityDetail({
 
   // Handler Persetujuan Permintaan Bergabung Masuk (Terima)
   const handleAcceptInvite = async (inviteId: string) => {
-    const res = await updateTeamInviteStatus(inviteId, "accepted");
-    if (res.success && res.data) {
-      setOpportunityInvites((prev) =>
-        prev.map((inv) => (inv.id === inviteId ? res.data! : inv))
-      );
+    const res = await respondToTeamInvite(inviteId, "accepted");
+    if (res.success) {
+      await loadTeamRequests();
+      setTeamNoticeBanner("Permintaan bergabung diterima. Anggota telah ditambahkan ke tim.");
     }
   };
 
   // Handler Penolakan Permintaan Bergabung Masuk (Tolak)
   const handleRejectInvite = async (inviteId: string) => {
-    const res = await updateTeamInviteStatus(inviteId, "rejected");
-    if (res.success && res.data) {
-      setOpportunityInvites((prev) =>
-        prev.map((inv) => (inv.id === inviteId ? res.data! : inv))
-      );
+    const res = await respondToTeamInvite(inviteId, "rejected");
+    if (res.success) {
+      await loadTeamRequests();
+      setTeamNoticeBanner("Permintaan bergabung ditolak.");
+    }
+  };
+
+  // Handler Batalkan Permintaan Bergabung (Pelamar)
+  const handleCancelInvite = async (inviteId: string) => {
+    setIsCancellingInvite(true);
+    try {
+      const res = await cancelTeamInvite(inviteId);
+      if (res.success) {
+        if (typeof window !== "undefined") {
+          try {
+            sessionStorage.removeItem(`angkasa_sent_invite_${userProfile.id}_${opportunity.id}`);
+          } catch {}
+        }
+        setInviteStatus({});
+        await loadTeamRequests();
+        setTeamNoticeBanner("Permintaan bergabung berhasil dibatalkan.");
+      } else {
+        setTeamError(res.error || "Gagal membatalkan permohonan.");
+      }
+    } catch {
+      setTeamError("Terjadi gangguan koneksi saat membatalkan permohonan tim.");
+    } finally {
+      setIsCancellingInvite(false);
+    }
+  };
+
+  // Handler Hapus Tim (Delete Group bagi Ketua Tim)
+  const handleExecuteDeleteTeam = async (teamId: string) => {
+    setIsDeletingTeam(true);
+    try {
+      const res = await deleteTeamRequest(teamId);
+      if (res.success) {
+        setTeamToDelete(null);
+        await loadTeamRequests();
+        setTeamNoticeBanner("Tim berhasil dihapus dari bursa kolaborasi.");
+      } else {
+        setTeamError(res.error || "Gagal menghapus tim.");
+      }
+    } catch {
+      setTeamError("Terjadi gangguan koneksi saat menghapus tim.");
+    } finally {
+      setIsDeletingTeam(false);
+    }
+  };
+
+  // Handler Keluarkan Anggota Tim (Kick Member bagi Ketua Tim)
+  const handleExecuteKickMember = async (inviteId: string) => {
+    setIsKickingMember(true);
+    try {
+      const res = await kickTeamMember(inviteId);
+      if (res.success) {
+        setMemberToKick(null);
+        await loadTeamRequests();
+        setTeamNoticeBanner("Anggota telah dikeluarkan dari tim.");
+      } else {
+        setTeamError(res.error || "Gagal mengeluarkan anggota tim.");
+      }
+    } catch {
+      setTeamError("Terjadi gangguan saat mengeluarkan anggota.");
+    } finally {
+      setIsKickingMember(false);
     }
   };
 
@@ -964,7 +1051,6 @@ export default function OpportunityDetail({
                       {teamRequests.map((team) => {
                         const isCreator = team.creator_id === userProfile.id;
                         const status = inviteStatus[team.id];
-                        const isRequested = team.hasRequested || status?.success;
 
                         // Data Permohonan & Anggota Kelompok untuk tim ini
                         const teamInvites = opportunityInvites.filter(
@@ -976,6 +1062,18 @@ export default function OpportunityDetail({
                         );
                         const acceptedMembers = teamInvites.filter((inv) => inv.status === "accepted");
                         const pendingInvites = teamInvites.filter((inv) => inv.status === "pending");
+
+                        // Cek apakah user telah mengirimkan permohonan ke tim ini
+                        const teamInviteFromUser = opportunityInvites.find(
+                          (inv) =>
+                            inv.team_request_id === team.id &&
+                            (inv.applicant_id === userProfile.id || inv.sender_id === userProfile.id) &&
+                            inv.status === "pending"
+                        );
+                        const isTeamRequested = Boolean(teamInviteFromUser) || status?.success;
+                        const userIsMember = acceptedMembers.some(
+                          (m) => m.applicant_id === userProfile.id || m.sender_id === userProfile.id
+                        );
 
                         return (
                           <div
@@ -997,9 +1095,20 @@ export default function OpportunityDetail({
                                 </div>
 
                                 {isCreator && (
-                                  <span className="px-2 py-0.5 rounded-md bg-amber-400/20 border border-amber-300/30 text-[10px] font-mono text-amber-300 shrink-0 font-semibold">
-                                    Tim Anda
-                                  </span>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <span className="px-2 py-0.5 rounded-md bg-amber-400/20 border border-amber-300/30 text-[10px] font-mono text-amber-300 font-semibold">
+                                      Tim Anda
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => setTeamToDelete({ id: team.id, name: team.team_name })}
+                                      className="px-2 py-0.5 rounded-md bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/30 text-rose-300 hover:text-rose-100 transition active:scale-95 cursor-pointer flex items-center gap-1 text-[10px] font-mono"
+                                      title="Hapus Tim (Delete Group)"
+                                    >
+                                      <Trash2 className="w-3 h-3 text-rose-300" />
+                                      <span className="hidden xs:inline">Hapus Tim</span>
+                                    </button>
+                                  </div>
                                 )}
                               </div>
 
@@ -1033,12 +1142,28 @@ export default function OpportunityDetail({
                                   {acceptedMembers.map((member) => (
                                     <span
                                       key={member.id || member.applicant_id}
-                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/10 border border-white/20 text-white text-xs font-medium shadow-sm backdrop-blur-sm"
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/10 border border-white/20 text-white text-xs font-medium shadow-sm backdrop-blur-sm group"
                                     >
                                       <UserCheck className="w-3 h-3 text-emerald-400" />
                                       <span>{member.applicant_name}</span>
                                       {member.role_applied && (
                                         <span className="text-[10px] font-mono text-white/60">({member.role_applied})</span>
+                                      )}
+                                      {isCreator && (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setMemberToKick({
+                                              id: member.id || member.applicant_id,
+                                              name: member.applicant_name,
+                                            })
+                                          }
+                                          className="p-0.5 rounded hover:bg-rose-500/30 text-white/50 hover:text-rose-200 transition active:scale-90 cursor-pointer ml-0.5"
+                                          title={`Keluarkan ${member.applicant_name} dari tim`}
+                                          aria-label={`Keluarkan ${member.applicant_name}`}
+                                        >
+                                          <UserMinus className="w-3 h-3 text-rose-300" />
+                                        </button>
                                       )}
                                     </span>
                                   ))}
@@ -1122,10 +1247,33 @@ export default function OpportunityDetail({
                                   <UserCheck className="w-3.5 h-3.5 text-amber-300" />
                                   <span>Anda adalah inisiator tim ini</span>
                                 </div>
-                              ) : isRequested ? (
-                                <div className="inline-flex items-center gap-1.5 text-xs text-amber-300 font-semibold py-1">
+                              ) : userIsMember ? (
+                                <div className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-semibold py-1">
                                   <CheckCircle2 className="w-3.5 h-3.5" />
-                                  <span>Permintaan Terkirim</span>
+                                  <span>Anda telah bergabung di tim ini</span>
+                                </div>
+                              ) : isTeamRequested ? (
+                                <div className="flex items-center justify-between gap-2 w-full flex-wrap pt-0.5">
+                                  <div className="inline-flex items-center gap-1.5 text-xs text-amber-300 font-semibold py-1">
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>Permintaan Terkirim</span>
+                                  </div>
+                                  {teamInviteFromUser && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCancelInvite(teamInviteFromUser.id!)}
+                                      disabled={isCancellingInvite}
+                                      className="py-1.5 px-3 rounded-xl bg-white/10 hover:bg-rose-500/20 border border-white/20 hover:border-rose-400/40 text-rose-200 text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-sm disabled:opacity-50"
+                                      title="Batalkan permohonan bergabung ke tim ini"
+                                    >
+                                      {isCancellingInvite ? (
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                      ) : (
+                                        <X className="w-3.5 h-3.5 text-rose-300" />
+                                      )}
+                                      <span>Batalkan Pengajuan</span>
+                                    </button>
+                                  )}
                                 </div>
                               ) : (
                                 <button
@@ -1254,6 +1402,100 @@ export default function OpportunityDetail({
                 className="px-4 py-2 rounded-xl text-xs font-medium text-white/80 hover:text-white hover:bg-white/10 transition cursor-pointer"
               >
                 Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL KONFIRMASI HAPUS TIM (DELETE GROUP) */}
+      {/* ========================================================= */}
+      {teamToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#001d4a]/60 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-[92vw] max-w-md p-6 rounded-2xl bg-[#004aad]/95 backdrop-blur-md border border-white/25 text-white shadow-[0_20px_50px_rgba(0,15,45,0.5)] space-y-4 animate-scale-up">
+            <div className="flex items-center gap-3 text-rose-300">
+              <div className="p-2.5 rounded-xl bg-rose-500/20 border border-rose-400/30 shrink-0">
+                <Trash2 className="w-5 h-5 text-rose-300" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-white">Hapus Tim Kolaborasi</h3>
+                <p className="text-xs text-white/70">Tindakan ini tidak dapat dibatalkan</p>
+              </div>
+            </div>
+
+            <p className="text-xs sm:text-sm text-white/90 leading-relaxed bg-white/[0.06] p-3.5 rounded-xl border border-white/10">
+              Apakah Anda yakin ingin menghapus tim <strong className="text-amber-300 font-semibold">&ldquo;{teamToDelete.name}&rdquo;</strong>? Seluruh data anggota dan pengajuan bergabung terkait akan dihapus secara permanen dari bursa peluang ini.
+            </p>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setTeamToDelete(null)}
+                disabled={isDeletingTeam}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-semibold text-white transition cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExecuteDeleteTeam(teamToDelete.id)}
+                disabled={isDeletingTeam}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 border border-rose-400/40 text-xs font-bold text-white transition flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-95 disabled:opacity-50"
+              >
+                {isDeletingTeam ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="w-3.5 h-3.5" />
+                )}
+                <span>Ya, Hapus Tim</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL KONFIRMASI KELUARKAN ANGGOTA (KICK MEMBER) */}
+      {/* ========================================================= */}
+      {memberToKick && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#001d4a]/60 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-[92vw] max-w-md p-6 rounded-2xl bg-[#004aad]/95 backdrop-blur-md border border-white/25 text-white shadow-[0_20px_50px_rgba(0,15,45,0.5)] space-y-4 animate-scale-up">
+            <div className="flex items-center gap-3 text-rose-300">
+              <div className="p-2.5 rounded-xl bg-rose-500/20 border border-rose-400/30 shrink-0">
+                <UserMinus className="w-5 h-5 text-rose-300" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-white">Keluarkan Anggota Tim</h3>
+                <p className="text-xs text-white/70">Konfirmasi pengeluaran anggota dari tim</p>
+              </div>
+            </div>
+
+            <p className="text-xs sm:text-sm text-white/90 leading-relaxed bg-white/[0.06] p-3.5 rounded-xl border border-white/10">
+              Apakah Anda yakin ingin mengeluarkan <strong className="text-amber-300 font-semibold">&ldquo;{memberToKick.name}&rdquo;</strong> dari tim? Posisi anggota dalam tim akan kembali terbuka.
+            </p>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setMemberToKick(null)}
+                disabled={isKickingMember}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-semibold text-white transition cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExecuteKickMember(memberToKick.id)}
+                disabled={isKickingMember}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 border border-rose-400/40 text-xs font-bold text-white transition flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-95 disabled:opacity-50"
+              >
+                {isKickingMember ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <UserMinus className="w-3.5 h-3.5" />
+                )}
+                <span>Ya, Keluarkan</span>
               </button>
             </div>
           </div>
