@@ -393,10 +393,10 @@ export default function AdminPage() {
       prev.map((r) =>
         r.id === reportId
           ? {
-              ...r,
-              status: newStatus,
-              adminNotes: newAdminNote.trim() ? newAdminNote.trim() : r.adminNotes,
-            }
+            ...r,
+            status: newStatus,
+            adminNotes: newAdminNote.trim() ? newAdminNote.trim() : r.adminNotes,
+          }
           : r
       )
     );
@@ -404,10 +404,10 @@ export default function AdminPage() {
       setActiveReportDetail((prev) =>
         prev
           ? {
-              ...prev,
-              status: newStatus,
-              adminNotes: newAdminNote.trim() ? newAdminNote.trim() : prev.adminNotes,
-            }
+            ...prev,
+            status: newStatus,
+            adminNotes: newAdminNote.trim() ? newAdminNote.trim() : prev.adminNotes,
+          }
           : null
       );
     }
@@ -546,7 +546,7 @@ export default function AdminPage() {
               className="w-full bg-white/[0.12] text-white border border-white/20 rounded-xl px-4 py-2.5 hover:bg-white/[0.18] transition-all flex items-center justify-center gap-2 text-xs font-semibold cursor-pointer active:scale-[0.99]"
             >
               <Sparkles className="w-4 h-4 text-amber-300" />
-              <span>⚡ 1-Klik Masuk sebagai Demo Admin (Juri / Penguji)</span>
+              <span> Klik Masuk sebagai Demo Admin Penguji </span>
             </button>
 
             {/* Back to public site */}
@@ -638,19 +638,17 @@ export default function AdminPage() {
               <button
                 type="button"
                 onClick={() => setActiveMenu("users")}
-                className={`w-full p-3 rounded-xl transition-all flex items-center justify-between text-left cursor-pointer group ${
-                  activeMenu === "users"
+                className={`w-full p-3 rounded-xl transition-all flex items-center justify-between text-left cursor-pointer group ${activeMenu === "users"
                     ? "bg-white text-[#004aad] font-bold shadow-md"
                     : "bg-white/[0.06] hover:bg-white/[0.12] text-white border border-white/10"
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <div
-                    className={`p-2 rounded-lg ${
-                      activeMenu === "users"
+                    className={`p-2 rounded-lg ${activeMenu === "users"
                         ? "bg-[#004aad]/10 text-[#004aad]"
                         : "bg-white/10 text-white/80 group-hover:text-white"
-                    }`}
+                      }`}
                   >
                     <BarChart3 className="w-4 h-4" />
                   </div>
@@ -659,18 +657,16 @@ export default function AdminPage() {
                       Analitik User Platform
                     </span>
                     <span
-                      className={`text-[10px] block ${
-                        activeMenu === "users" ? "text-[#004aad]/75" : "text-white/60"
-                      }`}
+                      className={`text-[10px] block ${activeMenu === "users" ? "text-[#004aad]/75" : "text-white/60"
+                        }`}
                     >
                       Demografi, kampus &amp; minat
                     </span>
                   </div>
                 </div>
                 <ChevronRight
-                  className={`w-4 h-4 transition-transform ${
-                    activeMenu === "users" ? "translate-x-0.5 text-[#004aad]" : "text-white/40"
-                  }`}
+                  className={`w-4 h-4 transition-transform ${activeMenu === "users" ? "translate-x-0.5 text-[#004aad]" : "text-white/40"
+                    }`}
                 />
               </button>
 
@@ -678,19 +674,17 @@ export default function AdminPage() {
               <button
                 type="button"
                 onClick={() => setActiveMenu("curator")}
-                className={`w-full p-3 rounded-xl transition-all flex items-center justify-between text-left cursor-pointer group ${
-                  activeMenu === "curator"
+                className={`w-full p-3 rounded-xl transition-all flex items-center justify-between text-left cursor-pointer group ${activeMenu === "curator"
                     ? "bg-white text-[#004aad] font-bold shadow-md"
                     : "bg-white/[0.06] hover:bg-white/[0.12] text-white border border-white/10"
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <div
-                    className={`p-2 rounded-lg ${
-                      activeMenu === "curator"
+                    className={`p-2 rounded-lg ${activeMenu === "curator"
                         ? "bg-[#004aad]/10 text-[#004aad]"
                         : "bg-white/10 text-white/80 group-hover:text-white"
-                    }`}
+                      }`}
                   >
                     <ShieldCheck className="w-4 h-4" />
                   </div>
@@ -699,9 +693,8 @@ export default function AdminPage() {
                       Kurator Postingan
                     </span>
                     <span
-                      className={`text-[10px] block ${
-                        activeMenu === "curator" ? "text-[#004aad]/75" : "text-white/60"
-                      }`}
+                      className={`text-[10px] block ${activeMenu === "curator" ? "text-[#004aad]/75" : "text-white/60"
+                        }`}
                     >
                       Input manual &amp; audit feed
                     </span>
@@ -714,9 +707,8 @@ export default function AdminPage() {
                     </span>
                   )}
                   <ChevronRight
-                    className={`w-4 h-4 transition-transform ${
-                      activeMenu === "curator" ? "translate-x-0.5 text-[#004aad]" : "text-white/40"
-                    }`}
+                    className={`w-4 h-4 transition-transform ${activeMenu === "curator" ? "translate-x-0.5 text-[#004aad]" : "text-white/40"
+                      }`}
                   />
                 </div>
               </button>
@@ -725,19 +717,17 @@ export default function AdminPage() {
               <button
                 type="button"
                 onClick={() => setActiveMenu("reports")}
-                className={`w-full p-3 rounded-xl transition-all flex items-center justify-between text-left cursor-pointer group ${
-                  activeMenu === "reports"
+                className={`w-full p-3 rounded-xl transition-all flex items-center justify-between text-left cursor-pointer group ${activeMenu === "reports"
                     ? "bg-white text-[#004aad] font-bold shadow-md"
                     : "bg-white/[0.06] hover:bg-white/[0.12] text-white border border-white/10"
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <div
-                    className={`p-2 rounded-lg ${
-                      activeMenu === "reports"
+                    className={`p-2 rounded-lg ${activeMenu === "reports"
                         ? "bg-[#004aad]/10 text-[#004aad]"
                         : "bg-white/10 text-white/80 group-hover:text-white"
-                    }`}
+                      }`}
                   >
                     <AlertTriangle className="w-4 h-4" />
                   </div>
@@ -746,9 +736,8 @@ export default function AdminPage() {
                       Laporan &amp; Keluhan
                     </span>
                     <span
-                      className={`text-[10px] block ${
-                        activeMenu === "reports" ? "text-[#004aad]/75" : "text-white/60"
-                      }`}
+                      className={`text-[10px] block ${activeMenu === "reports" ? "text-[#004aad]/75" : "text-white/60"
+                        }`}
                     >
                       Bug, hoax &amp; aspirasi user
                     </span>
@@ -761,9 +750,8 @@ export default function AdminPage() {
                     </span>
                   )}
                   <ChevronRight
-                    className={`w-4 h-4 transition-transform ${
-                      activeMenu === "reports" ? "translate-x-0.5 text-[#004aad]" : "text-white/40"
-                    }`}
+                    className={`w-4 h-4 transition-transform ${activeMenu === "reports" ? "translate-x-0.5 text-[#004aad]" : "text-white/40"
+                      }`}
                   />
                 </div>
               </button>
@@ -1141,11 +1129,10 @@ export default function AdminPage() {
                           </td>
                           <td className="py-3 px-3">
                             <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                                u.status === "Aktif"
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${u.status === "Aktif"
                                   ? "bg-emerald-400/20 text-emerald-300 border border-emerald-400/30"
                                   : "bg-sky-400/20 text-sky-300 border border-sky-400/30"
-                              }`}
+                                }`}
                             >
                               {u.status}
                             </span>
@@ -1298,11 +1285,10 @@ export default function AdminPage() {
                         key={cat}
                         type="button"
                         onClick={() => setReportCategoryFilter(cat)}
-                        className={`px-3 py-1.5 rounded-xl transition cursor-pointer text-xs ${
-                          reportCategoryFilter === cat
+                        className={`px-3 py-1.5 rounded-xl transition cursor-pointer text-xs ${reportCategoryFilter === cat
                             ? "bg-white text-[#004aad] font-semibold"
                             : "bg-white/[0.08] hover:bg-white/[0.14] text-white/80"
-                        }`}
+                          }`}
                       >
                         {cat}
                       </button>
@@ -1316,11 +1302,10 @@ export default function AdminPage() {
                         key={st}
                         type="button"
                         onClick={() => setReportStatusFilter(st)}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer ${
-                          reportStatusFilter === st
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer ${reportStatusFilter === st
                             ? "bg-amber-300/30 text-amber-200 border border-amber-300/50"
                             : "bg-white/5 text-white/60 hover:text-white"
-                        }`}
+                          }`}
                       >
                         {st}
                       </button>
@@ -1363,24 +1348,22 @@ export default function AdminPage() {
                               {report.category}
                             </span>
                             <span
-                              className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
-                                report.urgency === "Kritis"
+                              className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${report.urgency === "Kritis"
                                   ? "bg-rose-500/25 text-rose-300 border border-rose-400/40"
                                   : report.urgency === "Sedang"
-                                  ? "bg-amber-400/20 text-amber-200 border border-amber-300/30"
-                                  : "bg-sky-400/20 text-sky-200 border border-sky-300/30"
-                              }`}
+                                    ? "bg-amber-400/20 text-amber-200 border border-amber-300/30"
+                                    : "bg-sky-400/20 text-sky-200 border border-sky-300/30"
+                                }`}
                             >
                               Urgensi: {report.urgency}
                             </span>
                             <span
-                              className={`text-[11px] px-2 py-0.5 rounded-full font-bold uppercase ${
-                                report.status === "Baru"
+                              className={`text-[11px] px-2 py-0.5 rounded-full font-bold uppercase ${report.status === "Baru"
                                   ? "bg-rose-500/20 text-rose-300"
                                   : report.status === "Diproses"
-                                  ? "bg-sky-400/20 text-sky-300"
-                                  : "bg-emerald-400/20 text-emerald-300"
-                              }`}
+                                    ? "bg-sky-400/20 text-sky-300"
+                                    : "bg-emerald-400/20 text-emerald-300"
+                                }`}
                             >
                               ● {report.status}
                             </span>
