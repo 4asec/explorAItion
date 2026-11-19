@@ -31,9 +31,6 @@ import {
   X,
   Sparkles,
   ChevronRight,
-  ListTodo,
-  CheckSquare,
-  Square,
   CheckCircle2,
   Compass,
   Menu,
@@ -54,99 +51,55 @@ export interface FeedDashboardProps {
 
 type CategoryFilter = "Semua" | "Lomba" | "Beasiswa" | "Seminar";
 
-const DEFAULT_CHECKLIST_ITEMS = [
-  { id: "ktm", label: "KTM / Kartu Pelajar Aktif & Scan KTP" },
-  { id: "cv", label: "Curriculum Vitae (CV) & Portofolio ATS Terupdate" },
-  { id: "proposal", label: "Proposal / Abstrak Gagasan Inovasi KTI" },
-  { id: "pitchdeck", label: "Pitch Deck & Slide Presentasi Final" },
-  { id: "team", label: "Pembagian Tugas & Kesepakatan Tim Kompetisi" },
-];
-
 /**
- * Editorial Poster Card: Fallback bergaya tipografi & geometris Royal Blue profesional
- * (Menggantikan gambar poster default lama tanpa ilustrasi anime)
+ * Foto banner stok beresolusi tinggi profesional sesuai kategori peluang
  */
-function EditorialPosterCard({
-  title,
-  category,
-  organizer,
-}: {
-  title: string;
-  category: string;
-  organizer: string;
-}) {
-  return (
-    <div className="w-full h-full p-4 sm:p-5 flex flex-col justify-between bg-gradient-to-br from-[#003580] via-[#004aad] to-[#001f4d] relative overflow-hidden select-none transition-all duration-300 ease-out">
-      {/* Background geometric grid & orbit rings */}
-      <div
-        className="absolute inset-0 opacity-20 pointer-events-none"
-        style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.25) 1px, transparent 0)`,
-          backgroundSize: "16px 16px",
-        }}
-      />
-      <div className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full border border-white/15 pointer-events-none" />
-      <div className="absolute -right-2 -bottom-2 w-20 h-20 rounded-full border border-amber-300/25 pointer-events-none" />
+const CATEGORY_BANNER_FALLBACKS: Record<string, string> = {
+  Lomba:
+    "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80",
+  Beasiswa:
+    "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=800&q=80",
+  Seminar:
+    "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80",
+};
 
-      {/* Top Header inside Poster */}
-      <div className="relative z-10 flex items-center justify-between gap-2">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-amber-300 font-bold px-2 py-0.5 rounded bg-amber-400/15 border border-amber-300/30">
-          {category}
-        </span>
-        <span className="text-[10px] font-mono text-white/60 tracking-wider">
-          ANGKASA
-        </span>
-      </div>
-
-      {/* Middle/Bottom Typography */}
-      <div className="relative z-10 space-y-1">
-        <p className="text-[11px] font-mono text-white/70 truncate tracking-tight">
-          {organizer}
-        </p>
-        <h4 className="text-xs sm:text-sm font-bold text-white tracking-tight line-clamp-2 leading-snug">
-          {title}
-        </h4>
-      </div>
-    </div>
-  );
+function getCategoryBanner(category?: string): string {
+  if (category && CATEGORY_BANNER_FALLBACKS[category]) {
+    return CATEGORY_BANNER_FALLBACKS[category];
+  }
+  return CATEGORY_BANNER_FALLBACKS.Lomba;
 }
 
 /**
- * OpportunityPoster: Render poster aman anti-error dengan graceful editorial fallback
+ * OpportunityPoster: Render foto banner beresolusi tinggi dengan fallback stok foto kategori profesional
+ * (Tanpa pengulangan teks judul lomba dan penyelenggara di dalam area gambar)
  */
 function OpportunityPoster({
   imageUrl,
   title,
   category,
-  organizer,
 }: {
   imageUrl?: string | null;
   title: string;
   category: string;
-  organizer: string;
 }) {
-  const [hasError, setHasError] = useState<boolean>(!imageUrl);
+  const fallbackUrl = getCategoryBanner(category);
+  const [imgSrc, setImgSrc] = useState<string>(imageUrl || fallbackUrl);
 
   useEffect(() => {
-    setHasError(!imageUrl);
-  }, [imageUrl]);
-
-  if (!imageUrl || hasError) {
-    return (
-      <EditorialPosterCard
-        title={title}
-        category={category}
-        organizer={organizer}
-      />
-    );
-  }
+    setImgSrc(imageUrl || fallbackUrl);
+  }, [imageUrl, fallbackUrl]);
 
   return (
     <img
-      src={imageUrl}
+      src={imgSrc}
       alt={title}
       className="w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-105"
-      onError={() => setHasError(true)}
+      onError={() => {
+        if (imgSrc !== fallbackUrl) {
+          setImgSrc(fallbackUrl);
+        }
+      }}
     />
   );
 }
@@ -171,7 +124,6 @@ export default function FeedDashboard({
 
   // State Drawer Menu & Pengaturan Cepat
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
-  const [completedChecklist, setCompletedChecklist] = useState<Record<string, boolean>>({});
 
   // State AI Career & Skill Insight ("Ceritakan Dirimu")
   const [userStory, setUserStory] = useState<string>("");
@@ -179,17 +131,12 @@ export default function FeedDashboard({
   const [storyInsightResult, setStoryInsightResult] = useState<ProfileInsightResult | null>(null);
   const [storyError, setStoryError] = useState<string | null>(null);
 
-  const CHECKLIST_STORAGE_KEY = `angkasa_prep_checklist_${userProfile.id}`;
   const INSIGHT_STORAGE_KEY = `angkasa_ai_insight_${userProfile.id}`;
 
   // Memulihkan data AI insight dari cache lokal
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
-        const stored = localStorage.getItem(CHECKLIST_STORAGE_KEY);
-        if (stored) {
-          setCompletedChecklist(JSON.parse(stored));
-        }
         const cachedInsight = localStorage.getItem(INSIGHT_STORAGE_KEY);
         if (cachedInsight) {
           setStoryInsightResult(JSON.parse(cachedInsight));
@@ -198,25 +145,7 @@ export default function FeedDashboard({
         console.warn("[Local Cache Read Warning]", e);
       }
     }
-  }, [CHECKLIST_STORAGE_KEY, INSIGHT_STORAGE_KEY]);
-
-  const toggleChecklistItem = (id: string) => {
-    setCompletedChecklist((prev) => {
-      const next = { ...prev, [id]: !prev[id] };
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(next));
-        } catch (e) {
-          console.warn("[Checklist Cache Save Warning]", e);
-        }
-      }
-      return next;
-    });
-  };
-
-  const completedChecklistCount = useMemo(() => {
-    return DEFAULT_CHECKLIST_ITEMS.filter((item) => completedChecklist[item.id]).length;
-  }, [completedChecklist]);
+  }, [INSIGHT_STORAGE_KEY]);
 
   // Handler Analisis Ceritakan Dirimu dengan AI
   const handleAnalyzeStory = async () => {
@@ -451,11 +380,6 @@ export default function FeedDashboard({
               aria-label="Buka Menu Navigasi & Pengaturan Cepat"
             >
               <Menu className="w-4 h-4 text-white group-hover:text-amber-300 transition" />
-              {completedChecklistCount > 0 && (
-                <span className="absolute -top-1 -right-1 px-1.5 py-0.2 min-w-[18px] text-center rounded-full bg-emerald-400 text-[#002b66] font-mono text-[10px] font-bold tabular-nums shadow-md">
-                  {completedChecklistCount}
-                </span>
-              )}
             </button>
 
             {/* Tombol Ikon Notifikasi Postingan Terbaru yang Relevan */}
@@ -784,15 +708,14 @@ export default function FeedDashboard({
                   style={{ animationDelay: `${index * 35}ms` }}
                   className="surface-panel surface-interactive group rounded-2xl cursor-pointer flex flex-col justify-between overflow-hidden relative animate-fade-slide-up"
                 >
-                  {/* Top Area: Poster / Flyer Visual Aspect 16:9 dengan Fallback Editorial */}
+                  {/* Top Area: Poster / Flyer Visual Aspect 16:9 dengan Foto Banner Resolusi Tinggi */}
                   <div className="relative w-full aspect-[16/9] rounded-t-xl overflow-hidden bg-[#002b66]/60 border-b border-white/15">
                     <OpportunityPoster
                       imageUrl={item.image_url}
                       title={item.title}
                       category={item.category}
-                      organizer={item.organizer}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#002b66]/90 via-transparent to-black/30 pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-b from-[#001d4a]/70 via-transparent to-[#002b66]/80 pointer-events-none" />
 
                     {/* Overlaid Badges on Poster */}
                     <div className="absolute inset-x-3 top-3 flex items-center justify-between gap-2 pointer-events-none z-10">
@@ -1031,42 +954,41 @@ export default function FeedDashboard({
                 </button>
               </div>
 
-              {/* Body: Navigation Shortcuts & Checklist */}
-              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-6">
-                {/* Pintasan Menu Utama */}
-                <div className="space-y-2">
+              {/* Body: Navigation Shortcuts */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+                <div className="space-y-2.5">
                   <span className="text-[11px] font-mono text-white/70 uppercase tracking-wider block font-semibold">
-                    Navigasi Cepat:
+                    Navigasi Utama:
                   </span>
 
-                  {/* 1. Profil Pengguna */}
+                  {/* 1. Profil & Minat Saya */}
                   <button
                     type="button"
                     onClick={() => {
                       setIsMenuOpen(false);
                       onOpenProfile();
                     }}
-                    className="w-full p-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition-all duration-300 ease-out flex items-center justify-between cursor-pointer active:scale-[0.98]"
+                    className="w-full p-3.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition-all duration-300 ease-out flex items-center justify-between cursor-pointer active:scale-[0.98]"
                   >
                     <div className="flex items-center gap-2.5">
                       <User className="w-4 h-4 text-amber-300" />
-                      <span>Profil Saya &amp; Minat</span>
+                      <span>Profil &amp; Minat Saya</span>
                     </div>
                     <ChevronRight className="w-3.5 h-3.5 text-white/60" />
                   </button>
 
-                  {/* 2. Fokus ke AI Career Insight */}
+                  {/* 2. AI Career & Skill Insight */}
                   <button
                     type="button"
                     onClick={() => {
                       setIsMenuOpen(false);
                       document.getElementById("ai-career-section")?.scrollIntoView({ behavior: "smooth" });
                     }}
-                    className="w-full p-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition-all duration-300 ease-out flex items-center justify-between cursor-pointer active:scale-[0.98]"
+                    className="w-full p-3.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition-all duration-300 ease-out flex items-center justify-between cursor-pointer active:scale-[0.98]"
                   >
                     <div className="flex items-center gap-2.5">
                       <Sparkles className="w-4 h-4 text-amber-300" />
-                      <span>Fokus ke Analisis Karir AI</span>
+                      <span>AI Career &amp; Skill Insight</span>
                     </div>
                     <ChevronRight className="w-3.5 h-3.5 text-white/60" />
                   </button>
@@ -1078,7 +1000,7 @@ export default function FeedDashboard({
                       setIsBookmarkedOnly(true);
                       setIsMenuOpen(false);
                     }}
-                    className="w-full p-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition-all duration-300 ease-out flex items-center justify-between cursor-pointer active:scale-[0.98]"
+                    className="w-full p-3.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition-all duration-300 ease-out flex items-center justify-between cursor-pointer active:scale-[0.98]"
                   >
                     <div className="flex items-center gap-2.5">
                       <Bookmark className="w-4 h-4 text-amber-300" />
@@ -1095,7 +1017,7 @@ export default function FeedDashboard({
                       invalidateFeedCache();
                       loadFeed();
                     }}
-                    className="w-full p-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition-all duration-300 ease-out flex items-center justify-between cursor-pointer active:scale-[0.98]"
+                    className="w-full p-3.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition-all duration-300 ease-out flex items-center justify-between cursor-pointer active:scale-[0.98]"
                   >
                     <div className="flex items-center gap-2.5">
                       <RefreshCw className="w-4 h-4 text-emerald-300" />
@@ -1103,82 +1025,6 @@ export default function FeedDashboard({
                     </div>
                     <ChevronRight className="w-3.5 h-3.5 text-white/60" />
                   </button>
-
-                  {/* 5. Panel Kurator (Khusus Demonstrasi Juri) */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      setIsCuratorOpen(true);
-                    }}
-                    className="w-full p-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition-all duration-300 ease-out flex items-center justify-between cursor-pointer active:scale-[0.98]"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <ShieldCheck className="w-4 h-4 text-sky-300" />
-                      <span>Panel Kurator &amp; Verifikator</span>
-                    </div>
-                    {pendingCount > 0 && (
-                      <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-[#002b66] font-mono text-[10px] font-bold">
-                        {pendingCount}
-                      </span>
-                    )}
-                  </button>
-                </div>
-
-                {/* Progres Checklist Persiapan Berkas */}
-                <div className="space-y-3 pt-3 border-t border-white/15">
-                  <div className="flex items-center justify-between text-xs font-mono">
-                    <span className="text-white/80 uppercase tracking-wider font-semibold flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
-                      <span>Checklist Berkas Kompetisi</span>
-                    </span>
-                    <span className="text-emerald-300 font-bold tabular-nums">
-                      {completedChecklistCount}/{DEFAULT_CHECKLIST_ITEMS.length}
-                    </span>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-emerald-400 to-amber-300 rounded-full transition-all duration-300"
-                      style={{
-                        width: `${(completedChecklistCount / DEFAULT_CHECKLIST_ITEMS.length) * 100}%`,
-                      }}
-                    />
-                  </div>
-
-                  <div className="space-y-2 pt-1">
-                    {DEFAULT_CHECKLIST_ITEMS.map((item) => {
-                      const isChecked = Boolean(completedChecklist[item.id]);
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => toggleChecklistItem(item.id)}
-                          className={`w-full p-2.5 rounded-xl border text-left text-xs transition-all duration-300 ease-out active:scale-[0.99] cursor-pointer flex items-start gap-2.5 ${
-                            isChecked
-                              ? "bg-emerald-500/15 border-emerald-400/30 text-white shadow-sm"
-                              : "bg-white/[0.06] border-white/15 text-white/80 hover:bg-white/10 hover:text-white"
-                          }`}
-                        >
-                          <div className="pt-0.5 shrink-0">
-                            {isChecked ? (
-                              <CheckSquare className="w-4 h-4 text-emerald-400" />
-                            ) : (
-                              <Square className="w-4 h-4 text-white/40" />
-                            )}
-                          </div>
-                          <span
-                            className={`leading-relaxed text-[11px] ${
-                              isChecked ? "line-through text-white/60" : ""
-                            }`}
-                          >
-                            {item.label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
                 </div>
               </div>
 
@@ -1188,7 +1034,7 @@ export default function FeedDashboard({
                   Angkasa v1.0.0 &bull; Explor[AI]tion
                 </span>
                 <span className="text-[10px] font-mono text-white/50 block">
-                  AI Career Matching &amp; Opportunity Curator
+                  AI Career Matching &amp; Opportunity Platform
                 </span>
               </div>
             </div>
