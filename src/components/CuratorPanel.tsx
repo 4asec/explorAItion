@@ -438,19 +438,23 @@ export default function CuratorPanel({
 
                     {/* Area Preview Poster */}
                     <div className="relative w-full aspect-[16/9] rounded-xl overflow-hidden bg-[#002b66]/60 border border-white/20 shadow-sm group">
-                      <img
-                        src={posterPreview}
-                        alt="Preview Poster Peluang"
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        onError={(e) => {
-                          if (e.currentTarget.src !== DEFAULT_POSTER_URL) {
-                            e.currentTarget.src = DEFAULT_POSTER_URL;
-                          }
-                        }}
-                      />
+                      {posterPreview ? (
+                        <img
+                          src={posterPreview}
+                          alt="Preview Poster Peluang"
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          onError={() => setPosterPreview("")}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#003580] via-[#004aad] to-[#001f4d] p-4 text-center select-none">
+                          <UploadCloud className="w-8 h-8 text-amber-300 mb-1" />
+                          <span className="text-xs font-semibold text-white">Poster Geometris Otomatis</span>
+                          <span className="text-[10px] text-white/60">Upload berkas gambar atau gunakan poster tipografi Angkasa</span>
+                        </div>
+                      )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-3 pointer-events-none">
                         <span className="text-[10px] font-mono text-white bg-[#002b66]/90 px-2 py-0.5 rounded border border-white/20">
-                          {posterFile ? `File: ${posterFile.name}` : "Poster Default Aktif"}
+                          {posterFile ? `File: ${posterFile.name}` : (posterPreview ? "Poster Kustom" : "Poster Tipografi Angkasa")}
                         </span>
                       </div>
                     </div>
@@ -624,16 +628,20 @@ export default function CuratorPanel({
 
                           <div className="flex gap-3 items-start">
                             <div className="w-20 aspect-[16/9] rounded-lg overflow-hidden bg-[#002b66]/60 border border-white/20 shrink-0">
-                              <img
-                                src={posterSrc}
-                                alt={item.title}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  if (e.currentTarget.src !== DEFAULT_POSTER_URL) {
-                                    e.currentTarget.src = DEFAULT_POSTER_URL;
-                                  }
-                                }}
-                              />
+                              {posterSrc ? (
+                                <img
+                                  src={posterSrc}
+                                  alt={item.title}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-[#003580] to-[#001f4d] flex items-center justify-center text-[10px] font-mono text-amber-300 font-bold">
+                                  {item.category}
+                                </div>
+                              )}
                             </div>
 
                             <div className="space-y-1 flex-1 min-w-0">
@@ -700,16 +708,21 @@ export default function CuratorPanel({
                       >
                         {/* Poster Besar 16:9 */}
                         <div className="relative w-full aspect-[16/9] rounded-xl overflow-hidden bg-[#002b66]/60 border border-white/20">
-                          <img
-                            src={posterSrc}
-                            alt={item.title}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              if (e.currentTarget.src !== DEFAULT_POSTER_URL) {
-                                e.currentTarget.src = DEFAULT_POSTER_URL;
-                              }
-                            }}
-                          />
+                          {posterSrc ? (
+                            <img
+                              src={posterSrc}
+                              alt={item.title}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full p-4 flex flex-col justify-between bg-gradient-to-br from-[#003580] via-[#004aad] to-[#001f4d]">
+                              <span className="text-[10px] font-mono uppercase text-amber-300 font-bold">{item.category}</span>
+                              <h4 className="text-xs font-bold text-white line-clamp-1">{item.title}</h4>
+                            </div>
+                          )}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-3 pointer-events-none">
                             <span className="text-[10px] font-mono text-amber-300 bg-amber-400/20 px-2 py-0.5 rounded border border-amber-300/30">
                               Draf Menunggu Persetujuan

@@ -664,7 +664,7 @@ export default function OpportunityDetail({
           )}
 
           {/* ========================================================= */}
-          {/* TAB 2: TEAM FINDING (ANTI-DUPLIKASI & BEBAS EMOJI) */}
+          {/* TAB 2: TEAM FINDING (DIKENDALIKAN MODAL & BEBAS EMOJI) */}
           {/* ========================================================= */}
           {activeTab === "team" && (
             <div className="space-y-6 animate-fade-slide-up">
@@ -679,49 +679,16 @@ export default function OpportunityDetail({
                   </p>
                 </div>
 
-                {/* Mode Switcher Pills & Re-open Modal */}
-                <div className="flex items-center gap-2 self-start sm:self-auto">
-                  <div className="inline-flex p-1 bg-white/10 border border-white/20 rounded-xl gap-0.5 backdrop-blur-md">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTeamNoticeBanner(null);
-                        setTeamViewMode("list");
-                      }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
-                        teamViewMode === "list"
-                          ? "bg-white text-[#004aad] font-bold shadow-md"
-                          : "text-white/80 hover:text-white"
-                      }`}
-                    >
-                      Daftar Tim ({teamRequests.length})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTeamNoticeBanner(null);
-                        setTeamViewMode("create");
-                        setTimeout(() => teamNameInputRef.current?.focus(), 100);
-                      }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
-                        teamViewMode === "create"
-                          ? "bg-white text-[#004aad] font-bold shadow-md"
-                          : "text-white/80 hover:text-white"
-                      }`}
-                    >
-                      Buat Tim Baru
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowTeamActionModal(true)}
-                    className="px-2.5 py-1.5 rounded-xl bg-white/10 border border-white/20 hover:border-white/40 text-xs text-white transition cursor-pointer backdrop-blur-md"
-                    title="Buka Pilihan Mode Aksi Kolaborasi"
-                  >
-                    Pilih Aksi
-                  </button>
-                </div>
+                {/* Tombol Ganti Pilihan Modal (Menghilangkan tombol duplikat) */}
+                <button
+                  type="button"
+                  onClick={() => setShowTeamActionModal(true)}
+                  className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/40 text-xs font-medium text-white transition-all duration-300 ease-out cursor-pointer backdrop-blur-md flex items-center gap-1.5 self-start sm:self-auto active:scale-95 shadow-sm"
+                  title="Ganti Pilihan Aksi Kolaborasi"
+                >
+                  <Users className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Ganti Pilihan</span>
+                </button>
               </div>
 
               {/* Banner Pemberitahuan jika Tim Kosong saat memilih Join Tim Lain */}
@@ -1026,13 +993,31 @@ export default function OpportunityDetail({
               </button>
             </div>
 
-            {/* Dua Pilihan Aksi: Buat Tim Baru vs Join Tim Lain */}
+            {/* Dua Pilihan Aksi: Lihat Daftar Tim vs Buat Tim Baru */}
             <div className="grid grid-cols-1 gap-3">
-              {/* Pilihan 1: Buat Tim Baru */}
+              {/* Pilihan 1: Lihat Daftar Tim */}
+              <button
+                type="button"
+                onClick={handleSelectJoinTeam}
+                className="p-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 hover:border-amber-300/40 text-left transition-all duration-300 ease-out group cursor-pointer space-y-1.5 backdrop-blur-md shadow-sm active:scale-[0.98]"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-white group-hover:text-amber-300 transition-colors">
+                    <Users className="w-4 h-4 text-amber-300" />
+                    <span>Lihat Daftar Tim</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-white/70 group-hover:text-amber-300 transition-transform group-hover:translate-x-0.5" />
+                </div>
+                <p className="text-xs text-white/80 leading-relaxed">
+                  Jelajahi tim yang sudah terdaftar dan ajukan diri untuk berkolaborasi bersama rekan sejawat.
+                </p>
+              </button>
+
+              {/* Pilihan 2: Buat Tim Baru */}
               <button
                 type="button"
                 onClick={handleSelectCreateTeam}
-                className="p-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 hover:border-amber-300/40 text-left transition group cursor-pointer space-y-1.5 backdrop-blur-md shadow-sm"
+                className="p-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 hover:border-amber-300/40 text-left transition-all duration-300 ease-out group cursor-pointer space-y-1.5 backdrop-blur-md shadow-sm active:scale-[0.98]"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm font-semibold text-white group-hover:text-amber-300 transition-colors">
@@ -1043,24 +1028,6 @@ export default function OpportunityDetail({
                 </div>
                 <p className="text-xs text-white/80 leading-relaxed">
                   Inisiasi kelompok kerja baru dan publikasikan kriteria rekan tim yang Anda cari.
-                </p>
-              </button>
-
-              {/* Pilihan 2: Join Tim Lain */}
-              <button
-                type="button"
-                onClick={handleSelectJoinTeam}
-                className="p-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 hover:border-amber-300/40 text-left transition group cursor-pointer space-y-1.5 backdrop-blur-md shadow-sm"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-white group-hover:text-amber-300 transition-colors">
-                    <UserPlus className="w-4 h-4 text-amber-300" />
-                    <span>Join Tim Lain</span>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-white/70 group-hover:text-amber-300 transition-transform group-hover:translate-x-0.5" />
-                </div>
-                <p className="text-xs text-white/80 leading-relaxed">
-                  Jelajahi tim yang sudah terdaftar dan ajukan diri untuk berkolaborasi.
                 </p>
               </button>
             </div>

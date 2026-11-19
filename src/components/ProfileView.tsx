@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { UserProfile, Opportunity, ProfileInsightResult } from "@/types/schema";
 import { updateUserProfile, fetchProfileInsight } from "@/lib/apiClient";
 import BackgroundOrnaments from "@/components/BackgroundOrnaments";
@@ -99,6 +99,19 @@ export default function ProfileView({
   const [storyError, setStoryError] = useState<string | null>(null);
 
   const INSIGHT_STORAGE_KEY = `angkasa_ai_insight_${userProfile.id}`;
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem(INSIGHT_STORAGE_KEY);
+        if (cached) {
+          setStoryInsightResult(JSON.parse(cached));
+        }
+      } catch (e) {
+        console.warn("[Profile Insight Cache Warning]", e);
+      }
+    }
+  }, [INSIGHT_STORAGE_KEY]);
 
   const handleAnalyzeStory = async () => {
     if (!userStory.trim()) {
