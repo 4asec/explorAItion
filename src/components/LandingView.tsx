@@ -40,10 +40,6 @@ export default function LandingView({ onStartAuth, onDemoLogin }: LandingViewPro
               <span className="font-semibold text-sm tracking-tight text-white">
                 ANGKASA
               </span>
-              <span className="text-white/50 text-xs font-mono">&bull;</span>
-              <span className="text-[11px] font-mono text-amber-300 bg-white/10 px-2 py-0.5 rounded border border-white/20 backdrop-blur-sm">
-                EXPLOR[AI]TION
-              </span>
             </div>
           </div>
 
@@ -127,8 +123,7 @@ export default function LandingView({ onStartAuth, onDemoLogin }: LandingViewPro
             onClick={onDemoLogin || onStartAuth}
             className="w-full sm:w-auto px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/25 hover:border-white/40 text-white font-medium text-sm transition active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 backdrop-blur-md shadow-md"
           >
-            <Sparkles className="w-4 h-4 text-amber-300" />
-            <span>Masuk Akun Demo (1-Klik)</span>
+            <span>Masuk Akun Demo</span>
           </button>
         </div>
 
