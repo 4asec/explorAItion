@@ -24,6 +24,7 @@ import {
   Tag,
   RotateCcw,
   ChevronRight,
+  Trash2,
 } from "lucide-react";
 
 export interface ProfileViewProps {
@@ -127,13 +128,9 @@ export default function ProfileView({
           }
         }
 
-        // Otomatis gabungkan extractedTags ke selectedTags
+        // Ganti (replace) daftar tag minat aktif dengan hasil ekstraksi AI terbaru
         if (Array.isArray(result.extractedTags) && result.extractedTags.length > 0) {
-          setSelectedTags((prev) => {
-            const existingLower = new Set(prev.map((t) => t.toLowerCase()));
-            const toAdd = result.extractedTags.filter((t) => !existingLower.has(t.toLowerCase()));
-            return [...prev, ...toAdd];
-          });
+          setSelectedTags(Array.from(new Set(result.extractedTags)));
         }
       }
     } catch {
@@ -459,7 +456,7 @@ export default function ProfileView({
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[11px] font-mono text-white/70 uppercase tracking-wider flex items-center gap-1.5">
                     <Tag className="w-3.5 h-3.5 text-amber-300" />
-                    <span>Tag Keahlian Terdeteksi (Otomatis Digabungkan):</span>
+                    <span>Tag Keahlian Terdeteksi:</span>
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -478,7 +475,7 @@ export default function ProfileView({
               {/* Tombol Simpan & Lanjut ke Rekomendasi */}
               <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <p className="text-[11px] text-white/70 italic leading-relaxed">
-                  Tag keahlian di atas telah otomatis ditambahkan ke daftar minat.
+                  Daftar minat aktif telah diperbarui sesuai hasil pemetaan AI terbaru.
                 </p>
                 <button
                   type="button"
@@ -546,9 +543,25 @@ export default function ProfileView({
 
           {/* Tag Terpilih Saat Ini */}
           <div className="space-y-2">
-            <label className="block text-xs font-mono text-white/80">
-              Daftar Tag Minat Aktif:
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-mono text-white/80">
+                Daftar Tag Minat Aktif:
+              </label>
+              {selectedTags.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedTags([]);
+                    setFeedback(null);
+                  }}
+                  className="inline-flex items-center gap-1.5 text-white/75 hover:text-amber-300 text-xs transition-colors cursor-pointer"
+                  title="Hapus semua tag minat aktif"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Hapus Semua</span>
+                </button>
+              )}
+            </div>
             <div className="p-4 rounded-xl bg-white/[0.08] border border-white/20 min-h-[56px] flex flex-wrap gap-2 items-center backdrop-blur-sm shadow-sm">
               {selectedTags.length === 0 ? (
                 <span className="text-xs text-white/50 italic font-mono">
