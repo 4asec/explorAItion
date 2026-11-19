@@ -303,8 +303,6 @@ export default function FeedDashboard({
 
           {/* Bagian Navbar Sisi Kanan: Menu Navigasi & Pengaturan Cepat + Ikon Notifikasi */}
           <div className="flex items-center gap-2">
-            
-
             {/* Tombol Ikon Notifikasi Postingan Terbaru yang Relevan & Permintaan Tim */}
             <button
               type="button"
@@ -319,17 +317,16 @@ export default function FeedDashboard({
                   {totalNotificationCount}
                 </span>
               )}
+            </button>
 
-              {/* Tombol Menu Navigasi & Pengaturan Cepat (Garis Tiga) */}
-              <button
-                type="button"
-                onClick={() => setIsMenuOpen(true)}
-                className="relative p-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/40 text-white transition-all duration-300 ease-out active:scale-[0.96] cursor-pointer backdrop-blur-md shadow-sm group"
-                title="Menu Navigasi & Pengaturan Cepat"
-                aria-label="Buka Menu Navigasi & Pengaturan Cepat"
-              > 
-                <Menu className="w-4 h-4 text-white group-hover:text-amber-300 transition" />
-              </button>
+            <button
+              type="button"
+              onClick={() => setIsMenuOpen(true)}
+              className="relative p-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/40 text-white transition-all duration-300 ease-out active:scale-[0.96] cursor-pointer backdrop-blur-md shadow-sm group"
+              title="Menu Navigasi & Pengaturan Cepat"
+              aria-label="Buka Menu Navigasi & Pengaturan Cepat"
+            >
+              <Menu className="w-4 h-4 text-white group-hover:text-amber-300 transition" />
             </button>
           </div>
         </div>
@@ -365,11 +362,10 @@ export default function FeedDashboard({
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer active:scale-[0.98] whitespace-nowrap ${
-                  selectedCategory === cat
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer active:scale-[0.98] whitespace-nowrap ${selectedCategory === cat
                     ? "bg-white text-[#004aad] font-bold shadow-md"
                     : "text-white/80 hover:text-white"
-                }`}
+                  }`}
               >
                 {cat}
               </button>
@@ -382,26 +378,23 @@ export default function FeedDashboard({
             <button
               type="button"
               onClick={() => setIsBookmarkedOnly((prev) => !prev)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all duration-150 cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2 shrink-0 backdrop-blur-md shadow-sm ${
-                isBookmarkedOnly
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all duration-150 cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2 shrink-0 backdrop-blur-md shadow-sm ${isBookmarkedOnly
                   ? "bg-amber-400/25 border-amber-300/40 text-amber-300 shadow-sm font-semibold"
                   : "bg-white/10 border-white/20 text-white/80 hover:text-white hover:border-white/40"
-              }`}
+                }`}
               title={isBookmarkedOnly ? "Tampilkan semua peluang" : "Filter peluang tersimpan"}
             >
               <Bookmark
-                className={`w-3.5 h-3.5 ${
-                  isBookmarkedOnly ? "fill-amber-300 text-amber-300" : "text-white/80"
-                }`}
+                className={`w-3.5 h-3.5 ${isBookmarkedOnly ? "fill-amber-300 text-amber-300" : "text-white/80"
+                  }`}
               />
               <span>Tersimpan</span>
               {bookmarkedIds.size > 0 && (
                 <span
-                  className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full tabular-nums ${
-                    isBookmarkedOnly
+                  className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full tabular-nums ${isBookmarkedOnly
                       ? "bg-amber-400 text-[#004aad] font-bold"
                       : "bg-white/20 text-white"
-                  }`}
+                    }`}
                 >
                   {bookmarkedIds.size}
                 </span>
@@ -465,8 +458,8 @@ export default function FeedDashboard({
               {isBookmarkedOnly
                 ? "Klik ikon simpan pada kartu peluang untuk menyimpannya ke daftar pribadi Anda."
                 : searchQuery
-                ? `Tidak ditemukan hasil dengan kata kunci "${searchQuery}".`
-                : "Belum ada peluang terverifikasi pada kategori ini."}
+                  ? `Tidak ditemukan hasil dengan kata kunci "${searchQuery}".`
+                  : "Belum ada peluang terverifikasi pada kategori ini."}
             </p>
             {isBookmarkedOnly && (
               <button
@@ -515,11 +508,10 @@ export default function FeedDashboard({
 
                       {/* Right: Persentase Kecocokan AI */}
                       <span
-                        className={`font-mono text-xs font-semibold tabular-nums px-2 py-0.5 rounded-lg backdrop-blur-md border shadow-sm ml-auto ${
-                          isHighMatch
+                        className={`font-mono text-xs font-semibold tabular-nums px-2 py-0.5 rounded-lg backdrop-blur-md border shadow-sm ml-auto ${isHighMatch
                             ? "bg-[#002b66]/90 border-amber-300/40 text-amber-300"
                             : "bg-[#002b66]/90 border-white/20 text-white/80"
-                        }`}
+                          }`}
                       >
                         {matchScore}% Cocok
                       </span>
@@ -559,18 +551,16 @@ export default function FeedDashboard({
                         <button
                           type="button"
                           onClick={(e) => handleToggleBookmark(e, item.id)}
-                          className={`p-1.5 rounded-lg border transition active:scale-[0.95] cursor-pointer ${
-                            isBookmarked
+                          className={`p-1.5 rounded-lg border transition active:scale-[0.95] cursor-pointer ${isBookmarked
                               ? "bg-amber-400/20 border-amber-300/40 text-amber-300"
                               : "bg-white/10 border-white/20 text-white/80 hover:text-white hover:border-white/40"
-                          }`}
+                            }`}
                           title={isBookmarked ? "Hapus dari Tersimpan" : "Simpan Peluang"}
                           aria-label="Bookmark"
                         >
                           <Bookmark
-                            className={`w-3.5 h-3.5 ${
-                              isBookmarked ? "fill-amber-300" : ""
-                            }`}
+                            className={`w-3.5 h-3.5 ${isBookmarked ? "fill-amber-300" : ""
+                              }`}
                           />
                         </button>
 
