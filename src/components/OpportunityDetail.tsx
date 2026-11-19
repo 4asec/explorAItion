@@ -456,7 +456,7 @@ export default function OpportunityDetail({
     try {
       const targetTeam = teamRequests.find((t) => t.id === teamId);
       const res = await sendTeamInvite(opportunity.id, teamId, userProfile.id, {
-        applicant_name: userProfile.full_name,
+        applicant_name: userProfile.full_name || "Peserta Angkasa",
         role_applied: userProfile.profiling?.[0] || "Anggota Tim",
         message: `Halo, saya tertarik bergabung dengan tim Anda untuk ajang ${opportunity.title}.`,
         opportunity_title: opportunity.title,
@@ -1117,7 +1117,7 @@ export default function OpportunityDetail({
                                     {team.team_name}
                                   </h4>
                                   <p className="text-xs text-white/80">
-                                    Inisiator: <strong className="text-white font-medium">{team.creator_name}</strong>
+                                    Inisiator: <strong className="text-white font-medium">{team.creator_name || "Peserta Angkasa"}</strong>
                                     {isCreator && (
                                       <span className="text-amber-300 ml-1.5 font-mono text-[11px] font-semibold">(Anda)</span>
                                     )}
@@ -1164,7 +1164,7 @@ export default function OpportunityDetail({
                                   {/* Badge Inisiator / Ketua Tim */}
                                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-400/20 border border-amber-300/30 text-amber-300 text-xs font-semibold shadow-sm">
                                     <ShieldCheck className="w-3 h-3 text-amber-300" />
-                                    <span>{team.creator_name}</span>
+                                    <span>{team.creator_name || "Peserta Angkasa"}</span>
                                     <span className="text-[10px] font-mono text-amber-300/80 font-normal">(Ketua Tim)</span>
                                   </span>
 
@@ -1175,7 +1175,7 @@ export default function OpportunityDetail({
                                       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/10 border border-white/20 text-white text-xs font-medium shadow-sm backdrop-blur-sm group"
                                     >
                                       <UserCheck className="w-3 h-3 text-emerald-400" />
-                                      <span>{member.applicant_name}</span>
+                                      <span>{member.applicant_name || "Peserta Angkasa"}</span>
                                       {member.role_applied && (
                                         <span className="text-[10px] font-mono text-white/60">({member.role_applied})</span>
                                       )}
@@ -1222,7 +1222,7 @@ export default function OpportunityDetail({
                                         >
                                           <div className="flex items-start justify-between gap-2">
                                             <div>
-                                              <p className="font-semibold text-white">{invite.applicant_name}</p>
+                                              <p className="font-semibold text-white">{invite.applicant_name || "Peserta Angkasa"}</p>
                                               {invite.role_applied && (
                                                 <p className="text-[10px] font-mono text-amber-300/90">{invite.role_applied}</p>
                                               )}

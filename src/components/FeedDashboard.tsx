@@ -667,7 +667,7 @@ export default function FeedDashboard({
                           >
                             <div className="flex items-center justify-between gap-2">
                               <span className="font-bold text-white group-hover:text-amber-200 transition">
-                                Permintaan Gabung Tim dari {invite.applicant_name}
+                                Permintaan Gabung Tim dari {invite.applicant_name || "Peserta Angkasa"}
                               </span>
                               <span className="text-[10px] font-mono text-white/60 shrink-0">
                                 {new Date(invite.created_at || Date.now()).toLocaleTimeString([], {
