@@ -23,6 +23,7 @@ import {
   Compass,
   Tag,
   RotateCcw,
+  ChevronRight,
 } from "lucide-react";
 
 export interface ProfileViewProps {
@@ -92,26 +93,13 @@ export default function ProfileView({
     }
   }, [initialFocusInsight]);
 
-  // State Fitur AI Career & Skill Insight (Dimulai null pada sesi baru, hanya muncul setelah user menganalisis)
+  // State Fitur AI Career & Skill Insight (Selalu dimulai null, hanya muncul setelah user menekan tombol Analisis)
   const [userStory, setUserStory] = useState<string>("");
   const [isAnalyzingStory, setIsAnalyzingStory] = useState<boolean>(false);
   const [storyInsightResult, setStoryInsightResult] = useState<ProfileInsightResult | null>(null);
   const [storyError, setStoryError] = useState<string | null>(null);
 
   const INSIGHT_STORAGE_KEY = `angkasa_ai_insight_${userProfile.id}`;
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const cached = localStorage.getItem(INSIGHT_STORAGE_KEY);
-        if (cached) {
-          setStoryInsightResult(JSON.parse(cached));
-        }
-      } catch (e) {
-        console.warn("[Profile Insight Cache Warning]", e);
-      }
-    }
-  }, [INSIGHT_STORAGE_KEY]);
 
   const handleAnalyzeStory = async () => {
     if (!userStory.trim()) {
@@ -216,6 +204,39 @@ export default function ProfileView({
           text: "Profil minat & keahlian berhasil diperbarui! Rekomendasi AI telah disesuaikan.",
         });
         onUpdateProfile(res.data);
+      }
+    } catch {
+      setFeedback({
+        type: "error",
+        text: "Terjadi gangguan koneksi saat memperbarui profil minat.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveAndGoToFeed = async () => {
+    if (selectedTags.length === 0) {
+      setFeedback({
+        type: "error",
+        text: "Pilih minimal 1 topik minat agar AI dapat mempersonalisasi feed peluang.",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    setFeedback(null);
+
+    try {
+      const res = await updateUserProfile(userProfile.id, { profiling: selectedTags });
+      if (res.error || !res.data) {
+        setFeedback({
+          type: "error",
+          text: res.error || "Gagal menyimpan perubahan minat. Silakan coba lagi.",
+        });
+      } else {
+        onUpdateProfile(res.data);
+        onBack();
       }
     } catch {
       setFeedback({
@@ -384,7 +405,7 @@ export default function ProfileView({
 
           {/* Kartu Highlight Hasil Analisis AI */}
           {storyInsightResult && (
-            <div className="p-5 sm:p-6 rounded-2xl bg-white/[0.08] border border-amber-300/35 backdrop-blur-md space-y-4 animate-[fadeSlideUp_380ms_cubic-bezier(0.16,1,0.3,1)]">
+            <div className="p-5 sm:p-6 rounded-2xl bg-white/[0.08] border border-amber-300/35 backdrop-blur-md space-y-4 animate-[fadeSlideUp_350ms_ease-out]">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
                 <div className="flex items-center gap-2">
                   <Compass className="w-4 h-4 text-amber-300" />
@@ -452,9 +473,31 @@ export default function ProfileView({
                     </span>
                   ))}
                 </div>
-                <p className="text-[11px] text-white/60 italic pt-1">
-                  Tag di atas telah otomatis ditambahkan ke daftar minat di bawah. Klik tombol "Simpan Perubahan Minat" untuk memperbarui rekomendasi feed.
+              </div>
+
+              {/* Tombol Simpan & Lanjut ke Rekomendasi */}
+              <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <p className="text-[11px] text-white/70 italic leading-relaxed">
+                  Tag keahlian di atas telah otomatis ditambahkan ke daftar minat.
                 </p>
+                <button
+                  type="button"
+                  onClick={handleSaveAndGoToFeed}
+                  disabled={isSaving}
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-amber-200 hover:from-amber-300 hover:to-amber-100 text-[#002b66] font-bold text-xs shadow-lg shadow-black/25 transition-all duration-300 ease-out active:scale-95 cursor-pointer disabled:opacity-50 shrink-0"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-[#002b66]" />
+                      <span>Menyimpan...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Simpan &amp; Lanjut ke Rekomendasi</span>
+                      <ChevronRight className="w-4 h-4 text-[#002b66]" />
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           )}

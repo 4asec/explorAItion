@@ -6,7 +6,6 @@ import {
   ScoredOpportunity,
   PersonalizedOpportunity,
   Opportunity,
-  ProfileInsightResult,
 } from "@/types/schema";
 import {
   fetchPersonalizedFeed,
@@ -14,8 +13,6 @@ import {
   toggleBookmark,
   fetchAllOpportunitiesForCurator,
   DEFAULT_POSTER_URL,
-  fetchProfileInsight,
-  updateUserProfile,
   invalidateFeedCache,
 } from "@/lib/apiClient";
 import CuratorPanel from "@/components/CuratorPanel";
@@ -31,14 +28,9 @@ import {
   X,
   Sparkles,
   ChevronRight,
-  CheckCircle2,
   Compass,
   Menu,
-  Tag,
-  RotateCcw,
-  Loader2,
   User,
-  AlertCircle,
 } from "lucide-react";
 
 export interface FeedDashboardProps {
@@ -124,93 +116,6 @@ export default function FeedDashboard({
 
   // State Drawer Menu & Pengaturan Cepat
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
-
-  // State AI Career & Skill Insight ("Ceritakan Dirimu")
-  const [userStory, setUserStory] = useState<string>("");
-  const [isAnalyzingStory, setIsAnalyzingStory] = useState<boolean>(false);
-  const [storyInsightResult, setStoryInsightResult] = useState<ProfileInsightResult | null>(null);
-  const [storyError, setStoryError] = useState<string | null>(null);
-
-  const INSIGHT_STORAGE_KEY = `angkasa_ai_insight_${userProfile.id}`;
-
-  // Memulihkan data AI insight dari cache lokal
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const cachedInsight = localStorage.getItem(INSIGHT_STORAGE_KEY);
-        if (cachedInsight) {
-          setStoryInsightResult(JSON.parse(cachedInsight));
-        }
-      } catch (e) {
-        console.warn("[Local Cache Read Warning]", e);
-      }
-    }
-  }, [INSIGHT_STORAGE_KEY]);
-
-  // Handler Analisis Ceritakan Dirimu dengan AI
-  const handleAnalyzeStory = async () => {
-    if (!userStory.trim()) {
-      setStoryError("Tuliskan cerita singkat mengenai minat, keahlian, atau pengalamanmu terlebih dahulu.");
-      return;
-    }
-
-    setIsAnalyzingStory(true);
-    setStoryError(null);
-
-    try {
-      const res = await fetchProfileInsight(userStory.trim());
-      if (res.error || !res.data) {
-        setStoryError(res.error || "Gagal mendapatkan insight profil dari AI. Silakan coba kembali.");
-      } else {
-        const result = res.data;
-        setStoryInsightResult(result);
-
-        // Simpan ke localStorage
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem(INSIGHT_STORAGE_KEY, JSON.stringify(result));
-          } catch (e) {
-            console.warn("[Insight Cache Save Warning]", e);
-          }
-        }
-
-        // Otomatis gabungkan extractedTags ke profil pengguna
-        if (Array.isArray(result.extractedTags) && result.extractedTags.length > 0) {
-          const currentProfiling = userProfile.profiling || [];
-          const existingLower = new Set(currentProfiling.map((t) => t.toLowerCase()));
-          const toAdd = result.extractedTags.filter((t) => !existingLower.has(t.toLowerCase()));
-          if (toAdd.length > 0) {
-            const updatedProfiling = [...currentProfiling, ...toAdd];
-            userProfile.profiling = updatedProfiling;
-            updateUserProfile(userProfile.id, { profiling: updatedProfiling }).catch((err) =>
-              console.warn("[Update Profiling Error]", err)
-            );
-            // Invalidate cache feed agar rekomendasi disesuaikan dengan minat baru
-            invalidateFeedCache();
-            loadFeed();
-          }
-        }
-      }
-    } catch {
-      setStoryError("Terjadi gangguan koneksi saat menganalisis narasi profil.");
-    } finally {
-      setIsAnalyzingStory(false);
-    }
-  };
-
-  // Handler Reset Analisis Cerita
-  const handleResetStory = () => {
-    setStoryInsightResult(null);
-    setUserStory("");
-    setStoryError(null);
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.removeItem(INSIGHT_STORAGE_KEY);
-      } catch (e) {
-        console.warn("[Insight Cache Remove Warning]", e);
-      }
-    }
-  };
 
   // State Panel Kurator (Admin Input Manual & Verifikator)
   const [isCuratorOpen, setIsCuratorOpen] = useState<boolean>(false);
@@ -403,154 +308,6 @@ export default function FeedDashboard({
 
       {/* Main Container */}
       <main className="relative z-10 flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 space-y-7">
-        {/* ========================================================= */}
-        {/* FITUR 1: AI CAREER & SKILL INSIGHT ("CERITAKAN DIRIMU")  */}
-        {/* ========================================================= */}
-        <section
-          id="ai-career-section"
-          className="surface-panel p-5 sm:p-7 rounded-2xl space-y-5 border border-white/20 backdrop-blur-xl shadow-xl transition-all duration-300 ease-out"
-        >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/15 pb-4">
-            <div className="space-y-1">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-400/20 border border-amber-300/30 text-amber-300 text-[11px] font-mono font-semibold">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>AI Career &amp; Skill Insight</span>
-              </div>
-              <h2 className="text-lg sm:text-xl font-bold tracking-[-0.02em] text-white">
-                Ceritakan Dirimu &amp; Dapatkan Arahan AI
-              </h2>
-              <p className="text-xs text-white/80 max-w-2xl leading-relaxed">
-                Ceritakan latar belakang, minat teknologi, atau pengalaman proyekmu. AI Angkasa akan menganalisis peran kompetisi yang ideal, memberikan arahan strategis, dan mengekstrak tag keahlian secara otomatis.
-              </p>
-            </div>
-
-            {storyInsightResult && (
-              <button
-                type="button"
-                onClick={handleResetStory}
-                className="self-start sm:self-auto px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-mono text-white/80 hover:text-white transition-all duration-300 ease-out flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-sm"
-                title="Hapus hasil dan analisis ulang cerita"
-              >
-                <RotateCcw className="w-3.5 h-3.5 text-amber-300" />
-                <span>Reset Analisis</span>
-              </button>
-            )}
-          </div>
-
-          {/* Kotak Textarea Ceritakan Dirimu */}
-          <div className="space-y-3">
-            <label className="block text-xs font-mono text-white/80 font-medium">
-              Ceritakan Dirimu, Minat &amp; Pengalaman:
-            </label>
-            <textarea
-              rows={3}
-              value={userStory}
-              onChange={(e) => {
-                setUserStory(e.target.value);
-                if (storyError) setStoryError(null);
-              }}
-              placeholder="Contoh: Saya mahasiswa semester 4 teknik informatika. Saya senang membangun web dengan Next.js dan Python, dan sangat tertarik dengan keamanan siber serta integrasi AI untuk mendeteksi ancaman scam..."
-              className="w-full p-3.5 sm:p-4 rounded-xl bg-white/[0.08] border border-white/20 text-white placeholder-white/40 text-xs sm:text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all duration-300 ease-out resize-none backdrop-blur-sm shadow-inner"
-            />
-
-            {/* Pesan Error Analisis */}
-            {storyError && (
-              <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-200 text-xs flex items-center gap-2 animate-fade-slide-up">
-                <AlertCircle className="w-4 h-4 text-rose-300 shrink-0" />
-                <span>{storyError}</span>
-              </div>
-            )}
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-              <span className="text-[11px] font-mono text-white/60">
-                Panjang cerita: <strong className="text-white font-bold tabular-nums">{userStory.trim().length}</strong> karakter
-              </span>
-
-              <button
-                type="button"
-                onClick={handleAnalyzeStory}
-                disabled={isAnalyzingStory || !userStory.trim()}
-                className="px-5 py-2.5 rounded-xl bg-white hover:bg-white/90 text-[#004aad] font-bold text-xs transition-all duration-300 ease-out active:scale-[0.98] disabled:opacity-40 cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-black/20 self-end sm:self-auto"
-              >
-                {isAnalyzingStory ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin text-[#004aad]" />
-                    <span>Menganalisis dengan AI...</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 text-[#004aad]" />
-                    <span>Analisis dengan AI</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Kartu Highlight Hasil Analisis AI */}
-          {storyInsightResult && (
-            <div className="p-5 sm:p-6 rounded-2xl bg-white/[0.08] border border-amber-300/35 backdrop-blur-md space-y-4 animate-[fadeSlideUp_380ms_cubic-bezier(0.16,1,0.3,1)]">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
-                <div className="flex items-center gap-2">
-                  <Compass className="w-4 h-4 text-amber-300" />
-                  <span className="text-xs font-mono uppercase tracking-wider text-white/80 font-semibold">
-                    Hasil Pemetaan AI Angkasa
-                  </span>
-                </div>
-                {storyInsightResult._modelUsed && (
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-white/70">
-                    Model: {storyInsightResult._modelUsed}
-                  </span>
-                )}
-              </div>
-
-              {/* 1. Rekomendasi Role Kompetisi */}
-              <div className="space-y-1.5">
-                <span className="text-[11px] font-mono text-amber-300 uppercase tracking-wider font-semibold">
-                  Rekomendasi Role Kompetisi:
-                </span>
-                <div>
-                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-amber-400/20 border border-amber-300/40 text-amber-200 font-bold text-sm sm:text-base shadow-sm">
-                    <ShieldCheck className="w-4 h-4 text-amber-300 shrink-0" />
-                    <span>{storyInsightResult.recommendedRole}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 2. Arahan & Insight Personal AI */}
-              <div className="space-y-1.5">
-                <span className="text-[11px] font-mono text-white/70 uppercase tracking-wider font-semibold">
-                  Arahan Strategis &amp; Potensi Peluang:
-                </span>
-                <p className="text-xs sm:text-sm text-white/90 leading-relaxed pl-3 border-l-2 border-amber-400 bg-white/[0.04] p-3 rounded-r-xl">
-                  {storyInsightResult.careerInsight}
-                </p>
-              </div>
-
-              {/* 3. Tag Keahlian Terdeteksi */}
-              <div className="space-y-2 pt-1 border-t border-white/10">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-mono text-white/70 uppercase tracking-wider flex items-center gap-1.5 font-semibold">
-                    <Tag className="w-3.5 h-3.5 text-amber-300" />
-                    <span>Tag Keahlian Terdeteksi (Otomatis Digabungkan ke Profil):</span>
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {storyInsightResult.extractedTags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-400/15 border border-amber-300/30 text-amber-200 text-xs font-mono font-medium shadow-sm"
-                    >
-                      <CheckCircle2 className="w-3 h-3 text-amber-300" />
-                      <span>{tag}</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </section>
-
         {/* Editorial Subheader & Stats */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-2">
           <div className="space-y-1">
@@ -982,7 +739,7 @@ export default function FeedDashboard({
                     type="button"
                     onClick={() => {
                       setIsMenuOpen(false);
-                      document.getElementById("ai-career-section")?.scrollIntoView({ behavior: "smooth" });
+                      onOpenProfile();
                     }}
                     className="w-full p-3.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition-all duration-300 ease-out flex items-center justify-between cursor-pointer active:scale-[0.98]"
                   >

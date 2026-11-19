@@ -69,7 +69,7 @@ export default function Home() {
 
               const hasProfiling =
                 Array.isArray(loadedProfile.profiling) && loadedProfile.profiling.length > 0;
-              setCurrentView(hasProfiling ? "feed" : "profiling");
+              setCurrentView(hasProfiling ? "feed" : "profile");
               setIsRestoringSession(false);
               return;
             }
@@ -91,7 +91,7 @@ export default function Home() {
               const hasProfiling =
                 Array.isArray(parsed.profile.profiling) &&
                 parsed.profile.profiling.length > 0;
-              setCurrentView(hasProfiling ? "feed" : "profiling");
+              setCurrentView(hasProfiling ? "feed" : "profile");
               setIsRestoringSession(false);
               return;
             }
@@ -153,24 +153,18 @@ export default function Home() {
       console.warn("[Session Save Error]", e);
     }
 
-    // Jika user baru saja mendaftar (Register), arahkan langsung ke halaman Profile
-    // dan beri sinyal untuk auto-scroll serta popup arahan AI Career & Skill Insight
-    if (authMode === "register") {
+    // Alur Wajib: Jika user baru saja mendaftar (Register) atau profil belum memiliki profiling/minat,
+    // arahkan langsung ke tampilan Profile Page (ProfileView) terlebih dahulu
+    const hasProfiling =
+      Array.isArray(profile.profiling) && profile.profiling.length > 0;
+
+    if (authMode === "register" || !hasProfiling) {
       setFocusInsightOnProfile(true);
       setCurrentView("profile");
       return;
     }
 
-    // Aturan Alur Login biasa:
-    // Jika data profiling kosong, arahkan ke tahap input minat & bakat (P2)
-    const hasProfiling =
-      Array.isArray(profile.profiling) && profile.profiling.length > 0;
-
-    if (hasProfiling) {
-      setCurrentView("feed");
-    } else {
-      setCurrentView("profiling");
-    }
+    setCurrentView("feed");
   };
 
   // Handler Login Demo 1-Klik Langsung dari LandingView
@@ -355,7 +349,7 @@ export default function Home() {
     <FeedDashboard
       userProfile={currentProfile}
       onSelectOpportunity={handleSelectOpportunity}
-      onEditProfile={() => setCurrentView("profiling")}
+      onEditProfile={() => setCurrentView("profile")}
       onOpenProfile={() => setCurrentView("profile")}
       onLogout={handleLogout}
     />
