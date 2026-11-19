@@ -8,13 +8,15 @@ import FeedDashboard from "@/components/FeedDashboard";
 import OpportunityDetail from "@/components/OpportunityDetail";
 import ProfileView from "@/components/ProfileView";
 import { UserProfile, ScoredOpportunity } from "@/types/schema";
-import { logoutUser, loginDemoUser } from "@/lib/apiClient";
+import { logoutUser, loginDemoUser, fetchPersonalizedFeed } from "@/lib/apiClient";
+import { mockOpportunities } from "@/lib/mockData";
 import { supabaseClient, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { ArrowLeft } from "lucide-react";
 
 type ActiveView = "landing" | "auth" | "profiling" | "feed" | "detail" | "profile";
 
 const ACTIVE_SESSION_STORAGE_KEY = "angkasa_active_session";
+const SELECTED_OPP_STORAGE_KEY = "angkasa_selected_opportunity_id";
 
 export default function Home() {
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -67,6 +69,35 @@ export default function Home() {
                 JSON.stringify({ user: sessionUser, profile: loadedProfile })
               );
 
+              // Periksa persistensi halaman detail peluang saat refresh
+              const storedOppId =
+                typeof window !== "undefined"
+                  ? sessionStorage.getItem(SELECTED_OPP_STORAGE_KEY)
+                  : null;
+
+              if (storedOppId) {
+                try {
+                  const feedRes = await fetchPersonalizedFeed(loadedProfile);
+                  const oppList = feedRes.data || mockOpportunities;
+                  const foundOpp = oppList.find((o) => o.id === storedOppId);
+                  if (foundOpp && isMounted) {
+                    const scored: ScoredOpportunity = {
+                      ...foundOpp,
+                      matchPercentage: (foundOpp as any).matchPercentage || 95,
+                      recommendationReason:
+                        (foundOpp as any).recommendationReason ||
+                        "Peluang ini sangat selaras dengan minat dan kualifikasi profil Anda.",
+                    };
+                    setSelectedOpportunity(scored);
+                    setCurrentView("detail");
+                    setIsRestoringSession(false);
+                    return;
+                  }
+                } catch (e) {
+                  console.warn("[Restore Selected Opp Error]", e);
+                }
+              }
+
               const hasProfiling =
                 Array.isArray(loadedProfile.profiling) && loadedProfile.profiling.length > 0;
               setCurrentView(hasProfiling ? "feed" : "profile");
@@ -87,6 +118,35 @@ export default function Home() {
                 parsed.user || { id: parsed.profile.id, email: parsed.profile.email };
               setCurrentUser(fallbackUser);
               setCurrentProfile(parsed.profile);
+
+              // Periksa persistensi halaman detail peluang saat refresh
+              const storedOppId =
+                typeof window !== "undefined"
+                  ? sessionStorage.getItem(SELECTED_OPP_STORAGE_KEY)
+                  : null;
+
+              if (storedOppId) {
+                try {
+                  const feedRes = await fetchPersonalizedFeed(parsed.profile);
+                  const oppList = feedRes.data || mockOpportunities;
+                  const foundOpp = oppList.find((o) => o.id === storedOppId);
+                  if (foundOpp && isMounted) {
+                    const scored: ScoredOpportunity = {
+                      ...foundOpp,
+                      matchPercentage: (foundOpp as any).matchPercentage || 95,
+                      recommendationReason:
+                        (foundOpp as any).recommendationReason ||
+                        "Peluang ini sangat selaras dengan minat dan kualifikasi profil Anda.",
+                    };
+                    setSelectedOpportunity(scored);
+                    setCurrentView("detail");
+                    setIsRestoringSession(false);
+                    return;
+                  }
+                } catch (e) {
+                  console.warn("[Restore Selected Opp Error]", e);
+                }
+              }
 
               const hasProfiling =
                 Array.isArray(parsed.profile.profiling) &&
@@ -138,7 +198,7 @@ export default function Home() {
   const handleAuthSuccess = (
     user: any,
     profile: UserProfile,
-    authMode?: "login" | "register"
+    authMode?: "login" | "register" | "demo"
   ) => {
     setCurrentUser(user);
     setCurrentProfile(profile);
@@ -153,12 +213,18 @@ export default function Home() {
       console.warn("[Session Save Error]", e);
     }
 
-    // Alur Wajib: Jika user baru saja mendaftar (Register) atau profil belum memiliki profiling/minat,
-    // arahkan langsung ke tampilan Profile Page (ProfileView) terlebih dahulu
+    const isDemo =
+      authMode === "demo" ||
+      profile.email === "dummy123@gmail.com" ||
+      profile.email === "demo@angkasa.id" ||
+      profile.email.includes("demo");
+
+    // Alur Wajib: Akun demo, registrasi baru, atau profil belum memiliki profiling
+    // diarahkan langsung ke halaman Profile (Personalisasi AI) terlebih dahulu
     const hasProfiling =
       Array.isArray(profile.profiling) && profile.profiling.length > 0;
 
-    if (authMode === "register" || !hasProfiling) {
+    if (authMode === "register" || isDemo || !hasProfiling) {
       setFocusInsightOnProfile(true);
       setCurrentView("profile");
       return;
@@ -171,9 +237,16 @@ export default function Home() {
   const handleDirectDemoLogin = async () => {
     setIsRestoringSession(true);
     try {
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.removeItem("angkasa_ai_career_insight");
+          localStorage.removeItem("angkasa_profile_career_story");
+          sessionStorage.removeItem(SELECTED_OPP_STORAGE_KEY);
+        } catch {}
+      }
       const res = await loginDemoUser();
       if (res.data) {
-        handleAuthSuccess(res.data.user, res.data.profile);
+        handleAuthSuccess(res.data.user, res.data.profile, "demo");
       } else {
         setCurrentView("auth");
       }
@@ -207,6 +280,13 @@ export default function Home() {
 
   // Handler Buka Detail Peluang (P3 -> P4/P5/P6)
   const handleSelectOpportunity = (opp: ScoredOpportunity) => {
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem(SELECTED_OPP_STORAGE_KEY, opp.id);
+      } catch (e) {
+        console.warn("[Save Selected Opp Error]", e);
+      }
+    }
     setSelectedOpportunity(opp);
     setCurrentView("detail");
   };
@@ -215,6 +295,11 @@ export default function Home() {
   const handleLogout = async () => {
     try {
       localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.removeItem(SELECTED_OPP_STORAGE_KEY);
+        } catch {}
+      }
       await logoutUser();
     } finally {
       setCurrentUser(null);
@@ -302,6 +387,13 @@ export default function Home() {
         opportunity={selectedOpportunity}
         userProfile={currentProfile}
         onBack={() => {
+          if (typeof window !== "undefined") {
+            try {
+              sessionStorage.removeItem(SELECTED_OPP_STORAGE_KEY);
+            } catch (e) {
+              console.warn("[Remove Selected Opp Error]", e);
+            }
+          }
           setSelectedOpportunity(null);
           setCurrentView("feed");
         }}

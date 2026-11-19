@@ -772,6 +772,8 @@ const INITIAL_TEAM_INVITES: TeamInvite[] = [
     opportunity_title: "National Business Plan & Fintech Challenge 2026",
     team_name: "Garuda ExplorAI",
     applicant_id: "user-revaldo-003",
+    sender_id: "user-revaldo-003",
+    receiver_id: "user-iqbal-002",
     applicant_name: "Revaldo Putra",
     role_applied: "Pitch Lead & Business Strategist",
     message: "Tertarik berkolaborasi untuk finalisasi business case dan pitching.",
@@ -784,7 +786,9 @@ const INITIAL_TEAM_INVITES: TeamInvite[] = [
     opportunity_id: "opp-001",
     opportunity_title: "Gemini AI Innovation Hackathon 2026",
     team_name: "Nusantara Innovate",
-    applicant_id: "user-demo-001",
+    applicant_id: "a9559a6d-f025-47b0-8203-662f58418699",
+    sender_id: "a9559a6d-f025-47b0-8203-662f58418699",
+    receiver_id: "user-revaldo-003",
     applicant_name: "Raffa Danendra",
     role_applied: "AI Engineer & Full-Stack",
     message: "Tertarik bergabung untuk mengerjakan integrasi Gemini API & backend.",
@@ -798,6 +802,8 @@ const INITIAL_TEAM_INVITES: TeamInvite[] = [
     opportunity_title: "Gemini AI Innovation Hackathon 2026",
     team_name: "CyberAI Guardians",
     applicant_id: "user-fadhil-005",
+    sender_id: "user-fadhil-005",
+    receiver_id: "a9559a6d-f025-47b0-8203-662f58418699",
     applicant_name: "Ahmad Fadhil",
     role_applied: "Security Researcher & ML Analyst",
     message: "Halo, saya berpengalaman dalam machine learning & deteksi ancaman. Ingin bergabung di tim ini!",
@@ -811,6 +817,8 @@ const INITIAL_TEAM_INVITES: TeamInvite[] = [
     opportunity_title: "Gemini AI Innovation Hackathon 2026",
     team_name: "CyberAI Guardians",
     applicant_id: "user-sarah-006",
+    sender_id: "user-sarah-006",
+    receiver_id: "a9559a6d-f025-47b0-8203-662f58418699",
     applicant_name: "Sarah Alifah",
     role_applied: "UI/UX & Product Design",
     message: "Saya mahasiswi desain grafis, siap bantu wireframe dan prototype interaktif.",
@@ -854,8 +862,35 @@ export function saveStoredTeamInvites(invites: TeamInvite[]): void {
  * Mengambil daftar invite untuk kompetisi tertentu
  */
 export async function getTeamInvitesForOpportunity(opportunityId: string): Promise<TeamInvite[]> {
-  const allInvites = getStoredTeamInvites();
-  return allInvites.filter((inv) => inv.opportunity_id === opportunityId);
+  const localInvites = getStoredTeamInvites().filter((inv) => inv.opportunity_id === opportunityId);
+
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabaseClient
+        .from("team_invites")
+        .select("*")
+        .eq("opportunity_id", opportunityId);
+
+      if (!error && Array.isArray(data)) {
+        const map = new Map<string, TeamInvite>();
+        data.forEach((item: any) => {
+          map.set(item.id, {
+            ...item,
+            sender_id: item.sender_id || item.applicant_id,
+            applicant_id: item.applicant_id || item.sender_id,
+          });
+        });
+        localInvites.forEach((item) => {
+          if (item.id) map.set(item.id, item);
+        });
+        return Array.from(map.values());
+      }
+    } catch (err) {
+      console.warn("[getTeamInvitesForOpportunity Supabase Warning]", err);
+    }
+  }
+
+  return localInvites;
 }
 
 /**
@@ -903,7 +938,7 @@ export async function getPendingTeamInvitesForCreator(
   knownTeamIds?: string[]
 ): Promise<TeamInvite[]> {
   try {
-    const allInvites = getStoredTeamInvites();
+    const localInvites = getStoredTeamInvites();
     
     // Kumpulkan seluruh team ID milik creator ini
     let creatorTeamIds = knownTeamIds || [];
@@ -912,9 +947,37 @@ export async function getPendingTeamInvitesForCreator(
       creatorTeamIds = allTeams.map((t) => t.id);
     }
 
+    let allInvites: TeamInvite[] = [...localInvites];
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabaseClient
+          .from("team_invites")
+          .select("*")
+          .eq("status", "pending");
+
+        if (!error && Array.isArray(data)) {
+          const map = new Map<string, TeamInvite>();
+          data.forEach((item: any) => {
+            map.set(item.id, {
+              ...item,
+              sender_id: item.sender_id || item.applicant_id,
+              applicant_id: item.applicant_id || item.sender_id,
+            });
+          });
+          localInvites.forEach((item) => {
+            if (item.id) map.set(item.id, item);
+          });
+          allInvites = Array.from(map.values());
+        }
+      } catch (err) {
+        console.warn("[getPendingTeamInvitesForCreator Supabase Warning]", err);
+      }
+    }
+
     // Filter invites yang berstatus pending dan mengarah ke tim milik user
     return allInvites.filter((inv) => {
       if (inv.status !== "pending") return false;
+      if (inv.receiver_id && inv.receiver_id === creatorId) return true;
       return creatorTeamIds.includes(inv.team_request_id);
     });
   } catch {
@@ -935,6 +998,7 @@ export async function sendTeamInvite(
     message?: string;
     opportunity_title?: string;
     team_name?: string;
+    receiver_id?: string;
   }
 ): Promise<{ success: boolean; message: string; error: string | null }> {
   try {
@@ -946,6 +1010,8 @@ export async function sendTeamInvite(
         opportunity_id: opportunityId,
         team_request_id: teamRequestId,
         applicant_id: senderId,
+        sender_id: senderId,
+        receiver_id: options?.receiver_id,
         applicant_name: options?.applicant_name || "Pemohon Kolaborasi",
         role_applied: options?.role_applied || "Anggota Tim",
         message: options?.message || "",
@@ -981,6 +1047,8 @@ export async function sendTeamInvite(
       opportunity_title: options?.opportunity_title,
       team_name: options?.team_name,
       applicant_id: senderId,
+      sender_id: senderId,
+      receiver_id: options?.receiver_id,
       applicant_name: options?.applicant_name || "Pemohon Kolaborasi",
       role_applied: options?.role_applied || "Anggota Tim",
       message: options?.message || "",

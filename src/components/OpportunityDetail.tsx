@@ -51,12 +51,38 @@ export interface OpportunityDetailProps {
 
 type ActiveTab = "roadmap" | "team";
 
+/**
+ * Foto banner stok beresolusi tinggi profesional sesuai kategori peluang
+ */
+const CATEGORY_BANNER_FALLBACKS: Record<string, string> = {
+  Lomba:
+    "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80",
+  Beasiswa:
+    "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1200&q=80",
+  Seminar:
+    "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80",
+};
+
+function getCategoryBanner(category?: string): string {
+  if (category && CATEGORY_BANNER_FALLBACKS[category]) {
+    return CATEGORY_BANNER_FALLBACKS[category];
+  }
+  return CATEGORY_BANNER_FALLBACKS.Lomba;
+}
+
 export default function OpportunityDetail({
   opportunity,
   userProfile,
   onBack,
 }: OpportunityDetailProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>("roadmap");
+
+  const fallbackBanner = getCategoryBanner(opportunity.category);
+  const [bannerSrc, setBannerSrc] = useState<string>(opportunity.image_url || fallbackBanner);
+
+  useEffect(() => {
+    setBannerSrc(opportunity.image_url || fallbackBanner);
+  }, [opportunity.image_url, fallbackBanner]);
 
   // State untuk Tab 1: AI Roadmap
   const [roadmap, setRoadmap] = useState<RoadmapResponse | null>(null);
@@ -318,6 +344,7 @@ export default function OpportunityDetail({
         message: `Halo, saya tertarik bergabung dengan tim Anda untuk ajang ${opportunity.title}.`,
         opportunity_title: opportunity.title,
         team_name: targetTeam?.team_name,
+        receiver_id: targetTeam?.creator_id,
       });
 
       if (res.success) {
@@ -370,8 +397,7 @@ export default function OpportunityDetail({
             className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition active:scale-[0.98] cursor-pointer shadow-sm backdrop-blur-md"
           >
             <ArrowLeft className="w-3.5 h-3.5 text-white/80" />
-            <span className="hidden xs:inline sm:inline">Kembali ke Feed</span>
-            <span className="inline xs:hidden">Feed</span>
+            <span>Kembali ke Feed</span>
           </button>
 
           <div className="flex items-center gap-2 sm:gap-2.5">
@@ -402,25 +428,45 @@ export default function OpportunityDetail({
       {/* Main Content */}
       <main className="relative z-10 flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8 animate-fade-slide-up">
         {/* Opportunity Editorial Header Card */}
-        <section className="surface-panel p-6 sm:p-8 rounded-2xl space-y-6">
-          <div className="flex items-center justify-between gap-3 text-xs font-mono">
-            <div className="flex items-center gap-2">
-              <span className="text-white/80 uppercase tracking-wider text-[11px]">
+        <section className="surface-panel overflow-hidden p-0 rounded-2xl shadow-xl">
+          {/* Responsive Poster Banner */}
+          <div className="w-full h-48 sm:h-64 overflow-hidden relative rounded-t-2xl bg-[#001d4a]">
+            <img
+              src={bannerSrc}
+              alt={opportunity.title}
+              onError={() => {
+                if (bannerSrc !== fallbackBanner) setBannerSrc(fallbackBanner);
+              }}
+              className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+            />
+            {/* Royal Blue Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#002b66] via-[#002b66]/40 to-transparent pointer-events-none" />
+            <div className="absolute top-4 right-4 z-10">
+              <span className="px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-md border border-white/20 text-white text-[11px] font-mono uppercase tracking-wider font-semibold">
                 {opportunity.category}
               </span>
-              {opportunity.is_verified && (
-                <span className="inline-flex items-center gap-1 text-amber-300 font-medium text-[11px]">
-                  <ShieldCheck className="w-3 h-3 text-amber-300" />
-                  <span>Terverifikasi</span>
-                </span>
-              )}
-            </div>
-
-            <div className="text-white/80 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-white/70" />
-              <span>Batas waktu: <strong className="text-white font-normal tabular-nums">{deadline}</strong></span>
             </div>
           </div>
+
+          <div className="p-6 sm:p-8 space-y-6">
+            <div className="flex items-center justify-between gap-3 text-xs font-mono">
+              <div className="flex items-center gap-2">
+                <span className="text-white/80 uppercase tracking-wider text-[11px]">
+                  {opportunity.category}
+                </span>
+                {opportunity.is_verified && (
+                  <span className="inline-flex items-center gap-1 text-amber-300 font-medium text-[11px]">
+                    <ShieldCheck className="w-3 h-3 text-amber-300" />
+                    <span>Terverifikasi</span>
+                  </span>
+                )}
+              </div>
+
+              <div className="text-white/80 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-white/70" />
+                <span>Batas waktu: <strong className="text-white font-normal tabular-nums">{deadline}</strong></span>
+              </div>
+            </div>
 
           <div className="space-y-1.5">
             <h1 className="text-2xl sm:text-3xl font-semibold tracking-[-0.03em] text-white leading-tight">
@@ -505,6 +551,7 @@ export default function OpportunityDetail({
               <span>Buka Portal Resmi</span>
               <ExternalLink className="w-3.5 h-3.5 text-[#004aad]" />
             </a>
+          </div>
           </div>
         </section>
 
@@ -920,7 +967,13 @@ export default function OpportunityDetail({
                         const isRequested = team.hasRequested || status?.success;
 
                         // Data Permohonan & Anggota Kelompok untuk tim ini
-                        const teamInvites = opportunityInvites.filter((inv) => inv.team_request_id === team.id);
+                        const teamInvites = opportunityInvites.filter(
+                          (inv) =>
+                            inv.team_request_id === team.id ||
+                            (isCreator &&
+                              inv.receiver_id === userProfile.id &&
+                              inv.opportunity_id === opportunity.id)
+                        );
                         const acceptedMembers = teamInvites.filter((inv) => inv.status === "accepted");
                         const pendingInvites = teamInvites.filter((inv) => inv.status === "pending");
 

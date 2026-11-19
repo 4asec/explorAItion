@@ -101,6 +101,8 @@ export interface TeamInvite {
   team_name?: string;
   applicant_id: string;
   applicant_name: string;
+  sender_id?: string;
+  receiver_id?: string;
   role_applied?: string;
   message?: string;
   status?: 'pending' | 'accepted' | 'rejected';
