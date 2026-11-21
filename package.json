@@ -1,7 +1,7 @@
 {
   "name": "angkasa",
   "version": "1.0.0",
-  "description": "Platform agregator peluang akademik dan kolaborasi tim cerdas berbasis AI yang mengintegrasikan verifikasi kurator anti-hoaks, pemetaan karir naratif cerdas, dan lini masa persiapan otomatis untuk mahasiswa Indonesia.",
+  "description": "ANGKASA — AI-Powered Verified Opportunity & Team Aggregator: Platform agregator peluang akademik terverifikasi anti-hoaks dan bursa kolaborasi talenta mahasiswa berbasis AI.",
   "private": true,
   "scripts": {
     "dev": "next dev",

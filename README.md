@@ -1,47 +1,46 @@
-<p align="center">
+<div align="center">
   <img src="https://capsule-render.vercel.app/api?type=waving&color=0:002868,100:004aad&height=220&section=header&text=ANGKASA&fontSize=72&fontColor=ffffff&fontAlignY=38&desc=AI-Powered%20Verified%20Opportunity%20%26%20Team%20Aggregator&descAlignY=58&descSize=18&animation=fadeIn" width="100%" alt="ANGKASA Header Banner" />
-</p>
 
-<p align="center">
+  <br/>
+
   <a href="https://angkasa-mauve.vercel.app/" target="_blank">
     <img src="https://img.shields.io/badge/LIVE%20DEMO-ANGKASA--MAUVE.VERCEL.APP-004aad?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo" />
   </a>
   <img src="https://img.shields.io/badge/ACHIEVEMENT-JUARA_2_EXPLORAITION_MALANG_2026-d97706?style=for-the-badge&labelColor=001845" alt="Achievement" />
-</p>
 
-<p align="center">
+  <br/>
+
   <img src="https://img.shields.io/badge/NEXT.JS%2015-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js 15" />
   <img src="https://img.shields.io/badge/TYPESCRIPT-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/TAILWIND_CSS-38B2AC?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
   <img src="https://img.shields.io/badge/SUPABASE-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
   <img src="https://img.shields.io/badge/GOOGLE%20GEMINI%20AI-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white" alt="Google Gemini AI" />
-</p>
+</div>
 
 ---
 
-> **ANGKASA** adalah ekosistem agregasi peluang akademik dan bursa kolaborasi talenta berbasis kecerdasan buatan (*AI-Powered Verified Opportunity & Team Aggregator*). Platform ini dirancang untuk menyelesaikan masalah *information overload*, mengeliminasi hoaks kompetisi, menyediakan peta jalan (*roadmap*) persiapan terstruktur, serta menjembatani pembentukan tim multidisiplin bagi mahasiswa dan pelajar di seluruh Indonesia.
+> **ANGKASA** adalah platform agregator peluang akademik dan kolaborasi talenta berbasis kecerdasan buatan (*AI-Powered Verified Opportunity & Team Aggregator*). Dirancang khusus bagi mahasiswa dan pelajar Indonesia, Angkasa menuntaskan permasalahan *information overload* dan risiko penipuan/hoaks lomba melalui kurasi ketat dua arah, pemetaan karir naratif otomatis, penyusunan lini masa persiapan terstruktur, serta bursa pencarian rekan tim yang terisolasi per kompetisi.
 
 ---
 
-## Ikhtisar Masalah & Solusi Produk
+## Masalah & Proposisi Nilai
 
-Mahasiswa Indonesia menghadapi hambatan sistemik dalam mengakses peluang pengembangan diri di luar kampus:
+Mahasiswa dan pelajar di Indonesia menghadapi hambatan nyata dalam mengembangkan portofolio dan prestasi di luar kurikulum formal:
 
-1. **Fragmentasi Informasi (*Information Overload & Dispersion*)**  
-   Pengumuman lomba, beasiswa, dan seminar tersebar tanpa struktur di ratusan kanal media sosial dan grup percakapan instan. Mahasiswa kehilangan momentum pendaftaran karena ketiadaan agregasi terpusat yang relevan dengan profil keahlian mereka.
-2. **Proliferasi Penipuan & Lomba Fiktif (*Fraud & Anti-Hoax Risk*)**  
-   Maraknya kompetisi bodong berbayar tanpa legalitas yang mengeksploitasi data mahasiswa atau memungut biaya pendaftaran ilegal.
-3. **Ketiadaan Panduan Persiapan Bertahap (*Execution Blindspot*)**  
-   Banyak mahasiswa ragu mendaftar karena tidak memahami alur persiapan teknis, dokumen administratif yang dibutuhkan, maupun estimasi beban kerja kompetisi.
-4. **Friksi Pembentukan Tim Multidisiplin (*Team Matching Friction*)**  
-   Kesulitan mempertemukan kombinasi kompetensi yang ideal (*Hacker*, *Hipster*, dan *Hustler*) tanpa tumpang-tindih peran di tingkat cabang kompetisi.
+1. **Information Overload & Fragmentasi Sumber**  
+   Ribuan informasi kompetisi, hackathon, beasiswa, dan seminar tersebar secara acak di media sosial dan grup siaran instan. Informasi penting sering terlewat karena tidak adanya sistem agregasi terpusat yang relevan dengan minat dan keahlian spesifik peserta.
+2. **Risiko Hoaks, Penipuan, & Lomba Fiktif**  
+   Meningkatnya ajang fiktif berbayar yang mengeksploitasi data pribadi peserta, memungut biaya pendaftaran ilegal, atau menyelenggarakan seleksi bodong tanpa kejelasan legalitas.
+3. **Ketiadaan Peta Jalan Persiapan (Roadmap)**  
+   Banyak mahasiswa urung mendaftar karena kebingungan memetakan langkah persiapan, dokumen administratif yang wajib dipenuhi, serta strategi teknis yang harus dieksekusi.
+4. **Hambatan Pencarian Rekan Tim Lintas Keahlian**  
+   Kesulitan mempertemukan kombinasi kompetensi yang solid (*Hacker, Hipster, Hustler*) pada cabang lomba tertentu tanpa tumpang-tindih peran dan konflik pendaftaran.
 
-### Solusi yang Dihadirkan ANGKASA
-ANGKASA mentransformasikan proses pencarian peluang dari pencarian manual yang rentan hoaks menjadi alur berbasis kecerdasan buatan yang terverifikasi:
-- **Verifikasi Kurasi Dua Tahap (*Segregation of Duties*)**: Setiap peluang dianalisis kredibilitasnya oleh AI dan ditinjau oleh kurator manusia sebelum dipublikasikan ke katalog publik.
-- **AI Career & Skill Insight**: Cukup ceritakan latar belakang diri secara naratif; model *Google Gemini 3.5 Flash Lite* mengekstrak peran dominan, tag kompetensi, serta memetakan arah strategis pengembangan diri secara instan.
-- **AI Preparation Roadmap**: Menghasilkan rencana persiapan mandiri 4 pekan berbasis silabus ajang, dilengkapi pelacak berkas administratif (*Checklist Tracker*).
-- **Bursa Tim Terisolasi (*Context-Isolated Matchmaking*)**: Menghubungkan inisiator dan pencari tim pada cabang lomba spesifik dengan alur persetujuan terstruktur tanpa risiko konflik permohonan ganda.
+### Nilai Tambah yang Ditawarkan Angkasa:
+- **Kurasi Terverifikasi Anti-Hoaks (*Segregation of Duties*)**: Setiap peluang wajib lolos verifikasi komparatif kecerdasan buatan dan validasi kurator manusia sebelum diterbitkan ke katalog publik.
+- **AI Career & Skill Insight**: Cukup menuturkan latar belakang atau minat dalam bahasa natural; mesin *Google Gemini 3.5 Flash Lite* secara otomatis mengekstrak peran dominan, kompas karir, dan tag keahlian terstandarisasi.
+- **AI Preparation Roadmap**: Menghasilkan rencana persiapan mandiri 4 pekan berbasis silabus ajang, lengkap dengan daftar periksa berkas administratif (*Checklist Tracker*).
+- **Bursa Tim Terisolasi (*Context-Isolated Matchmaking*)**: Bursa pencarian rekan tim yang terikat ketat pada `opportunity.id`, memastikan kepastian peran tanpa konflik permohonan ganda.
 
 ---
 
