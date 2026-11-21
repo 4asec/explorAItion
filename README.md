@@ -1,36 +1,202 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<p align="center">
+  <img src="public/readme-banner.svg" alt="ANGKASA Banner" width="100%" />
+</p>
 
-## Getting Started
+<p align="center">
+  <a href="https://angkasa-mauve.vercel.app/" target="_blank">
+    <img src="https://img.shields.io/badge/LIVE%20DEMO-ANGKASA.VERCEL.APP-004aad?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo" />
+  </a>
+  <img src="https://img.shields.io/badge/ACHIEVEMENT-JUARA_2_EXPLORAITION_MALANG_2026-d97706?style=for-the-badge&labelColor=001845" alt="Achievement" />
+</p>
 
-First, run the development server:
+<p align="center">
+  <img src="https://img.shields.io/badge/NEXT.JS%2015-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js 15" />
+  <img src="https://img.shields.io/badge/TYPESCRIPT-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/TAILWIND_CSS-38B2AC?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/SUPABASE-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
+  <img src="https://img.shields.io/badge/GOOGLE%20GEMINI%20AI-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white" alt="Google Gemini AI" />
+</p>
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## Ringkasan Eksekutif & Latar Belakang Masalah
+
+Di era percepatan teknologi dan keterbukaan informasi, mahasiswa dan pelajar di Indonesia menghadapi dilema **Information Overload** dan **Information Asymmetry**:
+
+1. **Penyebaran Informasi yang Terfragmentasi**: Pengumuman kompetisi, hackathon, beasiswa, dan seminar tersebar tanpa struktur di ribuan akun media sosial, poster Instagram, dan grup siaran percakapan. Banyak peluang berkualitas tinggi terlewatkan karena ketidaksesuaian algoritma rekomendasi.
+2. **Bahaya Hoaks & Penipuan Kompetisi**: Tingginya kasus perlombaan fiktif, pungutan liar berkedok biaya pendaftaran, hingga pencurian data pribadi berkedok seleksi beasiswa yang merugikan civitas akademika.
+3. **Ketiadaan Peta Jalan (Roadmap) Persiapan**: Mahasiswa kerap ragu mendaftar karena tidak memahami alur persiapan teknis, kelengkapan berkas administratif, dan kompetensi yang diuji.
+4. **Hambatan Pembentukan Tim Lintas Disiplin**: Kesulitan menemukan rekan tim yang saling melengkapi (kombinasi *Hacker*, *Hipster*, dan *Hustler*) untuk cabang perlombaan tertentu.
+
+**ANGKASA** hadir sebagai platform agregator peluang dan kolaborasi tim berbasis kecerdasan buatan (*AI-Powered Verified Opportunity & Team Aggregator*). Aplikasi ini mengintegrasikan pemetaan potensi diri naratif, kurasi berlapis anti-hoaks (*Segregation of Duties*), pembentukan lini masa persiapan otomatis, dan bursa pencarian rekan tim yang terisolasi per kompetisi.
+
+---
+
+## 3 Pilar Fitur Utama
+
+| Pilar Fitur | Teknologi & Mekanisme Kerja | Nilai Tambah & Dampak |
+| :--- | :--- | :--- |
+| **1. AI Career & Skill Insight** | **Google Gemini AI 3.5 Flash Lite (`@google/genai`)**<br>&bull; Analisis narasi bebas (*unstructured natural story*).<br>&bull; *Structured JSON Schema Output* untuk ekstraksi peran dominan (*Role*), kompas karir, dan arahan taktis.<br>&bull; *Dynamic Skill Extraction*: Menghasilkan daftar tag keahlian terstandarisasi.<br>&bull; *Dual-Mode Hybrid Fallback*: Mekanisme fallback heuristik lokal jika batas kuota API tercapai. | Mahasiswa tidak perlu mengisi formulir kaku berpuluh-puluh kolom; cukup menceritakan latar belakang, minat, atau pengalaman untuk mendapatkan personalisasi katalog dan rekomendasi karir instan. |
+| **2. Verified Curated Feed & AI Preparation Roadmap** | **Dual-Tier Verification & Generative Roadmap Engine**<br>&bull; Pemisahan wewenang (*Segregation of Duties*): Peluang baru masuk ke antrean draf kurator dan hanya tayang setelah diverifikasi.<br>&bull; *Fact-Checking Anti-Hoaks*: Analisis kredibilitas panitia dan rincian biaya pendaftaran.<br>&bull; *Automated Weekly Roadmap*: Penyusunan rencana persiapan 4 pekan berbasis silabus dan kriteria lomba.<br>&bull; *Document Checklist Tracker*: Pelacak kelengkapan berkas administratif tersimpan lokal. | Menghilangkan risiko penipuan dan lomba fiktif hingga 100%, serta memberikan panduan persiapan bertahap agar mahasiswa siap bertanding secara optimal. |
+| **3. Isolated Team Finding & Collaboration** | **Context-Isolated Team Bourse (`team_requests` & `team_invites`)**<br>&bull; Bursa pencarian tim yang terisolasi ketat per cabang perlombaan (`opportunity.id`).<br>&bull; Alur pengajuan kolaborasi (*Send Invite*) satu arah ke inisiator tim.<br>&bull; Panel persetujuan inisiator (*Accept / Reject Invite*).<br>&bull; Manajemen kelompok penuh: Pembatalan permohonan mandiri, *Kick Member*, dan *Delete Group*.<br>&bull; Pencegahan duplikasi tim aktif pada ajang yang sama. | Mengeliminasi friksi pencarian rekan tim dan memastikan mahasiswa dapat membentuk tim lintas disiplin yang terstruktur tanpa tumpang-tindih peran. |
+
+---
+
+## Arsitektur Sistem & Pemisahan Peran
+
+ANGKASA menerapkan pemisahan peran yang tegas antara alur pengalaman mahasiswa (*Student Dashboard Flow*) dan alur verifikasi data (*Curator & Admin Panel Flow*):
+
+```mermaid
+flowchart TD
+  subgraph StudentFlow["Alur Pengguna Mahasiswa (Student Flow)"]
+    A["Mahasiswa / Peserta"] --> B["Onboarding & Personalisasi Profil ('Ceritakan Dirimu')"]
+    B --> C["Engine AI Career Insight (Gemini 3.5 Flash Lite)"]
+    C --> D["Katalog Feed Rekomendasi Terkurasi"]
+    D --> E["Detail Peluang & AI Preparation Roadmap"]
+    E --> F["Bursa Kolaborasi Tim (Lihat Tim / Buat Tim Baru)"]
+    F --> G["Pengajuan Kolaborasi (Send / Accept / Reject Invite)"]
+  end
+
+  subgraph CuratorFlow["Alur Kurator & Admin Panel (/admin)"]
+    H["Admin / Kurator Mitra"] --> I["Input Teks Siaran / Broadcast Poster"]
+    I --> J["AI Fact-Checking & Credibility Analyzer"]
+    J --> K["Draft Peluang (Status: Menunggu Kurasi)"]
+    K --> L["Verifikasi & Publikasi (Status: Terverifikasi)"]
+    L --> D
+  end
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Penjelasan Pemisahan Peran:
+- **Student Dashboard (`/`)**: Fokus pada eksplorasi peluang, personalisasi profil dengan Gemini AI, pemantauan roadmap persiapan, serta interaksi bursa tim kolaborasi.
+- **Curator & Admin Panel (`/admin`)**: Didedikasikan bagi verifikator untuk meninjau draf siaran lomba, memverifikasi keabsahan penyelenggara, mengelola laporan pengguna, dan memantau analitik sebaran bidang lomba.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Tech Stack
 
-## Learn More
+- **Frontend Framework**: [Next.js 15 (App Router)](https://nextjs.org/) dengan *Turbopack Compiler*
+- **Bahasa Pemrograman**: [TypeScript 5](https://www.typescriptlang.org/) (Strict Type-Checking)
+- **Styling & Desain Sistem**: [Tailwind CSS](https://tailwindcss.com/) dengan palet *Royal Blue (`#004aad`)*, aksen *Amber Gold*, ornamen cyber modern, dan efek *Glassmorphism*
+- **Komponen Ikon**: [Lucide React](https://lucide.dev/)
+- **Artificial Intelligence**: Google Gemini API via `@google/genai` (Model: `gemini-3.5-flash-lite` dengan fallback ke `gemini-3.6-flash`)
+- **Backend & Database**: [Supabase](https://supabase.com/) (PostgreSQL dengan Row Level Security & Supabase Auth Session)
+- **State Management & Sinkronisasi**: Hybrid Client State, `localStorage` / `sessionStorage` fallback, dan Next.js Serverless API Route Handlers
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Struktur Direktori
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```text
+explorAItion-HACKATON/
+├── public/                      # Aset gambar publik, banner SVG, & ilustrasi fallback
+│   ├── fallback-anime-poster.svg# Poster vektor cadangan lokal
+│   ├── readme-banner.svg        # Hero banner resmi repositori
+│   └── ...
+├── src/
+│   ├── app/                     # Next.js App Router
+│   │   ├── admin/               # Halaman Panel Kurator & Analitik Admin
+│   │   │   └── page.tsx
+│   │   ├── api/                 # Endpoint Serverless API Handlers
+│   │   │   ├── analyze/         # Verifikasi siaran teks peluang (anti-hoaks)
+│   │   │   ├── feed/            # Rekomendasi peluang terpersonalisasi
+│   │   │   ├── profile-insight/ # Ekstraksi keahlian & kompas karir naratif
+│   │   │   ├── roadmap/         # Penyusunan rencana persiapan 4 pekan
+│   │   │   └── team/            # Pengelolaan tim & undangan kolaborasi
+│   │   ├── globals.css          # Desain sistem & utilitas animasi
+│   │   ├── layout.tsx           # Root layout aplikasi
+│   │   └── page.tsx             # Titik masuk utama (Single Page Orchestrator)
+│   ├── components/              # Komponen antarmuka modular
+│   │   ├── auth/                # Modal autentikasi & tombol Demo 1-Klik
+│   │   ├── BackgroundOrnaments.tsx # Ornamen visual latar belakang
+│   │   ├── CuratorPanel.tsx     # Laci modal kurasi peluang mandiri
+│   │   ├── FeedDashboard.tsx    # Katalog peluang & sistem pencarian/filter
+│   │   ├── OpportunityDetail.tsx# Halaman detail lomba, roadmap, & bursa tim
+│   │   └── ProfileView.tsx      # Manajemen profil minat & AI Career Insight
+│   ├── lib/                     # Abstraksi data & integrasi pihak ketiga
+│   │   ├── apiClient.ts         # Abstraksi pemanggilan API & sinkronisasi Supabase
+│   │   ├── mockData.ts          # Dataset mock luring cadangan demo
+│   │   └── supabaseClient.ts    # Inisialisasi koneksi klien Supabase
+│   └── types/                   # Definisi tipe & kontrak data
+│       └── schema.ts            # Skema TypeScript terpadu
+├── AGENTS.md                    # Aturan disiplin kerja & batasan repositori tim
+├── package.json                 # Konfigurasi dependensi dan skrip proyek
+└── README.md                    # Dokumentasi utama proyek
+```
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Panduan Instalasi Lokal
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Ikuti langkah-langkah berikut untuk menjalankan ANGKASA di komputer lokal:
+
+### 1. Prasyarat Sistem
+- **Node.js**: Versi 18.18.0 atau yang lebih baru (disarankan Node.js v20 LTS).
+- **npm** (atau yarn / pnpm / bun).
+- Kunci API Google Gemini (dapat diperoleh secara gratis melalui [Google AI Studio](https://aistudio.google.com/)).
+
+### 2. Kloning Repositori
+```bash
+git clone https://github.com/4asec/explorAItion.git
+cd explorAItion
+```
+
+### 3. Instalasi Dependensi
+```bash
+npm install
+```
+
+### 4. Konfigurasi Environment Variables
+Buat berkas `.env.local` di direktori *root* proyek dan sesuaikan nilainya:
+
+```env
+# Kredensial Supabase (Opsional jika ingin sinkronisasi penuh database cloud)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
+# Google Gemini API Key (Wajib untuk menjalankan fitur AI secara aktif)
+GEMINI_API_KEY=your-gemini-api-key
+```
+
+> **Catatan Pengujian:** Apabila `GEMINI_API_KEY` tidak diisi atau kuota API habis, sistem ANGKASA secara cerdas mengaktifkan *offline heuristic fallback* sehingga presentasi dan pengujian antarmuka tetap berjalan lancar tanpa mengalami kendala layar kosong (*crash*).
+
+### 5. Menjalankan Server Pengembangan
+```bash
+npm run dev
+```
+
+Buka peramban web dan navigasikan ke:
+```text
+http://localhost:3000
+```
+
+### 6. Akses Panel Kurator & Admin
+Untuk mengakses antarmuka kurator dan verifikator peluang anti-hoaks, buka:
+```text
+http://localhost:3000/admin
+```
+
+---
+
+## Akun Demo untuk Pengujian Cepat
+
+Untuk mempermudah dewan juri dan penguji dalam mengevaluasi alur kerja aplikasi secara langsung:
+- **Masuk Akun Demo (1-Klik)**: Tersedia tombol instan *"Masuk Akun Demo 1-Klik"* di halaman autentikasi awal yang langsung mengarahkan pengguna ke halaman personalisasi profil dan feed cerdas tanpa perlu mendaftar email secara manual.
+- **Role Switcher**: Tersedia simulasi peran mahasiswa dan akses panel kurator di `/admin` untuk menguji pemisahan wewenang secara komprehensif.
+
+---
+
+## Tim Pengembang
+
+Proyek **ANGKASA** dikembangkan oleh tim mahasiswa **D4 Teknik Informatika, Jurusan Teknologi Informasi — Politeknik Negeri Malang**:
+
+- **Muhammad Raffa Danendra** &bull; *Hacker (AI Architecture & Backend Engineering)*
+- **Muhammad Iqbal Bayuaji** &bull; *Hipster (UI/UX Design & Frontend Engineering)*
+- **Revaldo** &bull; *Hustler (Product Strategy & Pitch Lead)*
+- **Aldo** &bull; *Team Contributor*
+
+---
+
+<p align="center">
+  <strong>ANGKASA &bull; EXPLOR[AI]TION HACKATHON 2026</strong><br>
+  <em>Membuka Cakrawala Prestasi dan Kolaborasi Talenta Muda Indonesia</em>
+</p>

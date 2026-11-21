@@ -1605,7 +1605,8 @@ export async function sendTeamInvite(
 
 const MANUAL_OPP_STORAGE_KEY = "angkasa_curator_opportunities";
 
-export const DEFAULT_POSTER_URL = "";
+export const DEFAULT_POSTER_URL =
+  "https://repository-images.githubusercontent.com/20374133/737a7f00-ccb7-11e9-8665-cd8fb0842d18";
 
 /**
  * Membersihkan cache sesi rekomendasi feed (invalidation)

@@ -58,16 +58,18 @@ export interface OpportunityDetailProps {
 type ActiveTab = "roadmap" | "team";
 
 /**
- * Foto banner stok beresolusi tinggi profesional sesuai kategori peluang
+ * Poster ilustrasi bergaya anime beresolusi tinggi sesuai kategori peluang
  */
 const CATEGORY_BANNER_FALLBACKS: Record<string, string> = {
   Lomba:
-    "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80",
+    "https://repository-images.githubusercontent.com/20374133/737a7f00-ccb7-11e9-8665-cd8fb0842d18",
   Beasiswa:
-    "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=1200&q=80",
   Seminar:
-    "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=1200&q=80",
 };
+
+const LOCAL_ANIME_FALLBACK = "/fallback-anime-poster.svg";
 
 function getCategoryBanner(category?: string): string {
   if (category && CATEGORY_BANNER_FALLBACKS[category]) {
@@ -552,7 +554,11 @@ export default function OpportunityDetail({
               src={bannerSrc}
               alt={opportunity.title}
               onError={() => {
-                if (bannerSrc !== fallbackBanner) setBannerSrc(fallbackBanner);
+                if (bannerSrc !== fallbackBanner) {
+                  setBannerSrc(fallbackBanner);
+                } else if (bannerSrc !== LOCAL_ANIME_FALLBACK) {
+                  setBannerSrc(LOCAL_ANIME_FALLBACK);
+                }
               }}
               className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
             />

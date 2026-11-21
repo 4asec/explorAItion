@@ -49,18 +49,20 @@ export interface FeedDashboardProps {
 type CategoryFilter = "Semua" | "Lomba" | "Beasiswa" | "Seminar";
 
 /**
- * Foto banner stok beresolusi tinggi profesional sesuai kategori peluang
+ * Poster ilustrasi bergaya anime beresolusi tinggi sesuai kategori peluang
  */
-const CATEGORY_BANNER_FALLBACKS: Record<string, string> = {
+export const CATEGORY_BANNER_FALLBACKS: Record<string, string> = {
   Lomba:
-    "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80",
+    "https://repository-images.githubusercontent.com/20374133/737a7f00-ccb7-11e9-8665-cd8fb0842d18",
   Beasiswa:
-    "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=1200&q=80",
   Seminar:
-    "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=1200&q=80",
 };
 
-function getCategoryBanner(category?: string): string {
+export const LOCAL_ANIME_FALLBACK = "/fallback-anime-poster.svg";
+
+export function getCategoryBanner(category?: string): string {
   if (category && CATEGORY_BANNER_FALLBACKS[category]) {
     return CATEGORY_BANNER_FALLBACKS[category];
   }
@@ -68,7 +70,7 @@ function getCategoryBanner(category?: string): string {
 }
 
 /**
- * OpportunityPoster: Render foto banner beresolusi tinggi dengan fallback stok foto kategori profesional
+ * OpportunityPoster: Render foto banner anime beresolusi tinggi dengan fallback ilustrasi kategori
  * (Tanpa pengulangan teks judul lomba dan penyelenggara di dalam area gambar)
  */
 function OpportunityPoster({
@@ -95,6 +97,8 @@ function OpportunityPoster({
       onError={() => {
         if (imgSrc !== fallbackUrl) {
           setImgSrc(fallbackUrl);
+        } else if (imgSrc !== LOCAL_ANIME_FALLBACK) {
+          setImgSrc(LOCAL_ANIME_FALLBACK);
         }
       }}
     />
