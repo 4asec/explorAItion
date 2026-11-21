@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="public/readme-banner.svg" alt="ANGKASA Banner" width="100%" />
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:002868,100:004aad&height=220&section=header&text=ANGKASA&fontSize=72&fontColor=ffffff&fontAlignY=38&desc=AI-Powered%20Verified%20Opportunity%20%26%20Team%20Aggregator&descAlignY=58&descSize=18&animation=fadeIn" width="100%" alt="ANGKASA Header Banner" />
 </p>
 
 <p align="center">
   <a href="https://angkasa-mauve.vercel.app/" target="_blank">
-    <img src="https://img.shields.io/badge/LIVE%20DEMO-ANGKASA.VERCEL.APP-004aad?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo" />
+    <img src="https://img.shields.io/badge/LIVE%20DEMO-ANGKASA--MAUVE.VERCEL.APP-004aad?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo" />
   </a>
   <img src="https://img.shields.io/badge/ACHIEVEMENT-JUARA_2_EXPLORAITION_MALANG_2026-d97706?style=for-the-badge&labelColor=001845" alt="Achievement" />
 </p>
@@ -19,36 +19,49 @@
 
 ---
 
-## Ringkasan Eksekutif & Latar Belakang Masalah
+> **ANGKASA** adalah ekosistem agregasi peluang akademik dan bursa kolaborasi talenta berbasis kecerdasan buatan (*AI-Powered Verified Opportunity & Team Aggregator*). Platform ini dirancang untuk menyelesaikan masalah *information overload*, mengeliminasi hoaks kompetisi, menyediakan peta jalan (*roadmap*) persiapan terstruktur, serta menjembatani pembentukan tim multidisiplin bagi mahasiswa dan pelajar di seluruh Indonesia.
 
-Di era percepatan teknologi dan keterbukaan informasi, mahasiswa dan pelajar di Indonesia menghadapi dilema **Information Overload** dan **Information Asymmetry**:
+---
 
-1. **Penyebaran Informasi yang Terfragmentasi**: Pengumuman kompetisi, hackathon, beasiswa, dan seminar tersebar tanpa struktur di ribuan akun media sosial, poster Instagram, dan grup siaran percakapan. Banyak peluang berkualitas tinggi terlewatkan karena ketidaksesuaian algoritma rekomendasi.
-2. **Bahaya Hoaks & Penipuan Kompetisi**: Tingginya kasus perlombaan fiktif, pungutan liar berkedok biaya pendaftaran, hingga pencurian data pribadi berkedok seleksi beasiswa yang merugikan civitas akademika.
-3. **Ketiadaan Peta Jalan (Roadmap) Persiapan**: Mahasiswa kerap ragu mendaftar karena tidak memahami alur persiapan teknis, kelengkapan berkas administratif, dan kompetensi yang diuji.
-4. **Hambatan Pembentukan Tim Lintas Disiplin**: Kesulitan menemukan rekan tim yang saling melengkapi (kombinasi *Hacker*, *Hipster*, dan *Hustler*) untuk cabang perlombaan tertentu.
+## Ikhtisar Masalah & Solusi Produk
 
-**ANGKASA** hadir sebagai platform agregator peluang dan kolaborasi tim berbasis kecerdasan buatan (*AI-Powered Verified Opportunity & Team Aggregator*). Aplikasi ini mengintegrasikan pemetaan potensi diri naratif, kurasi berlapis anti-hoaks (*Segregation of Duties*), pembentukan lini masa persiapan otomatis, dan bursa pencarian rekan tim yang terisolasi per kompetisi.
+Mahasiswa Indonesia menghadapi hambatan sistemik dalam mengakses peluang pengembangan diri di luar kampus:
+
+1. **Fragmentasi Informasi (*Information Overload & Dispersion*)**  
+   Pengumuman lomba, beasiswa, dan seminar tersebar tanpa struktur di ratusan kanal media sosial dan grup percakapan instan. Mahasiswa kehilangan momentum pendaftaran karena ketiadaan agregasi terpusat yang relevan dengan profil keahlian mereka.
+2. **Proliferasi Penipuan & Lomba Fiktif (*Fraud & Anti-Hoax Risk*)**  
+   Maraknya kompetisi bodong berbayar tanpa legalitas yang mengeksploitasi data mahasiswa atau memungut biaya pendaftaran ilegal.
+3. **Ketiadaan Panduan Persiapan Bertahap (*Execution Blindspot*)**  
+   Banyak mahasiswa ragu mendaftar karena tidak memahami alur persiapan teknis, dokumen administratif yang dibutuhkan, maupun estimasi beban kerja kompetisi.
+4. **Friksi Pembentukan Tim Multidisiplin (*Team Matching Friction*)**  
+   Kesulitan mempertemukan kombinasi kompetensi yang ideal (*Hacker*, *Hipster*, dan *Hustler*) tanpa tumpang-tindih peran di tingkat cabang kompetisi.
+
+### Solusi yang Dihadirkan ANGKASA
+ANGKASA mentransformasikan proses pencarian peluang dari pencarian manual yang rentan hoaks menjadi alur berbasis kecerdasan buatan yang terverifikasi:
+- **Verifikasi Kurasi Dua Tahap (*Segregation of Duties*)**: Setiap peluang dianalisis kredibilitasnya oleh AI dan ditinjau oleh kurator manusia sebelum dipublikasikan ke katalog publik.
+- **AI Career & Skill Insight**: Cukup ceritakan latar belakang diri secara naratif; model *Google Gemini 3.5 Flash Lite* mengekstrak peran dominan, tag kompetensi, serta memetakan arah strategis pengembangan diri secara instan.
+- **AI Preparation Roadmap**: Menghasilkan rencana persiapan mandiri 4 pekan berbasis silabus ajang, dilengkapi pelacak berkas administratif (*Checklist Tracker*).
+- **Bursa Tim Terisolasi (*Context-Isolated Matchmaking*)**: Menghubungkan inisiator dan pencari tim pada cabang lomba spesifik dengan alur persetujuan terstruktur tanpa risiko konflik permohonan ganda.
 
 ---
 
 ## 3 Pilar Fitur Utama
 
-| Pilar Fitur | Teknologi & Mekanisme Kerja | Nilai Tambah & Dampak |
+| Pilar Fitur | Mekanisme & Arsitektur Teknologi | Dampak Nyata bagi Pengguna |
 | :--- | :--- | :--- |
-| **1. AI Career & Skill Insight** | **Google Gemini AI 3.5 Flash Lite (`@google/genai`)**<br>&bull; Analisis narasi bebas (*unstructured natural story*).<br>&bull; *Structured JSON Schema Output* untuk ekstraksi peran dominan (*Role*), kompas karir, dan arahan taktis.<br>&bull; *Dynamic Skill Extraction*: Menghasilkan daftar tag keahlian terstandarisasi.<br>&bull; *Dual-Mode Hybrid Fallback*: Mekanisme fallback heuristik lokal jika batas kuota API tercapai. | Mahasiswa tidak perlu mengisi formulir kaku berpuluh-puluh kolom; cukup menceritakan latar belakang, minat, atau pengalaman untuk mendapatkan personalisasi katalog dan rekomendasi karir instan. |
-| **2. Verified Curated Feed & AI Preparation Roadmap** | **Dual-Tier Verification & Generative Roadmap Engine**<br>&bull; Pemisahan wewenang (*Segregation of Duties*): Peluang baru masuk ke antrean draf kurator dan hanya tayang setelah diverifikasi.<br>&bull; *Fact-Checking Anti-Hoaks*: Analisis kredibilitas panitia dan rincian biaya pendaftaran.<br>&bull; *Automated Weekly Roadmap*: Penyusunan rencana persiapan 4 pekan berbasis silabus dan kriteria lomba.<br>&bull; *Document Checklist Tracker*: Pelacak kelengkapan berkas administratif tersimpan lokal. | Menghilangkan risiko penipuan dan lomba fiktif hingga 100%, serta memberikan panduan persiapan bertahap agar mahasiswa siap bertanding secara optimal. |
+| **1. AI Career & Skill Insight** | **Google Gemini AI 3.5 Flash Lite (`@google/genai`)**<br>&bull; Analisis narasi bebas (*unstructured natural language processing*).<br>&bull; *Structured JSON Schema Output* untuk ekstraksi peran dominan (*Role*), kompas karir, dan arahan taktis.<br>&bull; *Dynamic Skill Extraction*: Menghasilkan daftar tag keahlian terstandarisasi yang otomatis menggantikan minat aktif.<br>&bull; *Dual-Mode Hybrid Fallback*: Mekanisme fallback heuristik lokal jika batas kuota API tercapai atau koneksi luring. | Mahasiswa tidak perlu mengisi formulir panjang yang kaku; cukup menceritakan pengalaman dan aspirasi untuk mendapatkan arahan karir dan katalog lomba yang presisi. |
+| **2. Verified Curated Feed & AI Preparation Roadmap** | **Dual-Tier Verification & Generative Roadmap Engine**<br>&bull; Pemisahan wewenang (*Segregation of Duties*): Peluang baru masuk ke antrean draf kurator dan hanya tayang setelah diverifikasi sah.<br>&bull; *Fact-Checking Anti-Hoaks*: Analisis kredibilitas panitia penyelenggara dan transparansi biaya pendaftaran.<br>&bull; *Automated Weekly Roadmap*: Penyusunan rencana persiapan 4 pekan berbasis silabus dan kriteria lomba.<br>&bull; *Document Checklist Tracker*: Pelacak kelengkapan berkas administratif yang tersimpan lokal. | Menjamin 100% peluang di platform aman dari penipuan dan lomba fiktif, sekaligus memberi panduan persiapan mingguan agar tim siap bertanding optimal. |
 | **3. Isolated Team Finding & Collaboration** | **Context-Isolated Team Bourse (`team_requests` & `team_invites`)**<br>&bull; Bursa pencarian tim yang terisolasi ketat per cabang perlombaan (`opportunity.id`).<br>&bull; Alur pengajuan kolaborasi (*Send Invite*) satu arah ke inisiator tim.<br>&bull; Panel persetujuan inisiator (*Accept / Reject Invite*).<br>&bull; Manajemen kelompok penuh: Pembatalan permohonan mandiri, *Kick Member*, dan *Delete Group*.<br>&bull; Pencegahan duplikasi tim aktif pada ajang yang sama. | Mengeliminasi friksi pencarian rekan tim dan memastikan mahasiswa dapat membentuk tim lintas disiplin yang terstruktur tanpa tumpang-tindih peran. |
 
 ---
 
 ## Arsitektur Sistem & Pemisahan Peran
 
-ANGKASA menerapkan pemisahan peran yang tegas antara alur pengalaman mahasiswa (*Student Dashboard Flow*) dan alur verifikasi data (*Curator & Admin Panel Flow*):
+ANGKASA menerapkan arsitektur *role-separated* yang memisahkan alur pengalaman mahasiswa (*Student Dashboard*) dan alur kurasi pengawas (*Curator & Admin Panel*):
 
 ```mermaid
 flowchart TD
-  subgraph StudentFlow["Alur Pengguna Mahasiswa (Student Flow)"]
+  subgraph StudentFlow["Alur Pengguna Mahasiswa (Student Dashboard)"]
     A["Mahasiswa / Peserta"] --> B["Onboarding & Personalisasi Profil ('Ceritakan Dirimu')"]
     B --> C["Engine AI Career Insight (Gemini 3.5 Flash Lite)"]
     C --> D["Katalog Feed Rekomendasi Terkurasi"]
@@ -67,8 +80,8 @@ flowchart TD
 ```
 
 ### Penjelasan Pemisahan Peran:
-- **Student Dashboard (`/`)**: Fokus pada eksplorasi peluang, personalisasi profil dengan Gemini AI, pemantauan roadmap persiapan, serta interaksi bursa tim kolaborasi.
-- **Curator & Admin Panel (`/admin`)**: Didedikasikan bagi verifikator untuk meninjau draf siaran lomba, memverifikasi keabsahan penyelenggara, mengelola laporan pengguna, dan memantau analitik sebaran bidang lomba.
+- **Student Dashboard (`/`)**: Fokus pada penemuan peluang yang relevan dengan profil minat, pemantauan roadmap persiapan teknis, serta interaksi bursa pencarian rekan tim.
+- **Curator & Admin Panel (`/admin`)**: Disediakan khusus bagi verifikator untuk meninjau draf siaran lomba, memverifikasi keabsahan penyelenggara, mengelola laporan pengguna, dan memantau analitik sebaran kompetisi.
 
 ---
 
@@ -76,9 +89,9 @@ flowchart TD
 
 - **Frontend Framework**: [Next.js 15 (App Router)](https://nextjs.org/) dengan *Turbopack Compiler*
 - **Bahasa Pemrograman**: [TypeScript 5](https://www.typescriptlang.org/) (Strict Type-Checking)
-- **Styling & Desain Sistem**: [Tailwind CSS](https://tailwindcss.com/) dengan palet *Royal Blue (`#004aad`)*, aksen *Amber Gold*, ornamen cyber modern, dan efek *Glassmorphism*
+- **Styling & Desain Sistem**: [Tailwind CSS](https://tailwindcss.com/) dengan tema *Royal Blue (`#004aad`)*, aksen *Amber Gold*, ornamen cyber modern, dan efek *Glassmorphism*
 - **Komponen Ikon**: [Lucide React](https://lucide.dev/)
-- **Artificial Intelligence**: Google Gemini API via `@google/genai` (Model: `gemini-3.5-flash-lite` dengan fallback ke `gemini-3.6-flash`)
+- **Artificial Intelligence**: Google Gemini API via `@google/genai` (Model utama: `gemini-3.5-flash-lite` dengan fallback ke `gemini-3.6-flash`)
 - **Backend & Database**: [Supabase](https://supabase.com/) (PostgreSQL dengan Row Level Security & Supabase Auth Session)
 - **State Management & Sinkronisasi**: Hybrid Client State, `localStorage` / `sessionStorage` fallback, dan Next.js Serverless API Route Handlers
 
@@ -88,9 +101,8 @@ flowchart TD
 
 ```text
 explorAItion-HACKATON/
-├── public/                      # Aset gambar publik, banner SVG, & ilustrasi fallback
+├── public/                      # Aset statis & ilustrasi vektor fallback
 │   ├── fallback-anime-poster.svg# Poster vektor cadangan lokal
-│   ├── readme-banner.svg        # Hero banner resmi repositori
 │   └── ...
 ├── src/
 │   ├── app/                     # Next.js App Router
@@ -102,7 +114,7 @@ explorAItion-HACKATON/
 │   │   │   ├── profile-insight/ # Ekstraksi keahlian & kompas karir naratif
 │   │   │   ├── roadmap/         # Penyusunan rencana persiapan 4 pekan
 │   │   │   └── team/            # Pengelolaan tim & undangan kolaborasi
-│   │   ├── globals.css          # Desain sistem & utilitas animasi
+│   │   ├── globals.css          # Desain sistem & utilitas antarmuka
 │   │   ├── layout.tsx           # Root layout aplikasi
 │   │   └── page.tsx             # Titik masuk utama (Single Page Orchestrator)
 │   ├── components/              # Komponen antarmuka modular
@@ -127,7 +139,7 @@ explorAItion-HACKATON/
 
 ## Panduan Instalasi Lokal
 
-Ikuti langkah-langkah berikut untuk menjalankan ANGKASA di komputer lokal:
+Ikuti langkah-langkah berikut untuk menjalankan ANGKASA di lingkungan lokal:
 
 ### 1. Prasyarat Sistem
 - **Node.js**: Versi 18.18.0 atau yang lebih baru (disarankan Node.js v20 LTS).
