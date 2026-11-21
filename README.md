@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:002868,100:004aad&height=220&section=header&text=ANGKASA&fontSize=72&fontColor=ffffff&fontAlignY=38&desc=AI-Powered%20Verified%20Opportunity%20%26%20Team%20Aggregator&descAlignY=58&descSize=18&animation=fadeIn" width="100%" alt="ANGKASA Header Banner" />
+  <img src="./public/angkasa-banner.png" width="100%" alt="ANGKASA Header Banner" />
 
   <br/>
 
