@@ -12,6 +12,14 @@ import {
   OpportunityVerificationResult,
   ProfileInsightResult,
 } from "@/types/schema";
+import {
+  validateProfileInput,
+  validateCreateTeamInput,
+  validateOpportunityInput,
+  validateTeamInviteInput,
+  sanitizeText,
+  sanitizeStringArray,
+} from "@/lib/validation";
 
 /**
  * Cache in-memory lokal untuk bookmark (fallback jika Supabase belum terhubung saat demo)
@@ -73,7 +81,13 @@ export async function loginUser(
             province: profile.province,
             city: profile.city,
             profiling: Array.isArray(profile.profiling) ? profile.profiling : [],
+            role: profile.role || "user",
           };
+
+          if (typeof document !== "undefined") {
+            document.cookie = `angkasa_role=${normalizedProfile.role}; path=/; max-age=86400; SameSite=Lax`;
+          }
+
           return { data: { user: data.user, profile: normalizedProfile }, error: null };
         }
 
@@ -89,7 +103,12 @@ export async function loginUser(
           province: "Indonesia",
           city: "Indonesia",
           profiling: [],
+          role: "user",
         };
+
+        if (typeof document !== "undefined") {
+          document.cookie = `angkasa_role=user; path=/; max-age=86400; SameSite=Lax`;
+        }
 
         return { data: { user: data.user, profile: fallbackProfile }, error: null };
       }
@@ -101,6 +120,9 @@ export async function loginUser(
       email === "demo@angkasa.id" ||
       email.includes("demo")
     ) {
+      if (typeof document !== "undefined") {
+        document.cookie = `angkasa_role=user; path=/; max-age=86400; SameSite=Lax`;
+      }
       return {
         data: {
           user: { id: mockUserProfile.id, email: mockUserProfile.email },
@@ -128,7 +150,12 @@ export async function loginUser(
         "Web Development",
         "Creative Problem Solving",
       ],
+      role: "user",
     };
+
+    if (typeof document !== "undefined") {
+      document.cookie = `angkasa_role=user; path=/; max-age=86400; SameSite=Lax`;
+    }
 
     return {
       data: {
@@ -248,7 +275,12 @@ export async function loginDemoUser(): Promise<ApiResponse<{ user: any; profile:
             province: profile.province,
             city: profile.city,
             profiling: Array.isArray(profile.profiling) ? profile.profiling : mockUserProfile.profiling,
+            role: profile.role || "user",
           };
+
+          if (typeof document !== "undefined") {
+            document.cookie = `angkasa_role=${loadedProfile.role}; path=/; max-age=86400; SameSite=Lax`;
+          }
 
           return {
             data: { user: data.user, profile: loadedProfile },
@@ -256,6 +288,10 @@ export async function loginDemoUser(): Promise<ApiResponse<{ user: any; profile:
           };
         }
       }
+    }
+
+    if (typeof document !== "undefined") {
+      document.cookie = `angkasa_role=user; path=/; max-age=86400; SameSite=Lax`;
     }
 
     // Jika akun demo belum ada di auth Supabase atau sedang offline, gunakan mockUserProfile
@@ -267,6 +303,9 @@ export async function loginDemoUser(): Promise<ApiResponse<{ user: any; profile:
       error: null,
     };
   } catch (err) {
+    if (typeof document !== "undefined") {
+      document.cookie = `angkasa_role=user; path=/; max-age=86400; SameSite=Lax`;
+    }
     return {
       data: {
         user: { id: mockUserProfile.id, email: mockUserProfile.email },
@@ -282,6 +321,10 @@ export async function loginDemoUser(): Promise<ApiResponse<{ user: any; profile:
  */
 export async function logoutUser(): Promise<{ success: boolean; error: string | null }> {
   try {
+    if (typeof document !== "undefined") {
+      document.cookie = "angkasa_role=; path=/; max-age=0";
+      document.cookie = "angkasa_admin_session=; path=/; max-age=0";
+    }
     if (isSupabaseConfigured) {
       await supabaseClient.auth.signOut();
     }
@@ -322,11 +365,13 @@ export async function updateUserProfile(
   updates: string[] | { profiling: string[] }
 ): Promise<ApiResponse<UserProfile>> {
   try {
-    const profilingArray: string[] = Array.isArray(updates)
+    const rawArray: string[] = Array.isArray(updates)
       ? updates
       : Array.isArray(updates?.profiling)
       ? updates.profiling
       : [];
+
+    const profilingArray = sanitizeStringArray(rawArray, 30, 60);
 
     // Invalidate feed cache agar rekomendasi langsung diperbarui
     invalidateUserFeedCache(userId);
@@ -336,6 +381,7 @@ export async function updateUserProfile(
         .from("profiles")
         .update({
           profiling: profilingArray,
+          updated_at: new Date().toISOString(),
         })
         .eq("id", userId)
         .select()
@@ -844,8 +890,17 @@ export async function createTeamRequest(
   payload: CreateTeamPayload
 ): Promise<ApiResponse<TeamRequest>> {
   try {
-    let creatorId = payload.creator_id?.trim();
-    let creatorName = payload.creator_name?.trim();
+    const validation = validateCreateTeamInput(payload);
+    if (!validation.valid) {
+      return {
+        data: null,
+        error: Object.values(validation.errors)[0] || "Data pendaftaran tim tidak valid.",
+      };
+    }
+    const clean = validation.data;
+
+    let creatorId = clean.creator_id?.trim();
+    let creatorName = clean.creator_name?.trim();
 
     if (!creatorId && isSupabaseConfigured) {
       try {
@@ -880,11 +935,11 @@ export async function createTeamRequest(
 
     const newTeam: TeamRequest = {
       id: `team-${Date.now()}`,
-      opportunity_id: payload.opportunity_id,
+      opportunity_id: clean.opportunity_id,
       creator_id: creatorId,
       creator_name: creatorName,
-      team_name: payload.team_name,
-      role_needed: payload.role_needed,
+      team_name: clean.team_name,
+      role_needed: clean.role_needed,
       hasRequested: false,
       created_at: new Date().toISOString(),
     };
@@ -1477,8 +1532,8 @@ export async function sendTeamInvite(
       applicantName = "Peserta Angkasa";
     }
 
-    const newInvite: TeamInvite = {
-      id: inviteId,
+    // Sanitasi dan validasi ketat input pengajuan bergabung tim
+    const inviteValidation = validateTeamInviteInput({
       team_request_id: teamRequestId,
       opportunity_id: opportunityId,
       opportunity_title: options?.opportunity_title,
@@ -1487,8 +1542,32 @@ export async function sendTeamInvite(
       sender_id: activeSenderId,
       receiver_id: options?.receiver_id,
       applicant_name: applicantName,
-      role_applied: options?.role_applied || "Anggota Tim",
-      message: options?.message || "",
+      role_applied: options?.role_applied,
+      message: options?.message,
+    });
+
+    if (!inviteValidation.valid) {
+      return {
+        success: false,
+        message: "",
+        error: Object.values(inviteValidation.errors)[0] || "Data pengajuan bergabung tidak valid.",
+      };
+    }
+
+    const cleanInvite = inviteValidation.data;
+
+    const newInvite: TeamInvite = {
+      id: inviteId,
+      team_request_id: cleanInvite.team_request_id!,
+      opportunity_id: opportunityId,
+      opportunity_title: cleanInvite.opportunity_title,
+      team_name: cleanInvite.team_name,
+      applicant_id: cleanInvite.applicant_id || activeSenderId,
+      sender_id: cleanInvite.sender_id || activeSenderId,
+      receiver_id: cleanInvite.receiver_id,
+      applicant_name: cleanInvite.applicant_name || applicantName,
+      role_applied: cleanInvite.role_applied || "Anggota Tim",
+      message: cleanInvite.message || "",
       status: "pending",
       created_at: new Date().toISOString(),
     };
@@ -1836,36 +1915,67 @@ export async function fetchAllOpportunitiesForCurator(): Promise<ApiResponse<Opp
 }
 
 /**
- * Menyimpan peluang baru hasil input manual kurator dengan status awal is_verified: false
+ * Menyimpan peluang baru hasil input manual kurator/admin langsung ke tabel opportunities dengan status: 'verified'
  */
 export async function createManualOpportunity(
   payload: Partial<Opportunity>
 ): Promise<ApiResponse<Opportunity>> {
+  const validation = validateOpportunityInput(payload);
+  if (!validation.valid) {
+    return {
+      data: null,
+      error: Object.values(validation.errors)[0] || "Data peluang tidak valid.",
+    };
+  }
+  const clean = validation.data;
+
+  let activeCreatorId: string | null = null;
+  if (isSupabaseConfigured) {
+    try {
+      const { data: authData } = await supabaseClient.auth.getUser();
+      if (authData?.user?.id) {
+        activeCreatorId = authData.user.id;
+      }
+    } catch {}
+  }
+
+  // Parse deadline aman: jika format tanggal valid maka jadikan ISO timestamptz
+  let parsedDeadline: string | null = null;
+  if (clean.deadline && clean.deadline !== "Segera") {
+    const d = new Date(clean.deadline);
+    if (!isNaN(d.getTime())) {
+      parsedDeadline = d.toISOString();
+    }
+  }
+
   const newOpp: Opportunity = {
-    id: payload.id || `opp-manual-${Date.now()}`,
-    title: payload.title || "Peluang Baru",
-    category: payload.category || "Lomba",
-    organizer: payload.organizer || "Penyelenggara",
-    caption: payload.caption || payload.deadline || "Segera",
-    deadline: payload.caption || payload.deadline || "Segera",
-    description_roadmap: payload.description_roadmap || payload.description || "",
-    description: payload.description_roadmap || payload.description || "",
-    registration_url: payload.registration_url || "https://angkasa.id",
-    image_url: payload.image_url || DEFAULT_POSTER_URL,
-    requirements: payload.requirements || [
+    id: clean.id || `opp-manual-${Date.now()}`,
+    title: clean.title || "Peluang Baru",
+    category: clean.category || "Lomba",
+    organizer: clean.organizer || "Penyelenggara",
+    caption: clean.caption || clean.deadline || "Segera",
+    deadline: clean.caption || clean.deadline || "Segera",
+    description_roadmap: clean.description_roadmap || clean.description || "",
+    description: clean.description_roadmap || clean.description || "",
+    registration_url: clean.registration_url || "https://angkasa.id",
+    image_url: clean.image_url || DEFAULT_POSTER_URL,
+    requirements: clean.requirements || [
       "Mahasiswa aktif diploma/sarjana perguruan tinggi",
       "Memenuhi kriteria teknis yang disyaratkan panitia",
     ],
-    required_skills: payload.required_skills || [],
-    is_verified: false,
+    required_skills: clean.required_skills || [],
+    is_verified: true,
+    status: "verified",
+    created_by: activeCreatorId || undefined,
     created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   };
 
-  // 1. Simpan ke localStorage agar tidak terhalang oleh pembatasan anon RLS Supabase
+  // 1. Simpan ke localStorage agar offline/demo fallback lancar
   const currentStored = getStoredManualOpportunities();
   saveStoredManualOpportunities([newOpp, ...currentStored]);
 
-  // 2. Upayakan insert ke Supabase (silent fallback bila terkena RLS)
+  // 2. Hubungkan form langsung ke tabel opportunities Supabase dengan status: 'verified'
   if (isSupabaseConfigured) {
     try {
       await supabaseClient.from("opportunities").insert({
@@ -1874,14 +1984,21 @@ export async function createManualOpportunity(
         category: newOpp.category,
         organizer: newOpp.organizer,
         caption: newOpp.caption,
+        deadline: parsedDeadline,
+        description: newOpp.description,
         description_roadmap: newOpp.description_roadmap,
         registration_url: newOpp.registration_url,
         requirements: newOpp.requirements,
         required_skills: newOpp.required_skills,
-        is_verified: false,
+        image_url: newOpp.image_url,
+        is_verified: true,
+        status: "verified",
+        created_by: activeCreatorId,
+        created_at: newOpp.created_at,
+        updated_at: newOpp.updated_at,
       });
     } catch (e) {
-      console.warn("[Remote Insert Ignored due to RLS]", e);
+      console.warn("[Remote Insert Warning]", e);
     }
   }
 
@@ -1892,7 +2009,7 @@ export async function createManualOpportunity(
 }
 
 /**
- * Mengubah status peluang menjadi is_verified: true
+ * Mengubah status peluang menjadi is_verified: true dan status: 'verified'
  * Sekaligus mendukung verifikasi teks anti-hoaks jika dipanggil dengan teks siaran panjang
  */
 export async function verifyOpportunity(
@@ -1916,7 +2033,7 @@ export async function verifyOpportunity(
     }
   }
 
-  // Jika argumen berupa ID peluang (Verifikasi status kurator: is_verified = true)
+  // Jika argumen berupa ID peluang (Verifikasi status kurator: is_verified = true, status = 'verified')
   const oppId = idOrText.trim();
   const stored = getStoredManualOpportunities();
   const existingIdx = stored.findIndex((o) => o.id === oppId);
@@ -1924,6 +2041,8 @@ export async function verifyOpportunity(
 
   if (existingIdx !== -1) {
     stored[existingIdx].is_verified = true;
+    stored[existingIdx].status = "verified";
+    stored[existingIdx].updated_at = new Date().toISOString();
     verifiedItem = stored[existingIdx];
     saveStoredManualOpportunities(stored);
   } else {
@@ -1936,7 +2055,9 @@ export async function verifyOpportunity(
       caption: "Segera",
       registration_url: "https://angkasa.id",
       is_verified: true,
+      status: "verified",
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
     saveStoredManualOpportunities([verifiedItem, ...stored]);
   }
@@ -1946,7 +2067,11 @@ export async function verifyOpportunity(
     try {
       await supabaseClient
         .from("opportunities")
-        .update({ is_verified: true })
+        .update({
+          is_verified: true,
+          status: "verified",
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", oppId);
     } catch (e) {
       console.warn("[Remote Update Status Ignored due to RLS]", e);
@@ -1961,6 +2086,60 @@ export async function verifyOpportunity(
 
 export const verifyOpportunityStatus = verifyOpportunity;
 export const analyzeOpportunity = verifyOpportunity;
+
+/**
+ * Mengambil daftar peluang terverifikasi (status = 'verified') dari Supabase sebagai sumber data utama
+ */
+export async function fetchVerifiedOpportunities(): Promise<ApiResponse<Opportunity[]>> {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabaseClient
+        .from("opportunities")
+        .select("*")
+        .or("status.eq.verified,is_verified.eq.true")
+        .order("created_at", { ascending: false });
+
+      if (!error && Array.isArray(data) && data.length > 0) {
+        const normalized: Opportunity[] = data.map((o: any) => ({
+          id: o.id,
+          title: o.title,
+          category: o.category,
+          organizer: o.organizer,
+          caption: o.caption || o.deadline || "Segera",
+          deadline: o.caption || o.deadline || "Segera",
+          description: o.description || o.description_roadmap || "",
+          description_roadmap: o.description_roadmap || o.description || "",
+          requirements: Array.isArray(o.requirements) ? o.requirements : [],
+          required_skills: Array.isArray(o.required_skills) ? o.required_skills : [],
+          registration_url: o.registration_url || "https://angkasa.id",
+          image_url: o.image_url || undefined,
+          is_verified: true,
+          status: "verified",
+          created_by: o.created_by,
+          created_at: o.created_at,
+          updated_at: o.updated_at,
+        }));
+        return { data: normalized, error: null };
+      }
+    } catch (err) {
+      console.warn("[fetchVerifiedOpportunities Supabase Warning]", err);
+    }
+  }
+
+  const manualVerified = getStoredManualOpportunities().filter(
+    (o) => o.is_verified || o.status === "verified"
+  );
+  const combined = [...manualVerified, ...mockOpportunities];
+  const seen = new Set<string>();
+  const deduped: Opportunity[] = [];
+  for (const opp of combined) {
+    if (!seen.has(opp.id)) {
+      seen.add(opp.id);
+      deduped.push(opp);
+    }
+  }
+  return { data: deduped, error: null };
+}
 
 // =================================================================
 // 8. ALIAS KONSISTENSI PENAMAAN FUNGSI

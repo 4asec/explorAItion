@@ -5,6 +5,8 @@
 
 export type OpportunityCategory = 'Lomba' | 'Beasiswa' | 'Seminar';
 
+export type UserRole = 'user' | 'curator' | 'admin';
+
 export interface UserProfile {
   id: string;
   full_name: string;
@@ -16,6 +18,7 @@ export interface UserProfile {
   province: string;
   city: string;
   profiling: string[];
+  role?: UserRole;
 }
 
 export interface RegisterPayload {
@@ -32,6 +35,8 @@ export interface RegisterPayload {
 
 export const DEFAULT_POSTER_URL = "";
 
+export type OpportunityStatus = 'pending' | 'verified' | 'rejected';
+
 export interface Opportunity {
   id: string;
   title: string;
@@ -46,7 +51,10 @@ export interface Opportunity {
   registration_url: string;
   image_url?: string | null;
   is_verified: boolean;
+  status?: OpportunityStatus;
+  created_by?: string;
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface PersonalizedOpportunity extends Opportunity {

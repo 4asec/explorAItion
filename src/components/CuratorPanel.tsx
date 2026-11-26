@@ -145,7 +145,7 @@ export default function CuratorPanel({
         finalPosterUrl = await uploadOpportunityPoster(posterFile);
       }
 
-      // 2. Simpan entri peluang baru dengan is_verified: false
+      // 2. Simpan entri peluang baru dengan is_verified: true dan status: 'verified'
       const payload: Partial<Opportunity> = {
         title: title.trim(),
         organizer: organizer.trim(),
@@ -163,6 +163,8 @@ export default function CuratorPanel({
           "Memenuhi kriteria teknis yang disyaratkan panitia penyelenggara",
         ],
         required_skills: [category, "Kolaborasi Tim", "Problem Solving"],
+        is_verified: true,
+        status: "verified",
       };
 
       const res = await createManualOpportunity(payload);
@@ -177,7 +179,7 @@ export default function CuratorPanel({
         setOpportunities((prev) => [createdItem, ...prev]);
         setNotification({
           type: "success",
-          message: `Draf "${createdItem.title}" berhasil diajukan ke antrean audit Verifikator (is_verified: false).`,
+          message: `Peluang "${createdItem.title}" berhasil disimpan dan diverifikasi tayang langsung di Feed publik Pelajar.`,
         });
 
         // Trigger callback ke parent FeedDashboard

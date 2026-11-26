@@ -261,9 +261,19 @@ export default function AdminPage() {
   const [newReportDesc, setNewReportDesc] = useState<string>("");
   const [newReportUrgency, setNewReportUrgency] = useState<ReportUrgency>("Sedang");
 
-  // Restore Admin Session
+  // Restore Admin Session & Validasi Role Akses
   useEffect(() => {
     if (typeof window !== "undefined") {
+      // Proteksi client-side: Jika role bertindak sebagai user biasa, redirect ke halaman utama
+      const cookies = document.cookie.split("; ");
+      const roleRow = cookies.find((row) => row.startsWith("angkasa_role="));
+      const userRole = roleRow ? roleRow.split("=")[1] : null;
+
+      if (userRole === "user") {
+        window.location.href = "/?auth_error=unauthorized_admin_access";
+        return;
+      }
+
       const stored = localStorage.getItem(STORAGE_ADMIN_KEY);
       if (stored === "authenticated") {
         setIsAdminLoggedIn(true);
@@ -312,6 +322,8 @@ export default function AdminPage() {
         setIsAdminLoggedIn(true);
         if (typeof window !== "undefined") {
           localStorage.setItem(STORAGE_ADMIN_KEY, "authenticated");
+          document.cookie = "angkasa_admin_session=authenticated; path=/; max-age=86400; SameSite=Lax";
+          document.cookie = "angkasa_role=admin; path=/; max-age=86400; SameSite=Lax";
         }
       } else {
         setLoginError("Email atau kata sandi admin salah. Gunakan admin@angkasa.id / admin2026 atau klik 1-Klik Demo.");
@@ -327,6 +339,8 @@ export default function AdminPage() {
     setIsAdminLoggedIn(true);
     if (typeof window !== "undefined") {
       localStorage.setItem(STORAGE_ADMIN_KEY, "authenticated");
+      document.cookie = "angkasa_admin_session=authenticated; path=/; max-age=86400; SameSite=Lax";
+      document.cookie = "angkasa_role=admin; path=/; max-age=86400; SameSite=Lax";
     }
   };
 
@@ -336,6 +350,8 @@ export default function AdminPage() {
     setAdminPassword("");
     if (typeof window !== "undefined") {
       localStorage.removeItem(STORAGE_ADMIN_KEY);
+      document.cookie = "angkasa_admin_session=; path=/; max-age=0; SameSite=Lax";
+      document.cookie = "angkasa_role=; path=/; max-age=0; SameSite=Lax";
     }
   };
 

@@ -17,6 +17,7 @@ import {
   invalidateFeedCache,
   getPendingTeamInvitesForCreator,
 } from "@/lib/apiClient";
+import { supabaseClient, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { mockOpportunities } from "@/lib/mockData";
 import CuratorPanel from "@/components/CuratorPanel";
 import BackgroundOrnaments from "@/components/BackgroundOrnaments";
@@ -190,6 +191,33 @@ export default function FeedDashboard({
     loadTeamNotifications();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userProfile]);
+
+  // Realtime subscription agar pembaruan peluang kurasi dari Admin langsung muncul seketika di Feed
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    const channel = supabaseClient
+      .channel("opportunities-realtime-feed")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "opportunities",
+        },
+        () => {
+          invalidateFeedCache();
+          loadFeed();
+          refreshCuratorCounts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabaseClient.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userProfile.id]);
 
   useEffect(() => {
     if (isNotificationOpen) {

@@ -131,7 +131,8 @@ export async function POST(req: Request) {
         const { data, error } = await supabaseClient
           .from("opportunities")
           .select("*")
-          .eq("is_verified", true);
+          .or("status.eq.verified,is_verified.eq.true")
+          .order("created_at", { ascending: false });
 
         if (!error && Array.isArray(data) && data.length > 0) {
           oppPool = data.map(normalizeOpportunity);
