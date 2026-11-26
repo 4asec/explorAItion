@@ -118,37 +118,55 @@ export interface ValidationResult<T> {
  */
 export function validateProfileInput(input: Partial<UserProfile>): ValidationResult<Partial<UserProfile>> {
   const errors: Record<string, string> = {};
+  const sanitizedData: Partial<UserProfile> = { ...input };
 
-  const full_name = sanitizeText(input.full_name, 100);
-  if (!full_name || full_name.length < 2) {
-    errors.full_name = "Nama lengkap wajib diisi minimal 2 karakter.";
+  if (input.full_name !== undefined) {
+    const full_name = sanitizeText(input.full_name, 100);
+    if (!full_name || full_name.length < 2) {
+      errors.full_name = "Nama lengkap wajib diisi minimal 2 karakter.";
+    } else {
+      sanitizedData.full_name = full_name;
+    }
   }
 
-  const username = sanitizeText(input.username, 40).replace(/[^a-zA-Z0-9_.-]/g, "");
-  if (!username || username.length < 3) {
-    errors.username = "Username wajib diisi minimal 3 karakter alfanumerik.";
+  if (input.username !== undefined) {
+    const username = sanitizeText(input.username, 40).replace(/[^a-zA-Z0-9_.-]/g, "").toLowerCase();
+    if (!username || username.length < 3) {
+      errors.username = "Username wajib diisi minimal 3 karakter alfanumerik.";
+    } else {
+      sanitizedData.username = username;
+    }
   }
 
-  const institution = sanitizeText(input.institution, 150) || "Perguruan Tinggi";
-  const education_level = sanitizeText(input.education_level, 60) || "Mahasiswa";
-  const province = sanitizeText(input.province, 100) || "Indonesia";
-  const city = sanitizeText(input.city, 100) || "Indonesia";
-  const birth_date = sanitizeText(input.birth_date, 20) || "2004-01-01";
-  const profiling = sanitizeStringArray(input.profiling, 30, 60);
+  if (input.institution !== undefined) {
+    sanitizedData.institution = sanitizeText(input.institution, 150) || "Perguruan Tinggi";
+  }
 
-  const sanitizedData: Partial<UserProfile> = {
-    ...input,
-    full_name,
-    username,
-    institution,
-    education_level,
-    province,
-    city,
-    birth_date,
-    profiling,
-  };
+  if (input.education_level !== undefined) {
+    sanitizedData.education_level = sanitizeText(input.education_level, 60) || "Mahasiswa D3/D4/S1";
+  }
 
-  if (input.email) {
+  if (input.province !== undefined) {
+    sanitizedData.province = sanitizeText(input.province, 100) || "Indonesia";
+  }
+
+  if (input.city !== undefined) {
+    sanitizedData.city = sanitizeText(input.city, 100) || "Indonesia";
+  }
+
+  if (input.birth_date !== undefined) {
+    sanitizedData.birth_date = sanitizeText(input.birth_date, 20) || "2004-01-01";
+  }
+
+  if (input.avatar_url !== undefined) {
+    sanitizedData.avatar_url = input.avatar_url ? sanitizeUrl(input.avatar_url) : null;
+  }
+
+  if (input.profiling !== undefined) {
+    sanitizedData.profiling = sanitizeStringArray(input.profiling, 30, 60);
+  }
+
+  if (input.email !== undefined) {
     const email = sanitizeEmail(input.email);
     if (!email) {
       errors.email = "Format alamat email tidak valid.";

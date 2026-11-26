@@ -19,6 +19,7 @@ export interface UserProfile {
   city: string;
   profiling: string[];
   role?: UserRole;
+  avatar_url?: string | null;
 }
 
 export interface RegisterPayload {

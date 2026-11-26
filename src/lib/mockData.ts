@@ -222,6 +222,7 @@ export const mockUserProfile: UserProfile = {
     "AI Engineering",
     "Hackathon",
   ],
+  avatar_url: null,
 };
 
 /**

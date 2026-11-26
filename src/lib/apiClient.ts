@@ -358,31 +358,72 @@ function invalidateUserFeedCache(userId: string) {
 }
 
 /**
- * Memperbarui data profiling minat, bakat, dan keahlian pengguna ke 1 kolom `profiling: string[]`
+ * Memperbarui data profil pengguna (identitas akademik, username, avatar, atau tag profiling)
  */
 export async function updateUserProfile(
   userId: string,
-  updates: string[] | { profiling: string[] }
+  updates: string[] | Partial<UserProfile>
 ): Promise<ApiResponse<UserProfile>> {
   try {
-    const rawArray: string[] = Array.isArray(updates)
-      ? updates
-      : Array.isArray(updates?.profiling)
-      ? updates.profiling
-      : [];
+    // Normalisasi input jika berupa array tags profiling
+    const updateObj: Partial<UserProfile> = Array.isArray(updates)
+      ? { profiling: updates }
+      : (updates as Partial<UserProfile>);
 
-    const profilingArray = sanitizeStringArray(rawArray, 30, 60);
+    // Validasi dan sanitasi input form profil
+    const validation = validateProfileInput(updateObj);
+    if (!validation.valid) {
+      const firstError = Object.values(validation.errors)[0] || "Data profil tidak valid.";
+      return { data: null, error: firstError };
+    }
 
-    // Invalidate feed cache agar rekomendasi langsung diperbarui
-    invalidateUserFeedCache(userId);
+    const cleanData = validation.data;
+
+    // Pengecekan bentrok username unik jika username diubah
+    if (isSupabaseConfigured && cleanData.username) {
+      try {
+        const { data: existingUser } = await supabaseClient
+          .from("profiles")
+          .select("id, username")
+          .eq("username", cleanData.username)
+          .neq("id", userId)
+          .maybeSingle();
+
+        if (existingUser) {
+          return {
+            data: null,
+            error: `Username @${cleanData.username} sudah digunakan oleh pengguna lain. Silakan pilih username lain.`,
+          };
+        }
+      } catch (checkErr) {
+        console.warn("[Username Check Warning]", checkErr);
+      }
+    }
+
+    // Invalidate feed cache jika profiling minat diubah
+    if (cleanData.profiling) {
+      invalidateUserFeedCache(userId);
+    }
+
+    let updatedProfile: UserProfile | null = null;
 
     if (isSupabaseConfigured) {
+      const updatePayload: Record<string, any> = {
+        updated_at: new Date().toISOString(),
+      };
+      if (cleanData.full_name !== undefined) updatePayload.full_name = cleanData.full_name;
+      if (cleanData.username !== undefined) updatePayload.username = cleanData.username;
+      if (cleanData.institution !== undefined) updatePayload.institution = cleanData.institution;
+      if (cleanData.education_level !== undefined) updatePayload.education_level = cleanData.education_level;
+      if (cleanData.province !== undefined) updatePayload.province = cleanData.province;
+      if (cleanData.city !== undefined) updatePayload.city = cleanData.city;
+      if (cleanData.birth_date !== undefined) updatePayload.birth_date = cleanData.birth_date;
+      if (cleanData.avatar_url !== undefined) updatePayload.avatar_url = cleanData.avatar_url;
+      if (cleanData.profiling !== undefined) updatePayload.profiling = cleanData.profiling;
+
       const { data, error } = await supabaseClient
         .from("profiles")
-        .update({
-          profiling: profilingArray,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updatePayload)
         .eq("id", userId)
         .select()
         .single();
@@ -391,19 +432,166 @@ export async function updateUserProfile(
         return { data: null, error: `Gagal menyimpan profil: ${error.message}` };
       }
 
-      return { data: data as UserProfile, error: null };
+      updatedProfile = data as UserProfile;
     }
 
-    // Mock fallback
-    const updatedMock: UserProfile = {
-      ...mockUserProfile,
-      id: userId,
-      profiling: profilingArray,
-    };
+    // Mock / Local Fallback jika Supabase belum terhubung
+    if (!updatedProfile) {
+      let currentMock = mockUserProfile;
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem("angkasa_user_profile") || localStorage.getItem("angkasa_active_session");
+          if (raw) currentMock = { ...currentMock, ...JSON.parse(raw) };
+        } catch {}
+      }
+      updatedProfile = {
+        ...currentMock,
+        ...cleanData,
+        id: userId,
+      } as UserProfile;
+    }
 
-    return { data: updatedMock, error: null };
+    // Sinkronisasi ke localStorage & sessionStorage agar perubahan langsung aktif di seluruh aplikasi
+    if (typeof window !== "undefined" && updatedProfile) {
+      try {
+        const rawSession = localStorage.getItem("angkasa_active_session");
+        if (rawSession) {
+          const parsed = JSON.parse(rawSession);
+          localStorage.setItem("angkasa_active_session", JSON.stringify({ ...parsed, ...updatedProfile }));
+        }
+        localStorage.setItem("angkasa_user_profile", JSON.stringify(updatedProfile));
+        sessionStorage.setItem("angkasa_user_profile", JSON.stringify(updatedProfile));
+      } catch (storageErr) {
+        console.warn("[Local Storage Profile Sync Warning]", storageErr);
+      }
+    }
+
+    return { data: updatedProfile, error: null };
   } catch (err) {
     return { data: null, error: "Terjadi kegagalan saat menyimpan data profil." };
+  }
+}
+
+/**
+ * Mengunggah foto profil pengguna ke Supabase Storage bucket 'avatars'
+ * dengan validasi ketat MIME type dan ukuran maksimal 2 MB
+ */
+export async function uploadUserAvatar(
+  userId: string,
+  file: File
+): Promise<ApiResponse<string>> {
+  try {
+    // 1. Validasi ketat sisi klien
+    const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedMimeTypes.includes(file.type)) {
+      return {
+        data: null,
+        error: "Format file tidak didukung. Harap unggah gambar berformat JPEG, PNG, atau WebP.",
+      };
+    }
+
+    const MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
+    if (file.size > MAX_SIZE_BYTES) {
+      return {
+        data: null,
+        error: "Ukuran gambar terlalu besar (maksimal 2 MB). Silakan pilih foto lain atau perkecil ukurannya.",
+      };
+    }
+
+    let avatarPublicUrl = "";
+
+    // 2. Upayakan upload ke Supabase Storage bucket 'avatars'
+    if (isSupabaseConfigured) {
+      try {
+        const ext = file.name.split(".").pop()?.toLowerCase() || (file.type === "image/png" ? "png" : "jpg");
+        const filePath = `${userId}/avatar-${Date.now()}.${ext}`;
+
+        const { data, error } = await supabaseClient.storage
+          .from("avatars")
+          .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: true,
+            contentType: file.type,
+          });
+
+        if (!error && data) {
+          const { data: urlData } = supabaseClient.storage
+            .from("avatars")
+            .getPublicUrl(data.path);
+
+          if (urlData?.publicUrl) {
+            avatarPublicUrl = urlData.publicUrl;
+          }
+        } else if (error) {
+          console.warn("[Supabase Storage Avatar Upload Warning]", error);
+        }
+      } catch (storageErr) {
+        console.warn("[uploadUserAvatar Storage Remote Error]", storageErr);
+      }
+    }
+
+    // 3. Fallback jika Supabase storage belum terhubung: kompresi/konversi base64 Data URL
+    if (!avatarPublicUrl) {
+      try {
+        avatarPublicUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      } catch {
+        return {
+          data: null,
+          error: "Gagal memproses file gambar avatar.",
+        };
+      }
+    }
+
+    // 4. Update kolom avatar_url di tabel profiles Supabase
+    if (isSupabaseConfigured && avatarPublicUrl.startsWith("http")) {
+      try {
+        await supabaseClient
+          .from("profiles")
+          .update({
+            avatar_url: avatarPublicUrl,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", userId);
+      } catch (e) {
+        console.warn("[Remote Profile avatar_url Update Warning]", e);
+      }
+    }
+
+    // 5. Update local storage & session
+    if (typeof window !== "undefined") {
+      try {
+        const rawSession = localStorage.getItem("angkasa_active_session");
+        if (rawSession) {
+          const parsed = JSON.parse(rawSession);
+          parsed.avatar_url = avatarPublicUrl;
+          localStorage.setItem("angkasa_active_session", JSON.stringify(parsed));
+        }
+        const rawProfile = localStorage.getItem("angkasa_user_profile");
+        if (rawProfile) {
+          const parsed = JSON.parse(rawProfile);
+          parsed.avatar_url = avatarPublicUrl;
+          localStorage.setItem("angkasa_user_profile", JSON.stringify(parsed));
+          sessionStorage.setItem("angkasa_user_profile", JSON.stringify(parsed));
+        }
+      } catch (e) {
+        console.warn("[Local Storage Avatar Sync Warning]", e);
+      }
+    }
+
+    return {
+      data: avatarPublicUrl,
+      error: null,
+    };
+  } catch (err) {
+    return {
+      data: null,
+      error: "Terjadi gangguan sistem saat mengunggah foto profil.",
+    };
   }
 }
 

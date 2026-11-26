@@ -313,9 +313,17 @@ export default function FeedDashboard({
             aria-label="Profil Pengguna"
           >
             <div className="relative shrink-0">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-400 via-amber-300 to-amber-100 text-[#004aad] font-bold text-sm flex items-center justify-center shadow-md ring-2 ring-white/40 group-hover:ring-amber-300 transition">
-                {userProfile.full_name?.charAt(0).toUpperCase() || "A"}
-              </div>
+              {userProfile.avatar_url ? (
+                <img
+                  src={userProfile.avatar_url}
+                  alt={userProfile.full_name}
+                  className="w-10 h-10 rounded-full object-cover shadow-md ring-2 ring-white/40 group-hover:ring-amber-300 transition"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-400 via-amber-300 to-amber-100 text-[#004aad] font-bold text-sm flex items-center justify-center shadow-md ring-2 ring-white/40 group-hover:ring-amber-300 transition">
+                  {userProfile.full_name?.charAt(0).toUpperCase() || "A"}
+                </div>
+              )}
               <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#004aad]" />
             </div>
 

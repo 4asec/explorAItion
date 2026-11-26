@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { UserProfile, Opportunity, ProfileInsightResult } from "@/types/schema";
-import { updateUserProfile, fetchProfileInsight } from "@/lib/apiClient";
+import { updateUserProfile, fetchProfileInsight, uploadUserAvatar } from "@/lib/apiClient";
 import BackgroundOrnaments from "@/components/BackgroundOrnaments";
 import {
   ArrowLeft,
@@ -25,6 +25,10 @@ import {
   RotateCcw,
   ChevronRight,
   Trash2,
+  Camera,
+  Edit3,
+  Save,
+  Calendar,
 } from "lucide-react";
 
 export interface ProfileViewProps {
@@ -71,6 +75,147 @@ export default function ProfileView({
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(
     null
   );
+
+  // State Edit Profil Lengkap
+  const [isEditingProfile, setIsEditingProfile] = useState<boolean>(false);
+  const [isSavingProfile, setIsSavingProfile] = useState<boolean>(false);
+  const [editFullName, setEditFullName] = useState<string>(userProfile.full_name || "");
+  const [editUsername, setEditUsername] = useState<string>(userProfile.username || "");
+  const [editInstitution, setEditInstitution] = useState<string>(userProfile.institution || "");
+  const [editEducationLevel, setEditEducationLevel] = useState<string>(userProfile.education_level || "Mahasiswa D3/D4/S1");
+  const [editProvince, setEditProvince] = useState<string>(userProfile.province || "");
+  const [editCity, setEditCity] = useState<string>(userProfile.city || "");
+  const [editBirthDate, setEditBirthDate] = useState<string>(userProfile.birth_date || "");
+
+  // State Custom Avatar Upload
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState<boolean>(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  // Sinkronisasi form saat data userProfile berubah
+  useEffect(() => {
+    setEditFullName(userProfile.full_name || "");
+    setEditUsername(userProfile.username || "");
+    setEditInstitution(userProfile.institution || "");
+    setEditEducationLevel(userProfile.education_level || "Mahasiswa D3/D4/S1");
+    setEditProvince(userProfile.province || "");
+    setEditCity(userProfile.city || "");
+    setEditBirthDate(userProfile.birth_date || "");
+  }, [userProfile]);
+
+  // Handler Upload Foto Profil (Maksimal 2 MB, MIME: jpeg/png/webp)
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset input agar bisa memilih file yang sama saat retry
+    e.target.value = "";
+
+    const allowedMime = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedMime.includes(file.type)) {
+      setFeedback({
+        type: "error",
+        text: "Format file tidak didukung. Harap pilih gambar berformat JPG, PNG, atau WebP.",
+      });
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setFeedback({
+        type: "error",
+        text: "Ukuran gambar melebihi batas maksimal 2 MB. Silakan kompres gambar terlebih dahulu.",
+      });
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    setFeedback(null);
+
+    try {
+      const res = await uploadUserAvatar(userProfile.id, file);
+      if (res.error || !res.data) {
+        setFeedback({
+          type: "error",
+          text: res.error || "Gagal mengunggah foto profil.",
+        });
+      } else {
+        const updated: UserProfile = {
+          ...userProfile,
+          avatar_url: res.data,
+        };
+        onUpdateProfile(updated);
+        setFeedback({
+          type: "success",
+          text: "Foto profil berhasil diperbarui secara real-time!",
+        });
+      }
+    } catch {
+      setFeedback({
+        type: "error",
+        text: "Terjadi kesalahan saat mengunggah foto profil.",
+      });
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  // Handler Simpan Data Profil Akademik & Identitas Lengkap
+  const handleSaveFullProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!editFullName.trim() || editFullName.trim().length < 2) {
+      setFeedback({
+        type: "error",
+        text: "Nama lengkap wajib diisi minimal 2 karakter.",
+      });
+      return;
+    }
+
+    if (!editUsername.trim() || editUsername.trim().length < 3) {
+      setFeedback({
+        type: "error",
+        text: "Username wajib diisi minimal 3 karakter alfanumerik.",
+      });
+      return;
+    }
+
+    setIsSavingProfile(true);
+    setFeedback(null);
+
+    try {
+      const cleanUsername = editUsername.trim().replace(/^@/, "").toLowerCase();
+      const payload: Partial<UserProfile> = {
+        full_name: editFullName.trim(),
+        username: cleanUsername,
+        institution: editInstitution.trim() || "Perguruan Tinggi",
+        education_level: editEducationLevel.trim() || "Mahasiswa D3/D4/S1",
+        province: editProvince.trim() || "Indonesia",
+        city: editCity.trim() || "Indonesia",
+        birth_date: editBirthDate.trim() || "2004-01-01",
+      };
+
+      const res = await updateUserProfile(userProfile.id, payload);
+      if (res.error || !res.data) {
+        setFeedback({
+          type: "error",
+          text: res.error || "Gagal menyimpan perubahan data profil.",
+        });
+      } else {
+        onUpdateProfile(res.data);
+        setIsEditingProfile(false);
+        setFeedback({
+          type: "success",
+          text: "Data identitas & profil akademik berhasil diperbarui!",
+        });
+      }
+    } catch {
+      setFeedback({
+        type: "error",
+        text: "Terjadi gangguan sistem saat memperbarui profil.",
+      });
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   // State Modal Konfirmasi 2 Langkah Keluar / Logout
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState<boolean>(false);
@@ -284,50 +429,272 @@ export default function ProfileView({
       <main className="relative z-10 flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8 animate-fade-slide-up">
         {/* User Card Hero (Glassmorphism Surface) */}
         <section className="surface-panel p-6 sm:p-8 rounded-2xl space-y-6">
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
-            {/* Circular Avatar Lingkaran */}
-            <div className="relative">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-tr from-amber-400 via-amber-300 to-amber-200 text-[#004aad] font-bold text-2xl sm:text-3xl flex items-center justify-center shadow-2xl ring-4 ring-white/30">
-                {userProfile.full_name?.charAt(0).toUpperCase() || "U"}
+          {/* Feedback Alert Notifikasi */}
+          {feedback && (
+            <div
+              className={`p-3.5 rounded-xl border text-xs flex items-center justify-between gap-2.5 backdrop-blur-md animate-fade-slide-up ${
+                feedback.type === "success"
+                  ? "bg-amber-400/20 border-amber-300/40 text-amber-200"
+                  : "bg-rose-950/40 border-rose-500/40 text-rose-200"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                {feedback.type === "success" ? (
+                  <CheckCircle2 className="w-4 h-4 text-amber-300 shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-rose-300 shrink-0" />
+                )}
+                <span>{feedback.text}</span>
               </div>
-              <span className="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-emerald-400 border-2 border-[#003175] shadow-sm" />
+              <button
+                type="button"
+                onClick={() => setFeedback(null)}
+                className="text-white/60 hover:text-white transition cursor-pointer p-1"
+                title="Tutup Notifikasi"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+            {/* Circular Avatar Lingkaran Interaktif */}
+            <div className="relative group shrink-0">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden bg-gradient-to-tr from-amber-400 via-amber-300 to-amber-200 text-[#004aad] font-bold text-2xl sm:text-3xl flex items-center justify-center shadow-2xl ring-4 ring-white/30">
+                {userProfile.avatar_url ? (
+                  <img
+                    src={userProfile.avatar_url}
+                    alt={userProfile.full_name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span>{userProfile.full_name?.charAt(0).toUpperCase() || "U"}</span>
+                )}
+              </div>
+
+              {/* Overlay / Tombol Kamera Unggah Foto */}
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={isUploadingAvatar}
+                className="absolute bottom-0 right-0 p-2 rounded-full bg-[#002b66] hover:bg-[#003d91] text-amber-300 border-2 border-white/40 shadow-lg transition-transform active:scale-95 cursor-pointer disabled:opacity-50"
+                title="Ubah Foto Profil (Maks. 2 MB)"
+                aria-label="Ubah Foto Profil"
+              >
+                {isUploadingAvatar ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-300" />
+                ) : (
+                  <Camera className="w-3.5 h-3.5" />
+                )}
+              </button>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleAvatarChange}
+                className="hidden"
+              />
+              <span className="absolute top-0 right-0 w-4 h-4 rounded-full bg-emerald-400 border-2 border-[#003175] shadow-sm" />
             </div>
 
-            {/* Info Nama & Identitas */}
-            <div className="space-y-1.5 text-center sm:text-left flex-1">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-                  {userProfile.full_name}
-                </h1>
-                <span className="inline-flex items-center gap-1 text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-amber-400/20 border border-amber-300/30 text-amber-300 font-semibold self-center sm:self-auto">
-                  <ShieldCheck className="w-3 h-3 text-amber-300" />
-                  <span>Akun Mahasiswa Aktif</span>
-                </span>
-              </div>
+            {/* Info Nama & Identitas atau Form Edit Profil */}
+            {!isEditingProfile ? (
+              <div className="space-y-2 text-center sm:text-left flex-1 w-full">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                      {userProfile.full_name}
+                    </h1>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-amber-400/20 border border-amber-300/30 text-amber-300 font-semibold self-center sm:self-auto">
+                      <ShieldCheck className="w-3 h-3 text-amber-300" />
+                      <span>Akun Mahasiswa Aktif</span>
+                    </span>
+                  </div>
 
-              <p className="text-xs font-mono text-white/70">
-                @{userProfile.username || userProfile.email?.split("@")[0] || "mahasiswa"}
-              </p>
+                  {/* Tombol Masuk Mode Edit Profil */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditFullName(userProfile.full_name || "");
+                      setEditUsername(userProfile.username || "");
+                      setEditInstitution(userProfile.institution || "");
+                      setEditEducationLevel(userProfile.education_level || "Mahasiswa D3/D4/S1");
+                      setEditProvince(userProfile.province || "");
+                      setEditCity(userProfile.city || "");
+                      setEditBirthDate(userProfile.birth_date || "");
+                      setIsEditingProfile(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/25 text-xs font-semibold text-white transition active:scale-[0.98] cursor-pointer shadow-sm backdrop-blur-md self-center sm:self-auto shrink-0"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Edit Profil</span>
+                  </button>
+                </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-3 text-xs text-white/80">
-                <div className="flex items-center gap-2">
-                  <Mail className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                  <span className="truncate">{userProfile.email}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Building2 className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                  <span className="truncate">{userProfile.institution || "Perguruan Tinggi"}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <GraduationCap className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                  <span>{userProfile.education_level || "Mahasiswa"}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                  <span>{userProfile.city || "Indonesia"}</span>
+                <p className="text-xs font-mono text-white/70">
+                  @{userProfile.username || userProfile.email?.split("@")[0] || "mahasiswa"}
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 text-xs text-white/80">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                    <span className="truncate">{userProfile.email}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                    <span className="truncate">{userProfile.institution || "Perguruan Tinggi"}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <GraduationCap className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                    <span>{userProfile.education_level || "Mahasiswa D3/D4/S1"}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                    <span>{userProfile.city ? `${userProfile.city}, ${userProfile.province || "Indonesia"}` : "Indonesia"}</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              /* Mode Form Edit Profil Lengkap */
+              <form onSubmit={handleSaveFullProfile} className="space-y-4 flex-1 text-left w-full animate-fade-slide-up">
+                <div className="flex items-center justify-between pb-2 border-b border-white/15">
+                  <div>
+                    <h2 className="text-sm sm:text-base font-bold text-white">Edit Identitas &amp; Profil Akademik</h2>
+                    <p className="text-[11px] sm:text-xs text-white/70">Perbarui data diri untuk personalisasi rekomendasi peluang dan kolaborasi tim.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingProfile(false)}
+                    className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                    title="Batal"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  {/* Nama Lengkap */}
+                  <div className="space-y-1">
+                    <label className="font-mono text-white/80 font-medium">Nama Lengkap</label>
+                    <input
+                      type="text"
+                      value={editFullName}
+                      onChange={(e) => setEditFullName(e.target.value)}
+                      required
+                      placeholder="Nama Lengkap"
+                      className="w-full px-3 py-2 rounded-xl bg-white/[0.08] border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-amber-400 transition"
+                    />
+                  </div>
+
+                  {/* Username */}
+                  <div className="space-y-1">
+                    <label className="font-mono text-white/80 font-medium">Username</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50 font-mono">@</span>
+                      <input
+                        type="text"
+                        value={editUsername}
+                        onChange={(e) => setEditUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.-]/g, ""))}
+                        required
+                        placeholder="username"
+                        className="w-full pl-7 pr-3 py-2 rounded-xl bg-white/[0.08] border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-amber-400 transition font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Institusi / Kampus / Sekolah */}
+                  <div className="space-y-1">
+                    <label className="font-mono text-white/80 font-medium">Institusi / Kampus / Sekolah</label>
+                    <input
+                      type="text"
+                      value={editInstitution}
+                      onChange={(e) => setEditInstitution(e.target.value)}
+                      placeholder="Contoh: Politeknik Negeri Malang"
+                      className="w-full px-3 py-2 rounded-xl bg-white/[0.08] border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-amber-400 transition"
+                    />
+                  </div>
+
+                  {/* Jenjang Pendidikan */}
+                  <div className="space-y-1">
+                    <label className="font-mono text-white/80 font-medium">Jenjang Pendidikan</label>
+                    <select
+                      value={editEducationLevel}
+                      onChange={(e) => setEditEducationLevel(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-[#002b66] border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-amber-400 transition cursor-pointer"
+                    >
+                      <option value="SMA/SMK" className="bg-[#002b66] text-white">SMA/SMK</option>
+                      <option value="Mahasiswa D3/D4/S1" className="bg-[#002b66] text-white">Mahasiswa D3/D4/S1</option>
+                      <option value="Fresh Graduate" className="bg-[#002b66] text-white">Fresh Graduate</option>
+                      <option value="Umum" className="bg-[#002b66] text-white">Umum</option>
+                    </select>
+                  </div>
+
+                  {/* Provinsi */}
+                  <div className="space-y-1">
+                    <label className="font-mono text-white/80 font-medium">Provinsi</label>
+                    <input
+                      type="text"
+                      value={editProvince}
+                      onChange={(e) => setEditProvince(e.target.value)}
+                      placeholder="Contoh: Jawa Timur"
+                      className="w-full px-3 py-2 rounded-xl bg-white/[0.08] border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-amber-400 transition"
+                    />
+                  </div>
+
+                  {/* Kota/Kabupaten */}
+                  <div className="space-y-1">
+                    <label className="font-mono text-white/80 font-medium">Kota / Kabupaten</label>
+                    <input
+                      type="text"
+                      value={editCity}
+                      onChange={(e) => setEditCity(e.target.value)}
+                      placeholder="Contoh: Kota Malang"
+                      className="w-full px-3 py-2 rounded-xl bg-white/[0.08] border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-amber-400 transition"
+                    />
+                  </div>
+
+                  {/* Tanggal Lahir */}
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="font-mono text-white/80 font-medium">Tanggal Lahir</label>
+                    <input
+                      type="date"
+                      value={editBirthDate}
+                      onChange={(e) => setEditBirthDate(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-white/[0.08] border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-amber-400 transition"
+                    />
+                  </div>
+                </div>
+
+                {/* Tombol Aksi Form */}
+                <div className="flex items-center justify-end gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingProfile(false)}
+                    disabled={isSavingProfile}
+                    className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-xs font-medium text-white transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingProfile}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-[#002b66] font-bold text-xs shadow-md transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                  >
+                    {isSavingProfile ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Menyimpan...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-3.5 h-3.5" />
+                        <span>Simpan Perubahan</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </section>
 
